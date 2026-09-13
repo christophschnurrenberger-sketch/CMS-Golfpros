@@ -68,10 +68,34 @@ final class DB
         return self::$treiber === 'sqlite';
     }
 
+    /**
+     * Bindet jeden Wert mit seinem Typ.
+     *
+     * `PDOStatement::execute($werte)` bindet alles als Text. In SQLite ist
+     * Text in der Sortierordnung größer als jede Zahl – `spalte >= '60'`
+     * liefert dann dauerhaft nichts, ohne dass ein Fehler auftritt. Genau
+     * solche Vergleiche stecken in Segmenten, Auswertungen und Filtern.
+     * Deshalb wird hier gebunden statt übergeben.
+     */
     public static function query(string $sql, array $parameter = []): PDOStatement
     {
         $stmt = self::pdo()->prepare($sql);
-        $stmt->execute($parameter);
+        foreach ($parameter as $name => $wert) {
+            $schluessel = is_int($name) ? $name + 1 : ':' . ltrim((string) $name, ':');
+            $typ = match (true) {
+                is_int($wert)  => PDO::PARAM_INT,
+                is_bool($wert) => PDO::PARAM_INT,
+                is_null($wert) => PDO::PARAM_NULL,
+                default        => PDO::PARAM_STR,
+            };
+            if (is_bool($wert)) {
+                $wert = $wert ? 1 : 0;
+            } elseif (is_float($wert)) {
+                $wert = (string) $wert;
+            }
+            $stmt->bindValue($schluessel, $wert, $typ);
+        }
+        $stmt->execute();
         return $stmt;
     }
 

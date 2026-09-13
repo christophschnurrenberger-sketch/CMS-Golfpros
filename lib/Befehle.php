@@ -2,7 +2,7 @@
 /**
  * Befehle – was die Befehlspalette (Strg/Cmd + K) anbietet.
  *
- * Zwei Sorten: Sprünge in Bereiche und Handlungen („Neuen Kunden anlegen").
+ * Zwei Sorten: Sprünge in Bereiche und Handlungen („Neuen Kunden anlegen“).
  * Beide werden nach Rechten gefiltert – die Palette darf nichts anbieten,
  * was die Seite danach verweigert.
  */
