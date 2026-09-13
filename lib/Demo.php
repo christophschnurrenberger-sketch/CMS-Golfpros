@@ -553,7 +553,7 @@ final class Demo
                 // Quadratisch zum Jetzt hin gewichtet: Ein Geschäft, das
                 // laeuft, macht in den letzten Monaten mehr Umsatz als vor
                 // zwei Jahren. Gleichverteilte Kaeufe sehen tot aus.
-                $tageHer = (int) round(pow(mt_rand(0, 1000) / 1000, 1.9) * 430) + mt_rand(1, 8);
+                $tageHer = (int) round(pow(mt_rand(0, 1000) / 1000, 1.35) * 660) + mt_rand(1, 8);
                 $wann = date('Y-m-d H:i:s', strtotime('-' . $tageHer . ' days'));
 
                 $orderId = Tenant::insert('orders', [

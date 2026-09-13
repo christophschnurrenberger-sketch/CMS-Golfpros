@@ -35,8 +35,16 @@ function kennzahl(string $label, string $wert, array $o = []): string
         if ($delta !== null) {
             $richtung = $delta > 0.5 ? 'auf' : ($delta < -0.5 ? 'ab' : 'neutral');
             $pfeil    = $delta > 0.5 ? 'trend-up' : ($delta < -0.5 ? 'trend-down' : 'arrow-right');
+            /*
+             * Jenseits von 300 Prozent sagt eine Prozentzahl nichts mehr –
+             * „+996 %" heißt in Wahrheit „der Vergleichszeitraum war fast
+             * leer". Dann ist der Faktor die ehrlichere Angabe.
+             */
+            $anzeige = abs($delta) > 300
+                ? '×' . Util::zahl(1 + $delta / 100, 1)
+                : ($delta > 0 ? '+' : '') . Util::zahl($delta, 1) . ' %';
             $html .= '<span class="delta delta--' . $richtung . '">' . Icon::svg($pfeil, 13)
-                   . ($delta > 0 ? '+' : '') . Util::zahl($delta, 1) . ' %</span>';
+                   . $anzeige . '</span>';
         }
         if ($fuss !== '') {
             $html .= '<span class="gedimmt">' . $fuss . '</span>';
