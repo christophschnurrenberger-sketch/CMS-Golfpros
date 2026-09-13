@@ -1,0 +1,550 @@
+/* ==========================================================================
+   GolfPro CMS – Oberflächenlogik
+   --------------------------------------------------------------------------
+   Kein Framework. Die Seiten kommen fertig vom Server; dieses Skript macht
+   sie lebendig: Befehlspalette, Menüs, Dialoge, Ziehen und Ablegen, Thema.
+   Alles hängt an data-Attributen, damit PHP nur Markup schreiben muss.
+   ========================================================================== */
+
+(function () {
+  'use strict';
+
+  const $  = (w, k) => (k || document).querySelector(w);
+  const $$ = (w, k) => Array.from((k || document).querySelectorAll(w));
+
+  /* ------------------------------------------------------------- Thema - */
+
+  const Thema = {
+    lesen() {
+      try { return localStorage.getItem('gp-thema') || 'system'; } catch (e) { return 'system'; }
+    },
+    setzen(wert) {
+      try { localStorage.setItem('gp-thema', wert); } catch (e) { /* privater Modus */ }
+      Thema.anwenden(wert);
+    },
+    anwenden(wert) {
+      const dunkel = wert === 'dunkel' ||
+        (wert === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', dunkel ? 'dunkel' : 'hell');
+      $$('[data-thema-wert]').forEach(el => {
+        el.classList.toggle('ist-aktiv', el.dataset.themaWert === wert);
+      });
+    },
+    umschalten() {
+      const jetzt = document.documentElement.getAttribute('data-theme');
+      Thema.setzen(jetzt === 'dunkel' ? 'hell' : 'dunkel');
+    }
+  };
+  Thema.anwenden(Thema.lesen());
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (Thema.lesen() === 'system') Thema.anwenden('system');
+  });
+
+  /* --------------------------------------------------------- Menüs ---- */
+
+  document.addEventListener('click', (e) => {
+    const ausloeser = e.target.closest('[data-aufklapp]');
+    if (ausloeser) {
+      const huelle = ausloeser.closest('.aufklapp');
+      const offen  = huelle.classList.contains('ist-offen');
+      $$('.aufklapp.ist-offen').forEach(el => el.classList.remove('ist-offen'));
+      if (!offen) huelle.classList.add('ist-offen');
+      e.stopPropagation();
+      return;
+    }
+    if (!e.target.closest('.aufklapp__menue')) {
+      $$('.aufklapp.ist-offen').forEach(el => el.classList.remove('ist-offen'));
+    }
+  });
+
+  /* ------------------------------------------------- Seitenleiste mobil */
+
+  const leiste    = $('.seitenleiste');
+  const verdunkler = $('.verdunkler');
+  function leisteUm(auf) {
+    if (!leiste) return;
+    leiste.classList.toggle('ist-offen', auf);
+    if (verdunkler) verdunkler.classList.toggle('ist-offen', auf);
+    document.body.style.overflow = auf ? 'hidden' : '';
+  }
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-menue-auf]')) { leisteUm(true); }
+    else if (e.target.closest('[data-menue-zu]') || e.target === verdunkler) { leisteUm(false); }
+  });
+
+  /* ---------------------------------------------------------- Dialoge - */
+
+  document.addEventListener('click', (e) => {
+    const auf = e.target.closest('[data-modal-auf]');
+    if (auf) {
+      e.preventDefault();
+      const d = document.getElementById(auf.dataset.modalAuf);
+      if (d && typeof d.showModal === 'function') {
+        // Werte vorbelegen: data-setz-<feldname>
+        Object.keys(auf.dataset).forEach(k => {
+          if (k.indexOf('setz') === 0 && k.length > 4) {
+            const name = k.slice(4).toLowerCase();
+            const feld = d.querySelector('[name="' + name + '"]');
+            if (feld) feld.value = auf.dataset[k];
+          }
+        });
+        const titel = auf.dataset.modalTitel;
+        if (titel) { const h = d.querySelector('.modal__kopf h2'); if (h) h.textContent = titel; }
+        d.showModal();
+        const erstes = d.querySelector('input:not([type=hidden]):not([readonly]), textarea, select');
+        if (erstes && window.innerWidth > 700) setTimeout(() => erstes.focus(), 60);
+      }
+      return;
+    }
+    const zu = e.target.closest('[data-modal-zu]');
+    if (zu) { e.preventDefault(); const d = zu.closest('dialog'); if (d) d.close(); }
+  });
+
+  // Klick auf den Hintergrund schließt den Dialog.
+  document.addEventListener('click', (e) => {
+    if (e.target.tagName === 'DIALOG' && e.target.classList.contains('modal')) {
+      const k = e.target.getBoundingClientRect();
+      if (e.clientX < k.left || e.clientX > k.right || e.clientY < k.top || e.clientY > k.bottom) {
+        e.target.close();
+      }
+    }
+  });
+
+  /* --------------------------------------------------- Rückfrage ------ */
+
+  document.addEventListener('submit', (e) => {
+    const frage = e.target.dataset.bestaetigen;
+    if (frage && !window.confirm(frage)) { e.preventDefault(); }
+  }, true);
+
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-bestaetigen]');
+    if (el && el.tagName !== 'FORM' && !el.closest('form[data-bestaetigen]')) {
+      if (!window.confirm(el.dataset.bestaetigen)) { e.preventDefault(); e.stopPropagation(); }
+    }
+  }, true);
+
+  /* ------------------------------------------------------- Meldungen -- */
+
+  function melden(text, typ) {
+    let huelle = $('.meldungen');
+    if (!huelle) {
+      huelle = document.createElement('div');
+      huelle.className = 'meldungen';
+      document.body.appendChild(huelle);
+    }
+    const el = document.createElement('div');
+    el.className = 'meldung meldung--' + (typ || 'erfolg');
+    el.innerHTML = '<div class="meldung__text"></div>';
+    el.querySelector('.meldung__text').textContent = text;
+    huelle.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 4200);
+  }
+  window.gpMelden = melden;
+
+  $$('.meldung').forEach(el => {
+    setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0';
+      setTimeout(() => el.remove(), 320); }, 5000);
+  });
+
+  /* ---------------------------------------------------- Zwischenablage */
+
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-kopieren]');
+    if (!el) return;
+    e.preventDefault();
+    const text = el.dataset.kopieren;
+    const fertig = () => melden('In die Zwischenablage kopiert.', 'erfolg');
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(fertig).catch(() => {});
+    } else {
+      const f = document.createElement('textarea');
+      f.value = text; document.body.appendChild(f); f.select();
+      try { document.execCommand('copy'); fertig(); } catch (err) {}
+      f.remove();
+    }
+  });
+
+  /* -------------------------------------------------------- Reiter ---- */
+
+  document.addEventListener('click', (e) => {
+    const teil = e.target.closest('[data-reiter]');
+    if (!teil) return;
+    const gruppe = teil.closest('.reiter');
+    const ziel   = teil.dataset.reiter;
+    $$('[data-reiter]', gruppe).forEach(t => t.classList.toggle('ist-aktiv', t === teil));
+    $$('[data-reiter-feld]').forEach(f => {
+      if (f.dataset.reiterGruppe === gruppe.dataset.reiterGruppe) {
+        f.classList.toggle('versteckt', f.dataset.reiterFeld !== ziel);
+      }
+    });
+    if (history.replaceState) {
+      history.replaceState(null, '', '#' + ziel);
+    }
+  });
+
+  // Reiter aus der Adresse übernehmen
+  if (location.hash) {
+    const t = $('[data-reiter="' + location.hash.slice(1) + '"]');
+    if (t) t.click();
+  }
+
+  /* ------------------------------------------------- Filter absenden -- */
+
+  $$('[data-auto-absenden]').forEach(el => {
+    el.addEventListener('change', () => { el.closest('form').submit(); });
+  });
+
+  let suchTakt;
+  $$('[data-such-absenden]').forEach(el => {
+    el.addEventListener('input', () => {
+      clearTimeout(suchTakt);
+      suchTakt = setTimeout(() => el.closest('form').submit(), 450);
+    });
+  });
+
+  /* ======================================================= Befehlspalette */
+
+  const palette = {
+    huelle: null, eingabe: null, liste: null, eintraege: [], gewaehlt: 0, alle: [], takt: null,
+
+    bauen() {
+      if (this.huelle) return;
+      const h = document.createElement('div');
+      h.className = 'palette-huelle';
+      h.innerHTML =
+        '<div class="palette" role="dialog" aria-label="Befehle">' +
+          '<div class="palette__kopf">' +
+            '<svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.3-4.3"/></svg>' +
+            '<input class="palette__eingabe" placeholder="Suchen oder Befehl eingeben…" autocomplete="off" spellcheck="false">' +
+            '<kbd>Esc</kbd>' +
+          '</div>' +
+          '<div class="palette__liste"></div>' +
+          '<div class="palette__fuss">' +
+            '<span><kbd>↑</kbd><kbd>↓</kbd> wählen</span>' +
+            '<span><kbd>⏎</kbd> öffnen</span>' +
+            '<span><kbd>Esc</kbd> schließen</span>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(h);
+      this.huelle  = h;
+      this.eingabe = $('.palette__eingabe', h);
+      this.liste   = $('.palette__liste', h);
+
+      this.eingabe.addEventListener('input', () => this.filtern());
+      this.eingabe.addEventListener('keydown', (e) => this.taste(e));
+      h.addEventListener('click', (e) => { if (e.target === h) this.zu(); });
+    },
+
+    auf() {
+      this.bauen();
+      this.alle = window.gpBefehle || [];
+      this.huelle.classList.add('ist-offen');
+      this.eingabe.value = '';
+      this.eingabe.focus();
+      this.filtern();
+      document.body.style.overflow = 'hidden';
+    },
+
+    zu() {
+      if (!this.huelle) return;
+      this.huelle.classList.remove('ist-offen');
+      document.body.style.overflow = '';
+    },
+
+    filtern() {
+      const q = this.eingabe.value.trim().toLowerCase();
+      let treffer = this.alle;
+      if (q) {
+        treffer = this.alle
+          .map(b => ({ b: b, p: this.punkte(b, q) }))
+          .filter(x => x.p > 0)
+          .sort((a, b) => b.p - a.p)
+          .map(x => x.b);
+      } else {
+        treffer = this.alle.filter(b => b.start).slice(0, 9);
+      }
+      this.zeichnen(treffer.slice(0, 40), q);
+      if (q.length >= 2) {
+        clearTimeout(this.takt);
+        this.takt = setTimeout(() => this.serverSuche(q), 220);
+      }
+    },
+
+    /* Einfache, aber wirksame Bewertung: Wortanfang schlägt Teiltreffer. */
+    punkte(b, q) {
+      const t = (b.titel || '').toLowerCase();
+      const s = (b.schlagworte || '').toLowerCase();
+      if (t === q) return 100;
+      if (t.indexOf(q) === 0) return 80;
+      if (t.indexOf(' ' + q) > -1) return 60;
+      if (t.indexOf(q) > -1) return 40;
+      if (s.indexOf(q) > -1) return 25;
+      // Buchstaben der Reihe nach („kne" findet „Kunde neu")
+      let i = 0;
+      for (const z of t) { if (z === q[i]) i++; if (i === q.length) return 12; }
+      return 0;
+    },
+
+    serverSuche(q) {
+      const url = (window.gpBasis || '') + '/app/suche.php?q=' + encodeURIComponent(q) + '&format=json';
+      fetch(url, { headers: { 'X-Requested-With': 'fetch' } })
+        .then(r => r.ok ? r.json() : null)
+        .then(daten => {
+          if (!daten || !daten.treffer || this.eingabe.value.trim().toLowerCase() !== q) return;
+          const befehle = this.alle
+            .map(b => ({ b: b, p: this.punkte(b, q) }))
+            .filter(x => x.p > 0).sort((a, b) => b.p - a.p).map(x => x.b).slice(0, 6);
+          this.zeichnen(befehle.concat(daten.treffer), q);
+        })
+        .catch(() => {});
+    },
+
+    zeichnen(liste, q) {
+      if (!liste.length) {
+        this.liste.innerHTML = '<div class="palette__leer">Nichts gefunden für „' +
+          q.replace(/[<>&]/g, '') + '".</div>';
+        this.eintraege = [];
+        return;
+      }
+      let html = '';
+      let gruppe = '';
+      liste.forEach((b, i) => {
+        if (b.gruppe && b.gruppe !== gruppe) {
+          gruppe = b.gruppe;
+          html += '<div class="palette__gruppe">' + this.esc(gruppe) + '</div>';
+        }
+        html += '<a class="palette__eintrag' + (i === 0 ? ' ist-aktiv' : '') + '" href="' + this.esc(b.url) + '">' +
+                  (b.icon ? b.icon : '') +
+                  '<span class="palette__eintrag-text">' +
+                    '<span class="palette__eintrag-titel">' + this.esc(b.titel) + '</span>' +
+                    (b.unter ? '<span class="palette__eintrag-unter">' + this.esc(b.unter) + '</span>' : '') +
+                  '</span>' +
+                  (b.weg ? '<span class="palette__eintrag-weg">' + this.esc(b.weg) + '</span>' : '') +
+                '</a>';
+      });
+      this.liste.innerHTML = html;
+      this.eintraege = $$('.palette__eintrag', this.liste);
+      this.gewaehlt = 0;
+    },
+
+    esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    },
+
+    taste(e) {
+      if (e.key === 'Escape') { this.zu(); return; }
+      if (!this.eintraege.length) return;
+      if (e.key === 'ArrowDown' || (e.key === 'n' && e.ctrlKey)) {
+        e.preventDefault(); this.bewegen(1);
+      } else if (e.key === 'ArrowUp' || (e.key === 'p' && e.ctrlKey)) {
+        e.preventDefault(); this.bewegen(-1);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const ziel = this.eintraege[this.gewaehlt];
+        if (ziel) window.location.href = ziel.getAttribute('href');
+      }
+    },
+
+    bewegen(schritt) {
+      this.eintraege[this.gewaehlt].classList.remove('ist-aktiv');
+      this.gewaehlt = (this.gewaehlt + schritt + this.eintraege.length) % this.eintraege.length;
+      const el = this.eintraege[this.gewaehlt];
+      el.classList.add('ist-aktiv');
+      el.scrollIntoView({ block: 'nearest' });
+    }
+  };
+
+  window.gpPalette = palette;
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      palette.huelle && palette.huelle.classList.contains('ist-offen') ? palette.zu() : palette.auf();
+      return;
+    }
+    if (e.key === 'Escape') {
+      palette.zu();
+      leisteUm(false);
+      $$('.aufklapp.ist-offen').forEach(el => el.classList.remove('ist-offen'));
+    }
+    // "/" öffnet die Suche, sofern nicht gerade getippt wird
+    if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)
+        && !document.activeElement.isContentEditable) {
+      e.preventDefault(); palette.auf();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-palette]')) { e.preventDefault(); palette.auf(); }
+    if (e.target.closest('[data-thema-um]')) { e.preventDefault(); Thema.umschalten(); }
+    const tw = e.target.closest('[data-thema-wert]');
+    if (tw) { e.preventDefault(); Thema.setzen(tw.dataset.themaWert); }
+  });
+
+  /* ================================================= Ziehen und Ablegen */
+
+  /**
+   * Kanban: Karten zwischen Spalten verschieben. Der Server erfährt die
+   * neue Spalte per fetch; scheitert das, springt die Karte zurück –
+   * eine stille Falschanzeige wäre schlimmer als ein sichtbarer Fehler.
+   */
+  let gezogen = null;
+
+  document.addEventListener('dragstart', (e) => {
+    const karte = e.target.closest('[data-ziehbar]');
+    if (!karte) return;
+    gezogen = karte;
+    karte.classList.add('wird-gezogen');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', karte.dataset.id || ''); } catch (err) {}
+  });
+
+  document.addEventListener('dragend', () => {
+    if (gezogen) gezogen.classList.remove('wird-gezogen');
+    $$('.ist-ziel').forEach(el => el.classList.remove('ist-ziel'));
+    gezogen = null;
+  });
+
+  document.addEventListener('dragover', (e) => {
+    const ziel = e.target.closest('[data-ablegen]');
+    if (!ziel || !gezogen) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    $$('.ist-ziel').forEach(el => { if (el !== ziel) el.classList.remove('ist-ziel'); });
+    ziel.classList.add('ist-ziel');
+  });
+
+  document.addEventListener('dragleave', (e) => {
+    const ziel = e.target.closest('[data-ablegen]');
+    if (ziel && !ziel.contains(e.relatedTarget)) ziel.classList.remove('ist-ziel');
+  });
+
+  document.addEventListener('drop', (e) => {
+    const ziel = e.target.closest('[data-ablegen]');
+    if (!ziel || !gezogen) return;
+    e.preventDefault();
+    ziel.classList.remove('ist-ziel');
+
+    const koerper = ziel.querySelector('[data-ablage-koerper]') || ziel;
+    const vorher  = gezogen.parentElement;
+    koerper.appendChild(gezogen);
+    zaehlerAuffrischen();
+
+    const url = ziel.dataset.ablegen;
+    if (!url) return;
+    const daten = new FormData();
+    daten.append('id', gezogen.dataset.id || '');
+    daten.append('ziel', ziel.dataset.ablegenWert || '');
+    daten.append('_csrf', window.gpCsrf || '');
+    fetch(url, { method: 'POST', body: daten })
+      .then(r => r.json())
+      .then(a => {
+        if (a && a.ok) { melden(a.meldung || 'Gespeichert.', 'erfolg'); }
+        else { vorher.appendChild(gezogen); zaehlerAuffrischen(); melden((a && a.fehler) || 'Konnte nicht gespeichert werden.', 'fehler'); }
+      })
+      .catch(() => { vorher.appendChild(gezogen); zaehlerAuffrischen(); melden('Keine Verbindung zum Server.', 'fehler'); });
+  });
+
+  function zaehlerAuffrischen() {
+    $$('[data-ablegen]').forEach(sp => {
+      const koerper = sp.querySelector('[data-ablage-koerper]') || sp;
+      const zahl = koerper.querySelectorAll('[data-ziehbar]').length;
+      const anzeige = sp.closest('.spalte') ? sp.closest('.spalte').querySelector('.spalte__zahl') : null;
+      if (anzeige) anzeige.textContent = zahl;
+    });
+  }
+
+  /* -------------------------------------------------- Reihenfolge ---- */
+
+  /** Listen umsortieren (Bausteine, Lektionen, Übungen). */
+  document.addEventListener('dragover', (e) => {
+    const liste = e.target.closest('[data-sortierbar]');
+    if (!liste || !gezogen || !liste.contains(gezogen)) return;
+    e.preventDefault();
+    const nach = nachbarFinden(liste, e.clientY);
+    if (nach == null) liste.appendChild(gezogen);
+    else liste.insertBefore(gezogen, nach);
+  });
+
+  function nachbarFinden(liste, y) {
+    const andere = Array.from(liste.querySelectorAll('[data-ziehbar]:not(.wird-gezogen)'));
+    let naechster = null, abstand = Number.NEGATIVE_INFINITY;
+    andere.forEach(el => {
+      const k = el.getBoundingClientRect();
+      const d = y - k.top - k.height / 2;
+      if (d < 0 && d > abstand) { abstand = d; naechster = el; }
+    });
+    return naechster;
+  }
+
+  document.addEventListener('drop', (e) => {
+    const liste = e.target.closest('[data-sortierbar]');
+    if (!liste) return;
+    const url = liste.dataset.sortierbar;
+    if (!url) return;
+    const reihen = Array.from(liste.querySelectorAll('[data-ziehbar]')).map(el => el.dataset.id);
+    const daten = new FormData();
+    daten.append('reihenfolge', reihen.join(','));
+    daten.append('_csrf', window.gpCsrf || '');
+    fetch(url, { method: 'POST', body: daten }).catch(() => {});
+  });
+
+  /* ------------------------------------------------------ Kleinkram --- */
+
+  // Textfelder wachsen mit
+  $$('[data-waechst]').forEach(el => {
+    const anpassen = () => { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; };
+    el.addEventListener('input', anpassen); anpassen();
+  });
+
+  // Zeichen zählen
+  $$('[data-zaehler]').forEach(el => {
+    const anzeige = document.getElementById(el.dataset.zaehler);
+    if (!anzeige) return;
+    const max = parseInt(el.getAttribute('maxlength') || '0', 10);
+    const zeigen = () => {
+      anzeige.textContent = el.value.length + (max ? ' / ' + max : '') + ' Zeichen';
+      if (max) anzeige.style.color = el.value.length > max * 0.92 ? 'var(--warnung)' : '';
+    };
+    el.addEventListener('input', zeigen); zeigen();
+  });
+
+  // Alle Kästchen einer Liste
+  $$('[data-alle-waehlen]').forEach(haupt => {
+    haupt.addEventListener('change', () => {
+      $$('[name="' + haupt.dataset.alleWaehlen + '[]"]').forEach(k => { k.checked = haupt.checked; });
+    });
+  });
+
+  // Balken und Ringe erst beim Sichtbarwerden füllen
+  if ('IntersectionObserver' in window) {
+    const beobachter = new IntersectionObserver((eintraege) => {
+      eintraege.forEach(e => {
+        if (!e.isIntersecting) return;
+        const el = e.target;
+        if (el.dataset.breite) el.style.width = el.dataset.breite;
+        beobachter.unobserve(el);
+      });
+    }, { threshold: .2 });
+    $$('[data-breite]').forEach(el => { el.style.width = '0'; beobachter.observe(el); });
+  } else {
+    $$('[data-breite]').forEach(el => { el.style.width = el.dataset.breite; });
+  }
+
+  // Formular nur einmal abschicken
+  document.addEventListener('submit', (e) => {
+    const f = e.target;
+    if (f.dataset.mehrfach === 'ja') return;
+    const knopf = f.querySelector('button[type="submit"]:not([data-kein-sperren])');
+    if (knopf) {
+      setTimeout(() => {
+        knopf.disabled = true;
+        knopf.classList.add('ist-aus');
+      }, 10);
+      setTimeout(() => { knopf.disabled = false; knopf.classList.remove('ist-aus'); }, 6000);
+    }
+  });
+
+})();

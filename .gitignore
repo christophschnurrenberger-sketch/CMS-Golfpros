@@ -1,0 +1,9 @@
+config.php
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+data/cache/
+uploads/*
+!uploads/index.html
+.DS_Store
+Thumbs.db
