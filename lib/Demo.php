@@ -337,7 +337,11 @@ final class Demo
                 'vorname' => $vorname, 'nachname' => $nachname,
                 'email' => strtolower($vorname . '.' . self::umlaute($nachname)) . '@beispiel.de',
                 'telefon' => '01' . mt_rand(50, 79) . ' ' . mt_rand(1000000, 9999999),
-                'geburtstag' => date('Y-m-d', strtotime('-' . mt_rand(19, 68) . ' years -' . mt_rand(0, 364) . ' days')),
+                // Jede sechste Akte ist ein Junior: Eine Academy ohne Jugend
+                // waere unrealistisch, und das Segment „Junior" bliebe leer.
+                'geburtstag' => date('Y-m-d', strtotime(
+                    '-' . ($i % 6 === 2 ? mt_rand(10, 17) : mt_rand(19, 68)) . ' years -'
+                    . mt_rand(0, 364) . ' days')),
                 'strasse' => ['Rosenweg', 'Am Hang', 'Bahnhofstraße', 'Lindenallee', 'Uferweg'][$i % 5] . ' ' . mt_rand(1, 88),
                 'plz' => (string) mt_rand(76131, 76229), 'ort' => 'Karlsruhe',
                 'hcp' => $hcp, 'heimclub' => self::CLUBS[$i % count(self::CLUBS)],

@@ -566,6 +566,8 @@ select {
   border-radius: 8px 0 0 8px; border-left: 1px solid var(--rand-2); border-right: 0;
 }
 .eingabe-gruppe__anhang--vorn + .eingabe { border-radius: 0 8px 8px 0; }
+.eingabe--farbe { width: 52px; height: 38px; padding: 3px; border-radius: 8px;
+  border: 1px solid var(--rand-2); background: var(--flaeche); cursor: pointer; }
 
 .such-feld { position: relative; }
 .such-feld .ico { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-4); pointer-events: none; }
@@ -690,7 +692,12 @@ select {
 .reihe--eng { gap: var(--r2); }
 .reihe--zwischen { justify-content: space-between; }
 .reihe--umbruch { flex-wrap: wrap; }
+.reihe--rechts { justify-content: flex-end; }
+/* Eine Reihe aus Symbol und mehrzeiligem Text: oben ausrichten, nicht mittig. */
+.reihe--oben { align-items: flex-start; }
 .fueller { flex: 1; }
+/* Ein Formular, das nur einen Knopf umschliesst, darf die Zeile nicht brechen. */
+form.inline { display: inline; }
 
 /* ================================================== Kennzahlen-Kacheln = */
 

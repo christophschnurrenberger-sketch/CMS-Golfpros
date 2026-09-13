@@ -32,12 +32,53 @@ final class Wartung
             $ergebnis['automationen']       = Automations::laufen(15);
             $ergebnis['zeitgesteuert']      = Automations::zeitgesteuertPruefen();
             $ergebnis['termine_vergangen']  = self::vergangeneTermine();
+            $ergebnis['aufgeraeumt']        = self::aufraeumen();
             Customers::scoresAuffrischen(25);
         } catch (Throwable $e) {
             // Wartung darf das Dashboard nie blockieren.
             Audit::schreiben('wartung_fehler', 'system', 0, $e->getMessage());
         }
         return array_filter($ergebnis);
+    }
+
+    /**
+     * Löscht, was über der eingestellten Aufbewahrungsfrist liegt.
+     *
+     * Die Fristen stehen unter Einstellungen → Datenschutz. Gelöscht wird
+     * hier nur, was ohne Verlust verschwinden darf: Protokolleinträge,
+     * anonyme Besuchszählungen und Leads, aus denen nie etwas geworden ist.
+     * Alles, was zu einem Kunden oder einem Beleg gehört, bleibt unberührt –
+     * dafür gibt es die ausdrückliche Löschung in der Kundenakte.
+     *
+     * @return int Anzahl der gelöschten Datensätze
+     */
+    public static function aufraeumen(): int
+    {
+        $weg = 0;
+
+        $tageProtokoll = (int) Tenant::einstellung('aufbewahrung_protokoll', 365);
+        if ($tageProtokoll > 0) {
+            $grenze = date('Y-m-d H:i:s', time() - $tageProtokoll * 86400);
+            $weg += Tenant::deleteWhere('audit_log', 'erstellt < :g', ['g' => $grenze]);
+        }
+
+        $tageBesuche = (int) Tenant::einstellung('aufbewahrung_besuche', 400);
+        if ($tageBesuche > 0) {
+            $grenze = date('Y-m-d', time() - $tageBesuche * 86400);
+            $weg += Tenant::deleteWhere('web_visits', 'datum < :g', ['g' => $grenze]);
+        }
+
+        /*
+         * Bei Leads zählt nur „verloren“: Ein offener Lead ist ein laufender
+         * Vorgang, und ein gewonnener ist längst Kunde.
+         */
+        $tageLeads = (int) Tenant::einstellung('aufbewahrung_leads', 730);
+        if ($tageLeads > 0) {
+            $grenze = date('Y-m-d H:i:s', time() - $tageLeads * 86400);
+            $weg += Tenant::deleteWhere('leads', 'stufe = "verloren" AND erstellt < :g', ['g' => $grenze]);
+        }
+
+        return $weg;
     }
 
     /**

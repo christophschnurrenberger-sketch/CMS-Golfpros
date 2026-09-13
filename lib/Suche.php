@@ -2,7 +2,7 @@
 /**
  * Suche – die globale Suche über das ganze System.
  *
- * „Christoph" soll den Kunden finden, seine Termine, seine Rechnungen und
+ * „Christoph“ soll den Kunden finden, seine Termine, seine Rechnungen und
  * seine Trainingspläne – nicht nur die Kundenliste. Deshalb geht die Suche
  * über zehn Tabellen und sortiert die Treffer nach Relevanz, nicht nach
  * Tabellenreihenfolge.
