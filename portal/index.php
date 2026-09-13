@@ -1,0 +1,774 @@
+<?php
+/**
+ * Kundenportal.
+ *
+ * Der Zugang läuft über einen langen Zufallsschlüssel im Link, den der Pro
+ * dem Kunden schickt. Wer ein Passwort setzt, meldet sich danach mit
+ * E-Mail und Passwort an – das ist sicherer, aber niemand wird dazu
+ * gezwungen: Ein Portal, das erst nach einer Registrierung etwas zeigt,
+ * benutzt kaum jemand.
+ *
+ * Der Schlüssel landet nach dem ersten Aufruf in der Sitzung und
+ * verschwindet aus der Adresszeile, damit er nicht in Verläufen und
+ * Referrern weiterwandert.
+ */
+require __DIR__ . '/../lib/bootstrap.php';
+
+/* --------------------------------------------------------- Anmeldung --- */
+
+/*
+ * Eigene Sitzung, getrennt von der des Trainers: bootstrap.php hat über
+ * Auth::start() bereits „gpsid" geöffnet. Die wird hier geschlossen – ihr
+ * Inhalt bleibt gespeichert – und durch die Portalsitzung ersetzt. So
+ * meldet ein Kunde, der sich abmeldet, nicht nebenbei den Trainer ab, der
+ * denselben Browser benutzt.
+ */
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+session_name('gp_portal');
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',
+    'secure'   => !empty($_SERVER['HTTPS']),
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+@session_start();
+
+function portalAbmelden(): never
+{
+    $_SESSION = [];
+    session_destroy();
+    App::weiter('/portal/');
+}
+
+if (App::get('abmelden') !== '') {
+    portalAbmelden();
+}
+
+$kunde = null;
+
+/* 1. Schlüssel aus dem Link */
+$token = App::get('t');
+if ($token !== '') {
+    $treffer = DB::one('SELECT * FROM customers WHERE portal_token = :t AND portal_token != ""',
+        ['t' => $token]);
+    if ($treffer !== null) {
+        Tenant::setzen((int) $treffer['workspace_id']);
+        $_SESSION['portal_kunde'] = (int) $treffer['id'];
+        $_SESSION['portal_workspace'] = (int) $treffer['workspace_id'];
+        App::weiter('/portal/');      // Schlüssel aus der Adresszeile nehmen
+    }
+}
+
+/* 2. Bestehende Sitzung */
+if (isset($_SESSION['portal_kunde'], $_SESSION['portal_workspace'])) {
+    Tenant::setzen((int) $_SESSION['portal_workspace']);
+    $kunde = Tenant::find('customers', (int) $_SESSION['portal_kunde']);
+    if ($kunde === null) {
+        portalAbmelden();
+    }
+}
+
+/* 3. Anmeldung mit E-Mail und Passwort */
+if ($kunde === null && App::istPost() && App::aktion() === 'anmelden') {
+    $email = strtolower(trim(App::post('email')));
+    $treffer = DB::one('SELECT * FROM customers WHERE email = :e AND portal_passwort != ""', ['e' => $email]);
+    if ($treffer !== null && password_verify(App::postRoh('passwort'), (string) $treffer['portal_passwort'])) {
+        Tenant::setzen((int) $treffer['workspace_id']);
+        $_SESSION['portal_kunde'] = (int) $treffer['id'];
+        $_SESSION['portal_workspace'] = (int) $treffer['workspace_id'];
+        App::weiter('/portal/');
+    }
+    /*
+     * Eine Fehlermeldung, die nicht verrät, ob es die Adresse gibt –
+     * sonst ließe sich das Portal als Kundenverzeichnis missbrauchen.
+     */
+    $fehler = 'E-Mail oder Passwort stimmt nicht.';
+}
+
+/* ------------------------------------------------- Anmeldeformular ----- */
+
+if ($kunde === null) {
+    if (!Tenant::gesetzt()) {
+        $erster = Tenant::erster();
+        if ($erster !== null) {
+            Tenant::setzen((int) $erster['id']);
+        }
+    }
+    $branding = Tenant::gesetzt() ? Tenant::branding() : ['primaer' => '#1d6f4a', 'akzent' => '#c8a44d'];
+    ?><!DOCTYPE html>
+    <html lang="de" data-theme="hell">
+    <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Anmelden · <?= Util::h(Tenant::gesetzt() ? Tenant::name() : 'Kundenportal') ?></title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/app.css')) ?>">
+    <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/portal.css')) ?>">
+    <style>:root{--marke:<?= Util::attr((string) $branding['primaer']) ?>;
+      --marke-hell: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 10%, #fff);}</style>
+    </head>
+    <body class="portal">
+    <main class="portal__inhalt" style="max-width:400px;padding-top:12vh">
+      <div class="mitte mb-5">
+        <span class="marke__zeichen" style="width:46px;height:46px;font-size:20px;margin:0 auto 14px">
+          <?= Util::h(mb_substr(Tenant::gesetzt() ? Tenant::name() : 'G', 0, 1)) ?></span>
+        <h1 style="font-size:21px;font-weight:680">Dein Bereich</h1>
+        <p class="gedimmt klein mt-2">Termine, Trainingsplan und Unterlagen an einem Ort.</p>
+      </div>
+      <?php if (isset($fehler)): ?>
+        <div class="hinweis hinweis--gefahr mb-4">
+          <?= Icon::svg('alert', 17) ?><div class="hinweis__text"><?= Util::h($fehler) ?></div></div>
+      <?php endif; ?>
+      <form method="post" class="karte">
+        <input type="hidden" name="aktion" value="anmelden">
+        <div class="karte__koerper">
+          <div class="feld"><label class="feld__label" for="pe">E-Mail</label>
+            <input class="eingabe" id="pe" type="email" name="email" required autocomplete="email"></div>
+          <div class="feld"><label class="feld__label" for="pp">Passwort</label>
+            <input class="eingabe" id="pp" type="password" name="passwort" required autocomplete="current-password"></div>
+          <button class="btn btn--primaer btn--voll" type="submit">Anmelden</button>
+        </div>
+      </form>
+      <div class="hinweis hinweis--still mt-4">
+        <?= Icon::svg('info', 17) ?>
+        <div class="hinweis__text">Noch kein Passwort? Dein Trainer schickt dir einen persönlichen
+          Link – damit kommst du ohne Anmeldung hinein und kannst dort ein Passwort setzen.</div>
+      </div>
+    </main>
+    </body></html>
+    <?php
+    exit;
+}
+
+/* ---------------------------------------------------------- Aktionen --- */
+
+$ansicht = App::get('ansicht', 'start');
+
+if (App::istPost()) {
+    $aktion = App::aktion();
+
+    if ($aktion === 'absagen') {
+        $b = Tenant::find('bookings', App::postInt('id'));
+        $frist = (int) Tenant::einstellung('stornofrist_stunden', 24);
+        if ($b === null || (int) $b['customer_id'] !== (int) $kunde['id']) {
+            App::melden('Dieser Termin gehört nicht zu deinem Konto.', 'fehler');
+        } elseif (strtotime((string) $b['start']) - time() < $frist * 3600) {
+            App::melden('Die Absagefrist von ' . $frist . ' Stunden ist vorbei. '
+                      . 'Ruf bitte kurz an – oft findet sich trotzdem eine Lösung.', 'fehler');
+        } else {
+            Bookings::absagen((int) $b['id'], 'Vom Kunden über das Portal abgesagt');
+            App::melden('Termin abgesagt. Dein Trainer wurde benachrichtigt.');
+        }
+        App::weiter('/portal/?ansicht=termine');
+    }
+
+    if ($aktion === 'nachricht') {
+        $text = trim(App::post('text'));
+        if ($text !== '') {
+            Tenant::insert('communications', [
+                'customer_id' => (int) $kunde['id'], 'kanal' => 'portal', 'richtung' => 'eingehend',
+                'betreff' => 'Nachricht aus dem Portal', 'text' => $text,
+                'status' => 'neu', 'gelesen' => 0, 'erstellt' => Util::jetzt(),
+            ]);
+            Notify::senden('customer', 'Nachricht von ' . Customers::name($kunde),
+                Util::kuerzen($text, 90), '/app/kunde.php?id=' . (int) $kunde['id']);
+            App::melden('Nachricht verschickt.');
+        }
+        App::weiter('/portal/?ansicht=nachrichten');
+    }
+
+    if ($aktion === 'profil') {
+        $daten = [
+            'telefon' => App::post('telefon'),
+            'strasse' => App::post('strasse'),
+            'plz'     => App::post('plz'),
+            'ort'     => App::post('ort'),
+            'ziele'   => App::post('ziele'),
+            'newsletter' => App::postBool('newsletter') ? 1 : 0,
+        ];
+        // Das Handicap darf der Kunde selbst pflegen – er kennt es besser.
+        $hcp = trim(App::post('hcp'));
+        if ($hcp !== '') {
+            $daten['hcp'] = Util::hcpNormal($hcp);
+        }
+        Tenant::update('customers', (int) $kunde['id'], $daten);
+
+        /* Einwilligung protokollieren, wenn sie sich geändert hat. */
+        if ((int) $kunde['newsletter'] !== (int) $daten['newsletter']) {
+            Tenant::insert('consents', [
+                'customer_id' => (int) $kunde['id'],
+                'typ' => 'newsletter',
+                'erteilt' => (int) $daten['newsletter'],
+                'text' => 'Newsletter-Einstellung im Kundenportal geändert.',
+                'quelle' => 'portal', 'ip' => '', 'erstellt' => Util::jetzt(),
+            ]);
+        }
+
+        $neu = App::postRoh('passwort');
+        if ($neu !== '') {
+            [$okay, $meldung] = Auth::passwortPruefen($neu);
+            if (!$okay) {
+                App::melden($meldung, 'fehler');
+                App::weiter('/portal/?ansicht=profil');
+            }
+            Tenant::update('customers', (int) $kunde['id'], ['portal_passwort' => Auth::hash($neu)]);
+            App::melden('Daten und Passwort gespeichert.');
+        } else {
+            App::melden('Daten gespeichert.');
+        }
+        App::weiter('/portal/?ansicht=profil');
+    }
+
+    if ($aktion === 'datenanfrage') {
+        $typ = App::post('typ') === 'loeschung' ? 'loeschung' : 'export';
+        $offen = Tenant::count('data_requests',
+            'customer_id = :k AND typ = :t AND status != "erledigt"',
+            ['k' => (int) $kunde['id'], 't' => $typ]);
+        if ($offen > 0) {
+            App::melden('Die Anfrage liegt bereits vor und wird bearbeitet.', 'info');
+        } else {
+            Tenant::insert('data_requests', [
+                'customer_id' => (int) $kunde['id'], 'typ' => $typ, 'status' => 'offen',
+                'notiz' => 'Über das Kundenportal gestellt.', 'erstellt' => Util::jetzt(),
+            ]);
+            Notify::senden('system', $typ === 'loeschung' ? 'Löschanfrage' : 'Auskunftsanfrage',
+                Customers::name($kunde) . ' hat eine Anfrage gestellt. Frist: ein Monat.',
+                '/app/datenschutz.php');
+            App::melden('Anfrage aufgenommen. Sie wird innerhalb eines Monats beantwortet.');
+        }
+        App::weiter('/portal/?ansicht=profil');
+    }
+}
+
+/* ------------------------------------------------------------- Daten --- */
+
+$kundeId = (int) $kunde['id'];
+$akte    = Customers::akte($kundeId);
+$zahlen  = Customers::kennzahlen($kundeId);
+$naechster = $akte['kommend'][0] ?? null;
+
+$titel = match ($ansicht) {
+    'termine'     => 'Meine Termine',
+    'training'    => 'Mein Training',
+    'fortschritt' => 'Mein Fortschritt',
+    'unterlagen'  => 'Unterlagen',
+    'nachrichten' => 'Nachrichten',
+    'profil'      => 'Meine Daten',
+    default       => 'Hallo ' . (string) $kunde['vorname'],
+};
+require __DIR__ . '/partials/kopf.php';
+
+/* ============================================================ Start === */
+if ($ansicht === 'start'):
+?>
+  <?php if ($naechster !== null): ?>
+    <div class="naechster">
+      <div class="naechster__label">Dein nächster Termin</div>
+      <div class="naechster__tag"><?= Util::h(Util::datumLang((string) $naechster['start'])) ?></div>
+      <div class="naechster__zeit">
+        <?= Util::h(Util::uhrzeit((string) $naechster['start'])) ?>–<?= Util::h(Util::uhrzeit((string) $naechster['ende'])) ?> Uhr
+        · <?= Util::h(Util::relativ((string) $naechster['start'])) ?>
+      </div>
+      <div class="naechster__was">
+        <strong><?= Util::h((string) $naechster['titel']) ?></strong>
+        <?php $ort = Tenant::find('locations', (int) $naechster['location_id']); ?>
+        <?php if ($ort !== null): ?>
+          <div class="naechster__reihe"><?= Icon::svg('pin', 14) ?>
+            <span><?= Util::h((string) $ort['name']) ?><?= (string) $ort['notiz'] !== ''
+                  ? ' · ' . Util::h((string) $ort['notiz']) : '' ?></span></div>
+        <?php endif; ?>
+        <div class="naechster__reihe"><?= Icon::svg('user', 14) ?>
+          <span>mit <?= Util::h(Auth::trainerName((int) $naechster['trainer_id'])) ?></span></div>
+      </div>
+      <div class="naechster__knoepfe">
+        <a class="btn btn--klein" href="<?= Util::attr(App::url('/portal/?ansicht=termine')) ?>">
+          Alle Termine</a>
+      </div>
+    </div>
+  <?php else: ?>
+    <div class="karte mb-5"><div class="karte__koerper mitte">
+      <div class="leerzustand__symbol" style="margin:0 auto 12px"><?= Icon::svg('calendar', 24) ?></div>
+      <h3 class="mb-2">Kein Termin geplant</h3>
+      <p class="gedimmt klein mb-4">Schreib deinem Trainer kurz, wann es dir passt –
+        oder buche direkt auf der Website.</p>
+      <a class="btn btn--primaer" href="<?= Util::attr(App::url('/portal/?ansicht=nachrichten')) ?>">
+        <?= Icon::svg('message', 15) ?> Nachricht schreiben</a>
+    </div></div>
+  <?php endif; ?>
+
+  <div class="pt-kacheln mb-5">
+    <a class="pt-kachel" href="<?= Util::attr(App::url('/portal/?ansicht=termine')) ?>">
+      <span class="pt-kachel__symbol"><?= Icon::svg('calendar', 17) ?></span>
+      <span class="pt-kachel__wert"><?= (int) $zahlen['termine'] ?></span>
+      <span class="pt-kachel__label">Einheiten bisher</span></a>
+    <a class="pt-kachel" href="<?= Util::attr(App::url('/portal/?ansicht=unterlagen')) ?>">
+      <span class="pt-kachel__symbol"><?= Icon::svg('ticket', 17) ?></span>
+      <span class="pt-kachel__wert"><?= (int) $zahlen['einheiten'] ?></span>
+      <span class="pt-kachel__label">Offene Einheiten</span></a>
+    <a class="pt-kachel" href="<?= Util::attr(App::url('/portal/?ansicht=fortschritt')) ?>">
+      <span class="pt-kachel__symbol"><?= Icon::svg('trend-up', 17) ?></span>
+      <span class="pt-kachel__wert"><?= Util::h(Util::hcp((string) $kunde['hcp'])) ?></span>
+      <span class="pt-kachel__label">Handicap</span></a>
+    <a class="pt-kachel" href="<?= Util::attr(App::url('/portal/?ansicht=training')) ?>">
+      <span class="pt-kachel__symbol"><?= Icon::svg('training', 17) ?></span>
+      <span class="pt-kachel__wert"><?= count($akte['plaene']) ?></span>
+      <span class="pt-kachel__label">Trainingspläne</span></a>
+  </div>
+
+  <?php if ((string) $kunde['ziele'] !== ''): ?>
+    <div class="karte mb-5"><div class="karte__koerper">
+      <div class="reihe reihe--eng mb-2"><?= Icon::svg('target', 16) ?>
+        <span class="halbfett">Dein Ziel</span></div>
+      <p><?= Util::h((string) $kunde['ziele']) ?></p>
+    </div></div>
+  <?php endif; ?>
+
+  <h2 class="mb-3" style="font-size:15px">Zuletzt</h2>
+  <div class="pt-liste">
+    <?php
+    $vergangen = array_slice(array_filter($akte['buchungen'],
+        static fn ($b) => strtotime((string) $b['start']) < time()), 0, 4);
+    foreach ($vergangen as $b): ?>
+      <div class="pt-zeile">
+        <span class="pt-zeile__datum">
+          <span class="pt-zeile__tag"><?= (int) date('j', strtotime((string) $b['start'])) ?></span>
+          <span class="pt-zeile__monat"><?= Util::h(mb_substr(Util::monatName((int) date('n', strtotime((string) $b['start']))), 0, 3)) ?></span>
+        </span>
+        <span class="pt-zeile__text">
+          <span class="pt-zeile__titel"><?= Util::h((string) $b['titel']) ?></span>
+          <span class="pt-zeile__unter"><?= Util::h(Util::uhrzeit((string) $b['start'])) ?> Uhr
+            · <?= Util::h(Auth::trainerName((int) $b['trainer_id'])) ?></span>
+        </span>
+      </div>
+    <?php endforeach; ?>
+    <?php if ($vergangen === []): ?>
+      <div class="pt-zeile"><span class="gedimmt klein">Noch nichts passiert – das ändert sich bald.</span></div>
+    <?php endif; ?>
+  </div>
+
+<?php
+/* ========================================================== Termine === */
+elseif ($ansicht === 'termine'):
+  $frist = (int) Tenant::einstellung('stornofrist_stunden', 24);
+?>
+  <h2 class="mb-3" style="font-size:15px">Kommende Termine</h2>
+  <?php if ($akte['kommend'] === []): ?>
+    <div class="karte mb-5"><div class="karte__koerper gedimmt klein">
+      Zurzeit ist nichts geplant.</div></div>
+  <?php else: ?>
+    <div class="stapel stapel--eng mb-5">
+      <?php foreach ($akte['kommend'] as $b):
+        $absagbar = strtotime((string) $b['start']) - time() >= $frist * 3600;
+        $ort = Tenant::find('locations', (int) $b['location_id']); ?>
+        <div class="karte"><div class="karte__koerper">
+          <div class="reihe reihe--zwischen mb-2">
+            <span class="halbfett"><?= Util::h((string) $b['titel']) ?></span>
+            <?= pille(Util::relativ((string) $b['start']), 'marke') ?>
+          </div>
+          <div class="klein gedimmt">
+            <?= Util::h(Util::datumLang((string) $b['start'])) ?>,
+            <?= Util::h(Util::uhrzeit((string) $b['start'])) ?>–<?= Util::h(Util::uhrzeit((string) $b['ende'])) ?> Uhr
+            <?php if ($ort !== null): ?> · <?= Util::h((string) $ort['name']) ?><?php endif; ?>
+            · <?= Util::h(Auth::trainerName((int) $b['trainer_id'])) ?>
+          </div>
+          <?php if ((string) $b['notiz'] !== ''): ?>
+            <p class="klein mt-3"><?= Util::h((string) $b['notiz']) ?></p>
+          <?php endif; ?>
+        </div>
+        <div class="karte__fuss">
+          <span class="winzig gedimmt">
+            <?= $absagbar
+                ? 'Absage bis ' . $frist . ' Stunden vorher kostenfrei.'
+                : 'Die Absagefrist ist vorbei.' ?></span>
+          <div class="fueller"></div>
+          <?php if ($absagbar): ?>
+            <form method="post" class="inline"
+                  data-bestaetigen="Termin am <?= Util::attr(Util::datum((string) $b['start'])) ?> wirklich absagen?">
+              <input type="hidden" name="aktion" value="absagen">
+              <input type="hidden" name="id" value="<?= (int) $b['id'] ?>">
+              <button class="btn btn--klein" type="submit">Absagen</button>
+            </form>
+          <?php endif; ?>
+        </div></div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+  <h2 class="mb-3" style="font-size:15px">Bisher</h2>
+  <div class="pt-liste">
+    <?php foreach (array_filter($akte['buchungen'],
+            static fn ($b) => strtotime((string) $b['start']) < time()) as $b): ?>
+      <div class="pt-zeile">
+        <span class="pt-zeile__datum">
+          <span class="pt-zeile__tag"><?= (int) date('j', strtotime((string) $b['start'])) ?></span>
+          <span class="pt-zeile__monat"><?= Util::h(mb_substr(Util::monatName((int) date('n', strtotime((string) $b['start']))), 0, 3)) ?></span>
+        </span>
+        <span class="pt-zeile__text">
+          <span class="pt-zeile__titel"><?= Util::h((string) $b['titel']) ?></span>
+          <span class="pt-zeile__unter"><?= Util::h(Util::datum((string) $b['start'])) ?>
+            · <?= Util::h(Auth::trainerName((int) $b['trainer_id'])) ?></span>
+        </span>
+        <?php if ((string) $b['status'] === 'abgesagt'): ?><?= pille('abgesagt') ?><?php endif; ?>
+      </div>
+    <?php endforeach; ?>
+  </div>
+
+<?php
+/* ========================================================= Training === */
+elseif ($ansicht === 'training'):
+?>
+  <?php if ($akte['plaene'] === [] && $akte['videos'] === [] && $akte['kurse'] === []): ?>
+    <div class="karte"><div class="karte__koerper mitte">
+      <div class="leerzustand__symbol" style="margin:0 auto 12px"><?= Icon::svg('training', 24) ?></div>
+      <h3 class="mb-2">Noch kein Trainingsplan</h3>
+      <p class="gedimmt klein">Sobald dein Trainer dir einen Plan zuweist, steht er hier –
+        mit allen Übungen und dem, was du zwischen den Stunden üben sollst.</p>
+    </div></div>
+  <?php endif; ?>
+
+  <?php foreach ($akte['plaene'] as $plan):
+    $items = Tenant::all('plan_items', 'plan_id = :p', ['p' => (int) $plan['id']], 'woche, einheit, position'); ?>
+    <div class="karte mb-4">
+      <div class="karte__kopf">
+        <h2><?= Util::h((string) $plan['name']) ?></h2>
+        <div class="karte__kopf-aktionen"><?= pille((int) $plan['fortschritt'] . ' %', 'marke') ?></div>
+      </div>
+      <div class="karte__koerper">
+        <?php if ((string) $plan['ziel'] !== ''): ?>
+          <p class="klein gedimmt mb-3"><?= Util::h((string) $plan['ziel']) ?></p>
+        <?php endif; ?>
+        <?= balken((int) $plan['fortschritt']) ?>
+        <div class="stapel stapel--eng mt-4">
+          <?php
+          $wocheAlt = -1;
+          foreach ($items as $item):
+            if ((int) $item['woche'] !== $wocheAlt):
+              $wocheAlt = (int) $item['woche']; ?>
+              <div class="versal gedimmt mt-3">Woche <?= $wocheAlt ?></div>
+            <?php endif; ?>
+            <div class="reihe reihe--eng">
+              <span style="color:<?= (int) $item['erledigt'] === 1 ? 'var(--erfolg)' : 'var(--text-4)' ?>;display:flex">
+                <?= Icon::svg((int) $item['erledigt'] === 1 ? 'check' : 'clock', 14) ?></span>
+              <span style="flex:1"><?= Util::h((string) $item['titel']) ?></span>
+              <?php if ((int) $item['dauer_min'] > 0): ?>
+                <span class="winzig gedimmt"><?= (int) $item['dauer_min'] ?> Min</span>
+              <?php endif; ?>
+            </div>
+            <?php if ((string) $item['notiz'] !== ''): ?>
+              <div class="winzig gedimmt" style="padding-left:22px"><?= Util::h((string) $item['notiz']) ?></div>
+            <?php endif; ?>
+          <?php endforeach; ?>
+        </div>
+      </div>
+    </div>
+  <?php endforeach; ?>
+
+  <?php
+  $freigegeben = array_filter($akte['analysen'], static fn ($a) => (int) $a['freigegeben'] === 1);
+  if ($freigegeben !== []): ?>
+    <h2 class="mb-3 mt-5" style="font-size:15px">Videoanalysen</h2>
+    <?php foreach ($freigegeben as $a):
+      $video = Tenant::find('videos', (int) $a['video_id']); ?>
+      <div class="karte mb-3"><div class="karte__koerper">
+        <div class="reihe reihe--zwischen mb-2">
+          <span class="halbfett"><?= Util::h((string) $a['titel']) ?></span>
+          <span class="winzig gedimmt"><?= Util::h(Util::datum((string) $a['erstellt'])) ?></span>
+        </div>
+        <?php if ($video !== null && (string) $video['datei'] !== ''): ?>
+          <video class="mb-3" controls playsinline preload="metadata"
+                 style="width:100%;border-radius:var(--radius-m);background:#000"
+                 src="<?= Util::attr(App::url((string) $video['datei'])) ?>"></video>
+        <?php endif; ?>
+        <?php if ((string) $a['pro_analyse'] !== ''): ?>
+          <div class="halbfett klein mb-2">Einschätzung deines Trainers</div>
+          <p class="klein"><?= nl2br(Util::h((string) $a['pro_analyse'])) ?></p>
+        <?php endif; ?>
+        <?php if ((string) $a['empfehlungen'] !== ''): ?>
+          <div class="hinweis hinweis--still mt-3">
+            <?= Icon::svg('target', 16) ?>
+            <div class="hinweis__text klein"><?= nl2br(Util::h((string) $a['empfehlungen'])) ?></div>
+          </div>
+        <?php endif; ?>
+      </div></div>
+    <?php endforeach; ?>
+  <?php endif; ?>
+
+  <?php if ($akte['kurse'] !== []): ?>
+    <h2 class="mb-3 mt-5" style="font-size:15px">Meine Kurse</h2>
+    <div class="pt-liste">
+      <?php foreach ($akte['kurse'] as $k): ?>
+        <div class="pt-zeile">
+          <span class="pt-zeile__text">
+            <span class="pt-zeile__titel"><?= Util::h((string) $k['titel']) ?></span>
+            <span class="pt-zeile__unter"><?= (int) $k['fortschritt'] ?> % abgeschlossen</span>
+          </span>
+          <?php if ((int) $k['fortschritt'] >= 100): ?><?= pille('fertig', 'erfolg') ?><?php endif; ?>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+<?php
+/* ====================================================== Fortschritt === */
+elseif ($ansicht === 'fortschritt'):
+  $leistung = array_reverse($akte['leistung']);
+  $hcpWerte = array_values(array_filter(array_map(
+      static fn ($e) => Util::zahlAus((string) $e['hcp']), $leistung), static fn ($v) => $v > 0));
+?>
+  <div class="pt-kacheln mb-5">
+    <div class="pt-kachel">
+      <span class="pt-kachel__symbol"><?= Icon::svg('flag', 17) ?></span>
+      <span class="pt-kachel__wert"><?= Util::h(Util::hcp((string) $kunde['hcp'])) ?></span>
+      <span class="pt-kachel__label">Handicap heute</span></div>
+    <div class="pt-kachel">
+      <span class="pt-kachel__symbol"><?= Icon::svg('activity', 17) ?></span>
+      <span class="pt-kachel__wert"><?= count($akte['leistung']) ?></span>
+      <span class="pt-kachel__label">Erfasste Runden</span></div>
+    <div class="pt-kachel">
+      <span class="pt-kachel__symbol"><?= Icon::svg('calendar', 17) ?></span>
+      <span class="pt-kachel__wert"><?= (int) $zahlen['termine'] ?></span>
+      <span class="pt-kachel__label">Einheiten</span></div>
+    <div class="pt-kachel">
+      <span class="pt-kachel__symbol"><?= Icon::svg('clock', 17) ?></span>
+      <span class="pt-kachel__wert"><?= Util::h(Util::datum((string) $zahlen['seit'], false)) ?></span>
+      <span class="pt-kachel__label">Dabei seit</span></div>
+  </div>
+
+  <?php if (count($hcpWerte) > 1): ?>
+    <div class="karte mb-5">
+      <div class="karte__kopf"><h2>Handicap-Entwicklung</h2></div>
+      <div class="karte__koerper">
+        <?= Diagramm::kurve($hcpWerte, 640, 130) ?>
+        <p class="winzig gedimmt mt-3">Je niedriger, desto besser – die Linie soll nach unten zeigen.</p>
+      </div>
+    </div>
+  <?php endif; ?>
+
+  <?php if ($akte['leistung'] !== []): ?>
+    <div class="karte">
+      <div class="karte__kopf"><h2>Deine Runden</h2></div>
+      <div class="tabelle-huelle">
+        <table class="tabelle tabelle--eng">
+          <thead><tr><th>Datum</th><th>HCP</th><th>Score</th>
+            <th class="nicht-mobil">Fairways</th><th class="nicht-mobil">GIR</th><th>Putts</th></tr></thead>
+          <tbody>
+          <?php foreach (array_slice($akte['leistung'], 0, 20) as $e): ?>
+            <tr>
+              <td class="klein gedimmt"><?= Util::h(Util::datum((string) $e['datum'])) ?></td>
+              <td class="tabnum"><?= Util::h(Util::hcp((string) $e['hcp'])) ?></td>
+              <td class="tabnum"><?= (int) $e['score'] > 0 ? (int) $e['score'] : '–' ?></td>
+              <td class="nicht-mobil tabnum"><?= (int) $e['fairways'] > 0 ? (int) $e['fairways'] : '–' ?></td>
+              <td class="nicht-mobil tabnum"><?= (int) $e['gir'] > 0 ? (int) $e['gir'] : '–' ?></td>
+              <td class="tabnum"><?= (int) $e['putts'] > 0 ? (int) $e['putts'] : '–' ?></td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <?php else: ?>
+    <div class="karte"><div class="karte__koerper mitte">
+      <div class="leerzustand__symbol" style="margin:0 auto 12px"><?= Icon::svg('activity', 24) ?></div>
+      <h3 class="mb-2">Noch keine Runden erfasst</h3>
+      <p class="gedimmt klein">Sobald Runden oder Messwerte eingetragen sind, siehst du hier,
+        wie sich dein Spiel entwickelt.</p>
+    </div></div>
+  <?php endif; ?>
+
+<?php
+/* ======================================================= Unterlagen === */
+elseif ($ansicht === 'unterlagen'):
+  $dokumente = array_filter($akte['dokumente'], static fn ($d) => (int) $d['sichtbar_portal'] === 1);
+  $aktivePakete = array_filter($akte['pakete'], static fn ($p) => (string) $p['status'] === 'aktiv');
+?>
+  <?php if ($aktivePakete !== []): ?>
+    <h2 class="mb-3" style="font-size:15px">Deine Pakete</h2>
+    <div class="stapel stapel--eng mb-5">
+      <?php foreach ($aktivePakete as $p):
+        $offen = (int) $p['einheiten_gesamt'] - (int) $p['einheiten_genutzt'];
+        $tage  = Util::tageBis((string) $p['laeuft_ab']); ?>
+        <div class="karte"><div class="karte__koerper">
+          <div class="reihe reihe--zwischen mb-2">
+            <span class="halbfett"><?= Util::h((string) $p['name']) ?></span>
+            <?= pille($offen . ' von ' . (int) $p['einheiten_gesamt'] . ' offen',
+                  $offen > 0 ? 'marke' : '') ?>
+          </div>
+          <?= balken((int) round(((int) $p['einheiten_genutzt'] / max(1, (int) $p['einheiten_gesamt'])) * 100)) ?>
+          <div class="winzig gedimmt mt-2">
+            <?= $tage > 0
+                ? 'Gültig noch ' . $tage . ' Tage, bis ' . Util::h(Util::datum((string) $p['laeuft_ab']))
+                : 'Abgelaufen am ' . Util::h(Util::datum((string) $p['laeuft_ab'])) ?>
+          </div>
+        </div></div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+  <?php if ($akte['gutscheine'] !== []): ?>
+    <h2 class="mb-3" style="font-size:15px">Gutscheine</h2>
+    <div class="pt-liste mb-5">
+      <?php foreach ($akte['gutscheine'] as $g): ?>
+        <div class="pt-zeile">
+          <span class="pt-zeile__text">
+            <span class="pt-zeile__titel mono"><?= Util::h((string) $g['code']) ?></span>
+            <span class="pt-zeile__unter">
+              <?= (string) $g['art'] === 'wert'
+                  ? 'Restwert ' . Util::h(Util::geld((int) $g['rest_cent']))
+                  : Util::h((string) $g['leistung']) ?></span>
+          </span>
+          <?= pille((string) $g['status'], (string) $g['status'] === 'aktiv' ? 'erfolg' : '') ?>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+  <h2 class="mb-3" style="font-size:15px">Rechnungen</h2>
+  <?php if ($akte['rechnungen'] === []): ?>
+    <div class="karte mb-5"><div class="karte__koerper gedimmt klein">Noch keine Rechnungen.</div></div>
+  <?php else: ?>
+    <div class="pt-liste mb-5">
+      <?php foreach ($akte['rechnungen'] as $r): ?>
+        <div class="pt-zeile">
+          <span class="pt-zeile__text">
+            <span class="pt-zeile__titel mono"><?= Util::h((string) $r['nummer']) ?></span>
+            <span class="pt-zeile__unter"><?= Util::h(Util::datum((string) $r['datum'])) ?>
+              · <?= Util::h(Util::geld((int) $r['summe_cent'])) ?></span>
+          </span>
+          <?= pille((string) $r['status'],
+                (string) $r['status'] === 'bezahlt' ? 'erfolg'
+                : ((string) $r['status'] === 'ueberfaellig' ? 'gefahr' : 'offen')) ?>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+  <h2 class="mb-3" style="font-size:15px">Dokumente</h2>
+  <?php if ($dokumente === []): ?>
+    <div class="karte"><div class="karte__koerper gedimmt klein">
+      Hier legt dein Trainer Unterlagen ab – zum Beispiel eine Schlägeranpassung
+      oder die Platzreife-Urkunde.</div></div>
+  <?php else: ?>
+    <div class="pt-liste">
+      <?php foreach ($dokumente as $d): ?>
+        <a class="pt-zeile" href="<?= Util::attr(App::url((string) $d['pfad'])) ?>" target="_blank" rel="noopener">
+          <span style="color:var(--text-3);display:flex"><?= Icon::svg('folder', 17) ?></span>
+          <span class="pt-zeile__text">
+            <span class="pt-zeile__titel"><?= Util::h((string) $d['titel']) ?></span>
+            <span class="pt-zeile__unter"><?= Util::h(Util::datum((string) $d['erstellt'])) ?>
+              · <?= Util::h(Util::bytes((int) $d['groesse'])) ?></span>
+          </span>
+          <?= Icon::svg('download', 15) ?>
+        </a>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+<?php
+/* ====================================================== Nachrichten === */
+elseif ($ansicht === 'nachrichten'):
+?>
+  <form method="post" class="karte mb-5">
+    <input type="hidden" name="aktion" value="nachricht">
+    <div class="karte__koerper">
+      <div class="feld"><label class="feld__label" for="n-text">Nachricht an deinen Trainer</label>
+        <textarea class="eingabe" id="n-text" name="text" rows="3" data-waechst required
+                  placeholder="Kannst du mir nächste Woche einen Termin am Abend geben?"></textarea></div>
+    </div>
+    <div class="karte__fuss"><div class="fueller"></div>
+      <button class="btn btn--primaer" type="submit"><?= Icon::svg('send', 15) ?> Senden</button></div>
+  </form>
+
+  <div class="pt-liste">
+    <?php foreach ($akte['nachrichten'] as $n): ?>
+      <div class="pt-zeile" style="align-items:flex-start">
+        <span style="color:var(--text-4);display:flex;padding-top:2px">
+          <?= Icon::svg((string) $n['richtung'] === 'eingehend' ? 'arrow-up' : 'arrow-down', 15) ?></span>
+        <span class="pt-zeile__text">
+          <span class="pt-zeile__titel"><?= Util::h((string) $n['betreff']) ?></span>
+          <span class="pt-zeile__unter" style="white-space:pre-wrap"><?= Util::h(Util::kuerzen((string) $n['text'], 220)) ?></span>
+          <span class="winzig gedimmt"><?= Util::h(Util::datumZeit((string) $n['erstellt'])) ?></span>
+        </span>
+      </div>
+    <?php endforeach; ?>
+    <?php if ($akte['nachrichten'] === []): ?>
+      <div class="pt-zeile"><span class="gedimmt klein">Noch keine Nachrichten.</span></div>
+    <?php endif; ?>
+  </div>
+
+<?php
+/* =========================================================== Profil === */
+else:
+?>
+  <form method="post" class="karte mb-4">
+    <input type="hidden" name="aktion" value="profil">
+    <div class="karte__koerper">
+      <div class="feld-reihe feld-reihe--2">
+        <div class="feld"><label class="feld__label">Name</label>
+          <input class="eingabe" value="<?= Util::attr(Customers::name($kunde)) ?>" disabled>
+          <div class="feld__hinweis">Namensänderung bitte über deinen Trainer.</div></div>
+        <div class="feld"><label class="feld__label">E-Mail</label>
+          <input class="eingabe" value="<?= Util::attr((string) $kunde['email']) ?>" disabled></div>
+      </div>
+      <div class="feld-reihe feld-reihe--2">
+        <div class="feld"><label class="feld__label" for="pr-telefon">Telefon</label>
+          <input class="eingabe" id="pr-telefon" name="telefon"
+                 value="<?= Util::attr((string) $kunde['telefon']) ?>"></div>
+        <div class="feld"><label class="feld__label" for="pr-hcp">Mein Handicap</label>
+          <input class="eingabe" id="pr-hcp" name="hcp" value="<?= Util::attr((string) $kunde['hcp'] !== '' ? Util::hcp((string) $kunde['hcp']) : '') ?>"
+                 placeholder="24,3">
+          <div class="feld__hinweis">Du kennst deinen Stand am besten – trag ihn gern selbst nach.</div></div>
+      </div>
+      <div class="feld"><label class="feld__label" for="pr-strasse">Straße</label>
+        <input class="eingabe" id="pr-strasse" name="strasse"
+               value="<?= Util::attr((string) $kunde['strasse']) ?>"></div>
+      <div class="feld-reihe feld-reihe--2">
+        <div class="feld"><label class="feld__label" for="pr-plz">PLZ</label>
+          <input class="eingabe" id="pr-plz" name="plz" value="<?= Util::attr((string) $kunde['plz']) ?>"></div>
+        <div class="feld"><label class="feld__label" for="pr-ort">Ort</label>
+          <input class="eingabe" id="pr-ort" name="ort" value="<?= Util::attr((string) $kunde['ort']) ?>"></div>
+      </div>
+      <div class="feld"><label class="feld__label" for="pr-ziele">Woran willst du arbeiten?</label>
+        <textarea class="eingabe" id="pr-ziele" name="ziele" rows="2" data-waechst><?= Util::h((string) $kunde['ziele']) ?></textarea>
+        <div class="feld__hinweis">Dein Trainer sieht das und richtet den Plan danach aus.</div></div>
+      <div class="feld"><label class="feld__label" for="pr-passwort">Neues Passwort</label>
+        <input class="eingabe" id="pr-passwort" type="password" name="passwort" autocomplete="new-password"
+               placeholder="leer lassen, um es nicht zu ändern">
+        <div class="feld__hinweis">Mit einem Passwort kommst du auch ohne den Link deines Trainers hinein.</div></div>
+      <label class="haken">
+        <input type="checkbox" name="newsletter" value="1"<?= (int) $kunde['newsletter'] === 1 ? ' checked' : '' ?>>
+        <span class="haken__text">Newsletter erhalten
+          <span class="haken__hinweis">Tipps, Termine und Angebote. Jederzeit abbestellbar.</span></span>
+      </label>
+    </div>
+    <div class="karte__fuss"><div class="fueller"></div>
+      <button class="btn btn--primaer" type="submit">Speichern</button></div>
+  </form>
+
+  <div class="karte">
+    <div class="karte__kopf"><h2>Meine Daten</h2></div>
+    <div class="karte__koerper">
+      <p class="klein gedimmt mb-4">Du hast das Recht, eine Kopie aller zu dir gespeicherten
+        Daten zu bekommen (Artikel 15 und 20 DSGVO) und ihre Löschung zu verlangen
+        (Artikel 17 DSGVO). Beide Anfragen werden innerhalb eines Monats beantwortet.</p>
+      <div class="reihe reihe--eng reihe--umbruch">
+        <form method="post" class="inline">
+          <input type="hidden" name="aktion" value="datenanfrage">
+          <input type="hidden" name="typ" value="export">
+          <button class="btn btn--klein" type="submit"><?= Icon::svg('download', 14) ?> Datenkopie anfordern</button>
+        </form>
+        <form method="post" class="inline"
+              data-bestaetigen="Löschung deiner Daten beantragen? Bezahlte Rechnungen müssen aus steuerlichen Gründen aufbewahrt werden.">
+          <input type="hidden" name="aktion" value="datenanfrage">
+          <input type="hidden" name="typ" value="loeschung">
+          <button class="btn btn--klein" type="submit"><?= Icon::svg('trash', 14) ?> Löschung beantragen</button>
+        </form>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
+
+<?php require __DIR__ . '/partials/fuss.php'; ?>

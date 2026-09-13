@@ -167,7 +167,7 @@ if ($istNeu) {
               <option value="0">Ohne Kunde (Blocker, interner Termin)</option>
               <?php foreach (Tenant::all('customers', 'status = "aktiv"', [], 'nachname, vorname') as $k): ?>
                 <option value="<?= (int) $k['id'] ?>"<?= $kundeId === (int) $k['id'] ? ' selected' : '' ?>>
-                  <?= Util::h(Customers::name($k)) ?><?= (string) $k['hcp'] !== '' ? ' · HCP ' . Util::h((string) $k['hcp']) : '' ?>
+                  <?= Util::h(Customers::name($k)) ?><?= (string) $k['hcp'] !== '' ? ' · HCP ' . Util::h(Util::hcp((string) $k['hcp'])) : '' ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -385,7 +385,7 @@ require __DIR__ . '/partials/kopf.php';
       <div class="karte__kopf"><h3>Kunde</h3></div>
       <div class="karte__koerper">
         <?= person(Customers::name($kunde), [
-              'unter' => (string) $kunde['hcp'] !== '' ? 'HCP ' . $kunde['hcp'] : (string) $kunde['email'],
+              'unter' => (string) $kunde['hcp'] !== '' ? 'HCP ' . Util::hcp((string) $kunde['hcp']) : (string) $kunde['email'],
               'url' => '/app/kunde.php?id=' . (int) $kunde['id'], 'gross' => true,
             ]) ?>
         <div class="stapel stapel--eng mt-4">

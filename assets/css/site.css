@@ -495,3 +495,118 @@ a.inhaltskarte:hover {
 .seite .zeit-knopf--gewaehlt { color: #fff; }
 .seite .kartenrahmen__link { color: var(--text); }
 .seite .leistung__preis .knopf { color: #fff; }
+
+/* ==========================================================================
+   Vorgänge: Buchen, Kaufen, Anfragen
+   --------------------------------------------------------------------------
+   Diese drei Seiten sind der Moment, in dem aus einem Besucher ein Kunde
+   wird. Deshalb tragen sie dasselbe Gewand wie die Website davor – nichts
+   verunsichert mehr als ein Kassenschritt, der plötzlich fremd aussieht.
+   `.knopf--primaer` braucht keine eigene Regel: `.knopf` ist bereits der
+   auffällige Knopf, die Klasse benennt die Absicht im Markup.
+   ========================================================================== */
+
+.seite .vorgang { padding: 56px 0 84px; }
+.seite .vorgang__titel { font-size: clamp(28px, 4vw, 40px); letter-spacing: -.025em; margin-bottom: 10px; }
+.seite .vorgang__unter { color: var(--text-2); font-size: 17px; margin: 0 0 34px; max-width: 46ch; }
+.seite .vorgang__text { color: var(--text-2); margin: 18px 0; }
+.seite .vorgang__klein { color: var(--text-3); font-size: 14px; margin-top: 14px; }
+.seite .vorgang__zurueck { margin-top: 26px; }
+
+/* Schrittanzeige */
+.seite .ablauf { display: flex; align-items: center; gap: 0; list-style: none; margin: 0 0 30px; padding: 0; }
+.seite .ablauf__teil { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; color: var(--text-3); font-size: 14.5px; }
+.seite .ablauf__teil + .ablauf__teil::before {
+  content: ""; flex: 1; height: 1.5px; background: var(--rand); margin: 0 12px; min-width: 12px;
+}
+.seite .ablauf__zahl {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--flaeche); border: 1.5px solid var(--rand);
+  font-size: 13px; font-weight: 640;
+}
+.seite .ablauf__teil.ist-aktiv { color: var(--text); font-weight: 560; }
+.seite .ablauf__teil.ist-aktiv .ablauf__zahl { background: var(--marke); border-color: var(--marke); color: #fff; }
+.seite .ablauf__teil.ist-fertig .ablauf__zahl { background: var(--marke-hell); border-color: var(--marke); color: var(--marke); }
+.seite .ablauf__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Formularteile */
+.seite .vorgang__form { margin: 0 0 26px; }
+.seite .vorgang__feld { margin-bottom: 16px; }
+.seite .vorgang__feld label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.seite .vorgang__feld input, .seite .vorgang__feld select, .seite .vorgang__feld textarea {
+  width: 100%; padding: 12px 14px;
+  border: 1.5px solid var(--rand); border-radius: 11px;
+  background: var(--grund); color: var(--text);
+  font-family: inherit; font-size: 16px;
+}
+.seite .vorgang__feld input:focus, .seite .vorgang__feld select:focus, .seite .vorgang__feld textarea:focus {
+  outline: none; border-color: var(--marke); box-shadow: 0 0 0 3px color-mix(in srgb, var(--marke) 15%, transparent);
+}
+.seite .vorgang__paar { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* Gewählter Termin als Merkposten über dem Formular */
+.seite .vorgang__gewaehlt {
+  background: var(--marke-hell); border: 1.5px solid color-mix(in srgb, var(--marke) 25%, transparent);
+  border-radius: var(--radius); padding: 15px 18px; margin: 8px 0 22px; font-size: 15.5px;
+}
+
+.seite .vorgang__meldung {
+  border-radius: var(--radius); padding: 14px 17px; margin: 0 0 22px; font-size: 15px;
+  background: #fdf6e6; border: 1.5px solid #f0dfae; color: #7a5c12;
+}
+.seite .vorgang__meldung--info { background: var(--marke-hell); border-color: color-mix(in srgb, var(--marke) 25%, transparent); color: var(--marke-dunkel); }
+.seite .vorgang__meldung--fehler { background: #fdeceb; border-color: #f2c3c0; color: #8f2721; }
+
+/* Bestätigung */
+.seite .vorgang__erfolg {
+  background: var(--marke); color: #fff;
+  border-radius: var(--radius); padding: 26px 24px; margin: 4px 0 8px;
+}
+.seite .vorgang__erfolg-datum { font-size: 24px; font-weight: 680; letter-spacing: -.02em; }
+.seite .vorgang__erfolg-zeit { font-size: 16px; opacity: .92; margin-top: 5px; }
+.seite .vorgang__erfolg-ort { font-size: 15px; opacity: .84; margin-top: 12px; }
+
+/* Zeitauswahl */
+.seite .zeitwahl { margin: 4px 0 30px; }
+.seite .zeitwahl__tag + .zeitwahl__tag { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--rand); }
+.seite .zeitwahl__datum { font-weight: 620; font-size: 15.5px; margin-bottom: 11px; }
+.seite .zeitwahl__zeiten { display: flex; flex-wrap: wrap; gap: 8px; }
+.seite .zeitwahl__form { display: contents; }
+.seite .zeitknopf {
+  padding: 10px 15px; border: 1.5px solid var(--rand); border-radius: 10px;
+  background: var(--grund); color: var(--text);
+  font: inherit; font-size: 15px; font-variant-numeric: tabular-nums;
+  cursor: pointer; transition: border-color .12s, background .12s;
+}
+.seite .zeitknopf:hover { border-color: var(--marke); background: var(--marke-hell); }
+.seite .zeitknopf.ist-gewaehlt { background: var(--marke); border-color: var(--marke); color: #fff; }
+
+/* Bestellübersicht */
+.seite .posten { border: 1.5px solid var(--rand); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
+.seite .posten__zeile { display: flex; align-items: center; gap: 14px; padding: 15px 18px; }
+.seite .posten__zeile + .posten__zeile { border-top: 1px solid var(--rand); }
+.seite .posten__text { flex: 1; min-width: 0; }
+.seite .posten__name { font-weight: 600; }
+.seite .posten__unter { color: var(--text-3); font-size: 14px; }
+.seite .posten__preis { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.seite .posten__summe { background: var(--flaeche); font-size: 17px; }
+
+@media (max-width: 640px) {
+  .seite .vorgang__paar { grid-template-columns: 1fr; }
+  .seite .ablauf__name { display: none; }
+  .seite .ablauf__teil.ist-aktiv .ablauf__name { display: block; }
+}
+
+/* Hinweisband unten – nur sichtbar, wenn es gebraucht wird. */
+.seite .hinweisband {
+  position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 60;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  max-width: 760px; margin: 0 auto;
+  padding: 16px 18px;
+  background: var(--grund); border: 1.5px solid var(--rand); border-radius: var(--radius);
+  box-shadow: 0 8px 30px rgba(16, 24, 20, .13);
+  font-size: 14.5px; line-height: 1.55;
+}
+.seite .hinweisband__text { flex: 1; min-width: 220px; color: var(--text-2); }
+.seite .hinweisband[hidden] { display: none; }

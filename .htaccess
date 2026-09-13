@@ -1,0 +1,84 @@
+# ==========================================================================
+# GolfPro CMS – Apache-Konfiguration
+# --------------------------------------------------------------------------
+# Alles hier ist optional: Ohne diese Datei läuft das System ebenfalls, nur
+# ohne saubere Adressen und ohne die Schutzregeln. Wer nginx einsetzt,
+# überträgt die drei Blöcke sinngemäß in die Serverkonfiguration.
+# ==========================================================================
+
+# --- Zeichensatz ----------------------------------------------------------
+AddDefaultCharset UTF-8
+
+# --- Verzeichnislisten aus -----------------------------------------------
+Options -Indexes
+
+# --- Heikle Dateien sperren ----------------------------------------------
+# Die config.php enthält Zugangsdaten, die Datenbank alle Kundendaten.
+<FilesMatch "^(config\.php|config\.example\.php|\.gitignore|composer\.(json|lock)|README\.md)$">
+  Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(sqlite|sqlite3|db|log|ini|sql|bak|md)$">
+  Require all denied
+</FilesMatch>
+
+# --- Saubere Adressen -----------------------------------------------------
+# /leistungen  ->  site.php?s=leistungen
+# /blog/titel  ->  site.php?beitrag=titel
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Basis automatisch bestimmen lassen; bei Installation in einem
+  # Unterordner hier den Pfad eintragen, z. B. RewriteBase /golfpro/
+  # RewriteBase /
+
+  # Vorhandene Dateien und Ordner bleiben unangetastet.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  RewriteRule ^blog/([A-Za-z0-9_-]+)/?$ site.php?beitrag=$1 [QSA,L]
+  RewriteRule ^blog/?$ site.php?s=blog [QSA,L]
+
+  # Anwendung, Portal und die Endpunkte behalten ihre echten Pfade.
+  RewriteRule ^(app|portal|assets|uploads)(/.*)?$ - [L]
+
+  # Alles andere ist eine Seite der Website.
+  RewriteRule ^([A-Za-z0-9_-]+)/?$ site.php?s=$1 [QSA,L]
+</IfModule>
+
+# --- Zwischenspeicher für Dateien, die sich nicht ändern -------------------
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css                "access plus 7 days"
+  ExpiresByType application/javascript  "access plus 7 days"
+  ExpiresByType image/svg+xml           "access plus 30 days"
+  ExpiresByType image/webp              "access plus 30 days"
+  ExpiresByType image/jpeg              "access plus 30 days"
+  ExpiresByType image/png               "access plus 30 days"
+  ExpiresByType font/woff2              "access plus 365 days"
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+# --- Sicherheitskopfzeilen ------------------------------------------------
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  # HSTS erst einschalten, wenn HTTPS sicher überall läuft – sonst sperrt
+  # man sich für Monate aus:
+  # Header always set Strict-Transport-Security "max-age=31536000"
+</IfModule>
+
+# --- PHP-Grenzen ----------------------------------------------------------
+# Viele Hoster erlauben das hier nicht; dann greift die Einstellung im
+# Kundenbereich. Schwungvideos brauchen etwas Luft.
+<IfModule mod_php.c>
+  php_value upload_max_filesize 64M
+  php_value post_max_size 68M
+  php_value memory_limit 128M
+</IfModule>

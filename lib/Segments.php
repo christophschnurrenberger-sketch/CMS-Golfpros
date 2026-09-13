@@ -60,7 +60,9 @@ final class Segments
             $schluessel = 'seg' . $i;
 
             $ausdruck = match ($feld) {
-                'hcp' => 'CAST(NULLIF(customers.hcp, "") AS REAL)',
+                // REPLACE, weil Altbestand das Handicap noch mit Komma
+                // enthalten kann - CAST("13,6" AS REAL) ergibt sonst 13.
+                'hcp' => 'CAST(REPLACE(NULLIF(customers.hcp, ""), ",", ".") AS REAL)',
                 'umsatz_cent' => "(SELECT COALESCE(SUM(o.summe_cent),0) FROM orders o
                                     WHERE o.customer_id = customers.id AND o.status = 'bezahlt')",
                 'termine_gesamt' => "(SELECT COUNT(*) FROM bookings b

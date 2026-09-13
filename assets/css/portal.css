@@ -1,0 +1,162 @@
+/*
+ * Kundenportal.
+ *
+ * Baut auf app.css auf – dieselben Farbtoken, dieselben Karten, Pillen und
+ * Knöpfe. Hier steht nur, was der Kunde anders braucht als der Trainer:
+ * eine Navigation, die auf dem Telefon unten am Daumen liegt, und ein
+ * großzügigerer Rhythmus, weil auf einer Seite selten mehr als drei Dinge
+ * stehen.
+ */
+
+.portal {
+  background: var(--flaeche-2);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------- Kopf --- */
+
+.portal__kopf {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: var(--r3);
+  padding: 0 var(--r4);
+  height: 58px;
+  background: color-mix(in srgb, var(--flaeche) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--rand);
+}
+.portal__marke { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
+.portal__marke-text { font-weight: 640; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.portal__ich { display: flex; text-decoration: none; }
+
+/* --------------------------------------------------------- Navigation - */
+
+.portal__navi {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+  display: flex;
+  background: color-mix(in srgb, var(--flaeche) 94%, transparent);
+  backdrop-filter: saturate(180%) blur(14px);
+  border-top: 1px solid var(--rand);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.portal__navi-teil {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 9px 2px 8px;
+  color: var(--text-3); text-decoration: none;
+  font-size: 10.5px; font-weight: 560;
+  transition: color .15s;
+}
+.portal__navi-teil span { white-space: nowrap; }
+.portal__navi-teil.ist-aktiv { color: var(--marke); }
+.portal__navi-teil:hover { color: var(--text); }
+
+/* ----------------------------------------------------------- Inhalt --- */
+
+.portal__inhalt {
+  flex: 1;
+  width: 100%; max-width: 760px;
+  margin: 0 auto;
+  padding: var(--r5) var(--r4) 96px;
+}
+.portal__titel { font-size: 24px; font-weight: 680; letter-spacing: -.02em; margin-bottom: var(--r5); }
+
+.portal__fuss {
+  display: none;
+  align-items: center; justify-content: center; gap: 7px;
+  padding: var(--r5) var(--r4) calc(var(--r5) + 76px);
+  color: var(--text-4); font-size: 12px;
+}
+.portal__fuss a { color: var(--text-3); }
+.portal__fuss-trenner { opacity: .5; }
+
+/* -------------------------------------------------- Nächster Termin --- */
+
+/*
+ * Die wichtigste Karte im Portal. Sie beantwortet die Frage, mit der
+ * neun von zehn Kunden das Portal öffnen: „Wann ist mein nächster Termin?"
+ */
+.naechster {
+  background: linear-gradient(140deg, var(--marke), var(--marke-dunkel));
+  color: #fff;
+  border-radius: var(--radius-l);
+  padding: var(--r5);
+  margin-bottom: var(--r5);
+}
+.naechster__label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; opacity: .8; margin-bottom: 6px; }
+.naechster__tag { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+.naechster__zeit { font-size: 15px; opacity: .92; margin-top: 4px; }
+.naechster__was { margin-top: var(--r4); padding-top: var(--r4); border-top: 1px solid rgba(255,255,255,.22); font-size: 13.5px; }
+.naechster__reihe { display: flex; align-items: center; gap: 8px; opacity: .92; margin-top: 5px; }
+.naechster__knoepfe { display: flex; gap: 8px; margin-top: var(--r4); flex-wrap: wrap; }
+.naechster .btn {
+  background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.28); color: #fff;
+}
+.naechster .btn:hover { background: rgba(255,255,255,.26); }
+
+/* ------------------------------------------------------ Zeitstrahl ---- */
+
+.pt-liste { display: flex; flex-direction: column; gap: 2px; }
+.pt-zeile {
+  display: flex; align-items: center; gap: var(--r3);
+  padding: var(--r3) var(--r4);
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  text-decoration: none; color: inherit;
+}
+.pt-zeile:first-child { border-radius: var(--radius-m) var(--radius-m) 0 0; }
+.pt-zeile:last-child { border-radius: 0 0 var(--radius-m) var(--radius-m); }
+.pt-zeile:only-child { border-radius: var(--radius-m); }
+.pt-zeile + .pt-zeile { border-top: 0; }
+.pt-zeile:hover { background: var(--flaeche-3); }
+.pt-zeile__datum {
+  flex: none; width: 46px; text-align: center;
+  display: flex; flex-direction: column; line-height: 1.1;
+}
+.pt-zeile__tag { font-size: 17px; font-weight: 680; font-variant-numeric: tabular-nums; }
+.pt-zeile__monat { font-size: 10.5px; color: var(--text-4); text-transform: uppercase; letter-spacing: .05em; }
+.pt-zeile__text { flex: 1; min-width: 0; }
+.pt-zeile__titel { font-weight: 560; font-size: 13.5px; }
+.pt-zeile__unter { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+
+/* -------------------------------------------------------- Kacheln ----- */
+
+.pt-kacheln { display: grid; gap: var(--r3); grid-template-columns: repeat(2, 1fr); }
+.pt-kachel {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: var(--r4);
+  background: var(--flaeche); border: 1px solid var(--rand);
+  border-radius: var(--radius-m);
+  text-decoration: none; color: inherit;
+}
+.pt-kachel:hover { border-color: var(--rand-stark); }
+.pt-kachel__symbol { color: var(--marke); display: flex; margin-bottom: 2px; }
+.pt-kachel__wert { font-size: 21px; font-weight: 680; letter-spacing: -.02em; }
+.pt-kachel__label { font-size: 12px; color: var(--text-3); }
+
+/* --------------------------------------------------- Ab dem Tablet ---- */
+
+@media (min-width: 760px) {
+  .portal__navi {
+    position: sticky; top: 58px; bottom: auto;
+    max-width: 760px; margin: 0 auto;
+    border-top: 0; border-bottom: 1px solid var(--rand);
+    /* Gleicher Seitenrand wie der Inhalt, damit der erste Reiter genau
+       unter der Überschrift beginnt und die Spalte nicht ausfranst. */
+    padding: 0 var(--r4);
+    gap: var(--r5);
+  }
+  .portal__navi-teil {
+    flex: 0 0 auto;
+    flex-direction: row; gap: 7px;
+    padding: 13px 0 11px;
+    font-size: 13px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .portal__navi-teil.ist-aktiv { border-bottom-color: var(--marke); }
+  .portal__inhalt { padding-bottom: var(--r6); }
+  .portal__fuss { display: flex; padding-bottom: var(--r5); }
+  .pt-kacheln { grid-template-columns: repeat(4, 1fr); }
+}

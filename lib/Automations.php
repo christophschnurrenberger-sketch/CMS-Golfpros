@@ -217,7 +217,7 @@ final class Automations
             '{vorname}'   => (string) ($kunde['vorname'] ?? ''),
             '{nachname}'  => (string) ($kunde['nachname'] ?? ''),
             '{name}'      => $kunde ? Customers::name($kunde) : '',
-            '{hcp}'       => (string) ($kunde['hcp'] ?? ''),
+            '{hcp}'       => Util::hcp((string) ($kunde['hcp'] ?? '')),
             '{pro}'       => Tenant::name(),
             '{heimclub}'  => (string) ($kunde['heimclub'] ?? ''),
         ];

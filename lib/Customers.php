@@ -101,6 +101,16 @@ final class Customers
         ];
         $satz = array_intersect_key($daten, array_flip($erlaubt));
 
+        /*
+         * Das Handicap kommt aus Formularen mit Komma herein und muss mit
+         * Punkt in die Datenbank: Nur so vergleicht SQL richtig und nur so
+         * liest PHP die Nachkommastelle. Formatiert wird erst bei der
+         * Ausgabe, über Util::hcp().
+         */
+        if (array_key_exists('hcp', $satz)) {
+            $satz['hcp'] = Util::hcpNormal((string) $satz['hcp']);
+        }
+
         if ($id > 0) {
             Tenant::update('customers', $id, $satz);
             Audit::schreiben('geaendert', 'customer', $id, self::nameVonId($id));

@@ -178,7 +178,7 @@ final class Training
         $satz = ['customer_id' => $kundeId, 'datum' => (string) ($daten['datum'] ?? Util::heute())];
         foreach (array_keys(self::METRIKEN) as $feld) {
             if (isset($daten[$feld]) && $daten[$feld] !== '') {
-                $satz[$feld] = $feld === 'hcp' ? (string) $daten[$feld] : (int) $daten[$feld];
+                $satz[$feld] = $feld === 'hcp' ? Util::hcpNormal((string) $daten[$feld]) : (int) $daten[$feld];
             }
         }
         $satz['platz']  = (string) ($daten['platz'] ?? '');
@@ -213,7 +213,7 @@ final class Training
         $werte  = [];
         foreach ($zeilen as $z) {
             $labels[] = Util::datum((string) $z['datum'], false);
-            $werte[]  = $metrik === 'hcp' ? (float) $z['hcp'] : (float) $z[$metrik];
+            $werte[]  = $metrik === 'hcp' ? Util::zahlAus((string) $z['hcp']) : (float) $z[$metrik];
         }
         return ['labels' => $labels, 'werte' => $werte];
     }

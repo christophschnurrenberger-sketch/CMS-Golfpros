@@ -1619,6 +1619,13 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
 .schritt.ist-aktiv .schritt__name { color: var(--text); font-weight: 580; }
 .schritt.ist-fertig .schritt__zahl { background: var(--erfolg-hell); color: var(--erfolg); border-color: var(--erfolg); }
 .schritt.ist-fertig .schritt__strich, .schritt.ist-aktiv .schritt__strich { background: var(--marke); }
+/* Neun Schritte passen auf dem Telefon nicht nebeneinander. Statt zu
+   scrollen bleibt nur der aktuelle Name stehen - der Rest sind Punkte. */
+@media (max-width: 860px) {
+  .schritt__name { display: none; }
+  .schritt.ist-aktiv .schritt__name { display: block; }
+  .schritt__strich { margin: 0 5px; }
+}
 
 /* Punktestand 0–100 */
 .punktestand { display: inline-flex; align-items: center; gap: 9px; }

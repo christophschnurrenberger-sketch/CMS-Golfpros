@@ -133,7 +133,7 @@ if ($istNeu) {
             <label class="feld__label" for="vorgabe">Beschreib den Kunden und das Ziel</label>
             <textarea class="eingabe" id="vorgabe" name="vorgabe" rows="4" data-waechst required
               placeholder="Kunde HCP 32, zweimal Training pro Woche, große Schwäche beim Putting."><?= $kunde
-                ? Util::h('Kunde ' . ((string) $kunde['hcp'] !== '' ? 'HCP ' . $kunde['hcp'] : '')
+                ? Util::h('Kunde ' . ((string) $kunde['hcp'] !== '' ? 'HCP ' . Util::hcp((string) $kunde['hcp']) : '')
                   . ', ' . ((string) $kunde['ziele'] !== '' ? 'Ziel: ' . $kunde['ziele'] : ''))
                 : '' ?></textarea>
             <div class="feld__hinweis">Je konkreter die Schwäche, desto passender der Vorschlag.</div>
@@ -307,7 +307,7 @@ require __DIR__ . '/partials/kopf.php';
       <div class="karte__kopf"><h3>Zugewiesen an</h3></div>
       <div class="karte__koerper">
         <?= person(Customers::name($kunde), [
-              'unter' => (string) $kunde['hcp'] !== '' ? 'HCP ' . $kunde['hcp'] : '',
+              'unter' => (string) $kunde['hcp'] !== '' ? 'HCP ' . Util::hcp((string) $kunde['hcp']) : '',
               'url' => '/app/kunde.php?id=' . (int) $kunde['id'], 'gross' => true]) ?>
         <?php $fortschritt = Training::fortschritt($id, (int) $kunde['id']); ?>
         <div class="mt-4">

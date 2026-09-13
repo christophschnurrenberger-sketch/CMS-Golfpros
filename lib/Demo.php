@@ -344,14 +344,14 @@ final class Demo
                     . mt_rand(0, 364) . ' days')),
                 'strasse' => ['Rosenweg', 'Am Hang', 'Bahnhofstraße', 'Lindenallee', 'Uferweg'][$i % 5] . ' ' . mt_rand(1, 88),
                 'plz' => (string) mt_rand(76131, 76229), 'ort' => 'Karlsruhe',
-                'hcp' => $hcp, 'heimclub' => self::CLUBS[$i % count(self::CLUBS)],
+                'hcp' => Util::hcpNormal($hcp), 'heimclub' => self::CLUBS[$i % count(self::CLUBS)],
                 'ziele' => $ziele[$i % count($ziele)],
                 'dominante_hand' => $i % 9 === 0 ? 'links' : 'rechts',
                 'status' => 'aktiv',
                 'quelle' => ['Website', 'Empfehlung', 'Google', 'Club', 'Instagram', 'Website'][$i % 6],
                 'trainer_id' => $i % 3 === 0 ? self::$trainer['pro2'] : self::$trainer['owner'],
                 'location_id' => self::$standorte['club'],
-                'tags' => Util::json(self::tagsFuer((float) str_replace(',', '.', $hcp), $monate)),
+                'tags' => Util::json(self::tagsFuer(Util::zahlAus($hcp), $monate)),
                 'newsletter' => $newsletter,
                 'portal_token' => Util::token(16),
                 'letzte_aktivitaet' => $letzteAktivitaet,
@@ -740,7 +740,7 @@ final class Demo
 
         /* Leistungsdaten für aktive Spieler */
         foreach (array_slice(self::$kunden, 0, 10) as $k) {
-            $hcp = (float) str_replace(',', '.', (string) $k['hcp']);
+            $hcp = Util::zahlAus((string) $k['hcp']);
             if ($hcp >= 50) {
                 continue;
             }
@@ -751,7 +751,7 @@ final class Demo
                 Tenant::insert('performance_entries', [
                     'customer_id' => $k['id'],
                     'datum' => date('Y-m-d', strtotime('-' . ($n * mt_rand(12, 26)) . ' days')),
-                    'hcp' => number_format($aktuellerHcp, 1, ',', ''),
+                    'hcp' => number_format($aktuellerHcp, 1, '.', ''),
                     'score' => (int) round(72 + $aktuellerHcp * 0.9 + mt_rand(-3, 4)),
                     'fairways' => mt_rand(4, 12), 'gir' => mt_rand(2, 13),
                     'putts' => mt_rand(28, 38), 'penalties' => mt_rand(0, 4),

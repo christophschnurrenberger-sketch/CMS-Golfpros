@@ -63,6 +63,46 @@ final class Util
     }
 
     /**
+     * Deutsche Dezimalschreibweise zu float: „13,6" → 13.6.
+     *
+     * PHPs eigener Cast hört beim Komma auf und macht aus „13,6" eine 13 –
+     * still und ohne Fehler. Genau das hat einmal eine ganze
+     * Handicap-Kurve flachgelegt. Deshalb geht jede Zahl, die aus einem
+     * Formular oder aus der Datenbank kommt, durch diese Funktion.
+     */
+    public static function zahlAus(?string $eingabe, float $standard = 0.0): float
+    {
+        $roh = trim((string) $eingabe);
+        if ($roh === '') {
+            return $standard;
+        }
+        $roh = str_replace([' ', "\u{00a0}"], '', $roh);
+        // Tausenderpunkte fallen weg, das Komma wird zum Punkt.
+        if (str_contains($roh, ',')) {
+            $roh = str_replace('.', '', $roh);
+            $roh = str_replace(',', '.', $roh);
+        }
+        $roh = preg_replace('/[^0-9.\-]/', '', $roh) ?? '';
+        return $roh === '' || $roh === '-' ? $standard : (float) $roh;
+    }
+
+    /**
+     * Ein Handicap für die Datenbank: immer mit Punkt, immer eine
+     * Nachkommastelle. Leere Eingabe bleibt leer – „kein Handicap" ist
+     * etwas anderes als „Handicap 0".
+     */
+    public static function hcpNormal(?string $eingabe): string
+    {
+        return trim((string) $eingabe) === '' ? '' : number_format(self::zahlAus($eingabe), 1, '.', '');
+    }
+
+    /** Dasselbe Handicap für die Anzeige: „13.6" → „13,6". */
+    public static function hcp(?string $wert): string
+    {
+        return trim((string) $wert) === '' ? '–' : str_replace('.', ',', number_format(self::zahlAus($wert), 1, '.', ''));
+    }
+
+    /**
      * Verteilt einen Betrag proportional, ohne dass Cent verloren gehen.
      * Der Rest wandert an die Positionen mit dem größten Rundungsverlust.
      *

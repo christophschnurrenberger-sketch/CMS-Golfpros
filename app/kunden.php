@@ -139,7 +139,7 @@ if (App::get('aktion') === 'export' && Auth::darf('customers.view')) {
     fputcsv($aus, ['Vorname', 'Nachname', 'E-Mail', 'Telefon', 'HCP', 'Heimclub', 'Status',
                    'Quelle', 'Angelegt', 'Letzte Aktivität', 'Gesundheitswert'], ';');
     foreach (Tenant::all('customers', $bedingung, $p, $sort) as $k) {
-        fputcsv($aus, [$k['vorname'], $k['nachname'], $k['email'], $k['telefon'], $k['hcp'],
+        fputcsv($aus, [$k['vorname'], $k['nachname'], $k['email'], $k['telefon'], Util::hcp((string) $k['hcp']),
                        $k['heimclub'], $k['status'], $k['quelle'],
                        Util::datum((string) $k['erstellt']), Util::datum((string) $k['letzte_aktivitaet']),
                        $k['health_score']], ';');
@@ -249,7 +249,7 @@ require __DIR__ . '/partials/kopf.php';
                   ]) ?>
             </td>
             <td class="nicht-mobil">
-              <?= (string) $k['hcp'] !== '' ? Util::h((string) $k['hcp']) : '<span class="gedimmt-2">—</span>' ?>
+              <?= (string) $k['hcp'] !== '' ? Util::h(Util::hcp((string) $k['hcp'])) : '<span class="gedimmt-2">—</span>' ?>
             </td>
             <td class="nicht-mobil gedimmt">
               <?= Util::h(Util::kuerzen((string) $k['heimclub'], 24)) ?: '—' ?>

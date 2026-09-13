@@ -10,6 +10,18 @@ require __DIR__ . '/../lib/bootstrap.php';
 require __DIR__ . '/partials/helfer.php';
 
 Auth::fordern('modul.dashboard');
+
+/*
+ * Ein frisch angelegter Workspace hat noch keine Zahlen, die ein Dashboard
+ * zeigen koennte. Statt leerer Kacheln fuehrt der Weg zuerst durch die
+ * Einrichtung - sie endet mit einer veroeffentlichten Website.
+ */
+if ((int) (Tenant::workspace()['onboarding_schritt'] ?? 0) < 9
+    && Tenant::count('customers') === 0
+    && Auth::darf('settings.allgemein')) {
+    App::weiter('/app/onboarding.php');
+}
+
 Wartung::laufen();
 
 $heute     = Util::heute();
@@ -177,7 +189,7 @@ require __DIR__ . '/partials/kopf.php';
                 <td>
                   <?php if ($kunde): ?>
                     <?= person(Customers::name($kunde), [
-                          'unter' => (string) $kunde['hcp'] !== '' ? 'HCP ' . $kunde['hcp'] : '',
+                          'unter' => (string) $kunde['hcp'] !== '' ? 'HCP ' . Util::hcp((string) $kunde['hcp']) : '',
                           'url' => '/app/kunde.php?id=' . (int) $kunde['id'],
                         ]) ?>
                   <?php endif; ?>
@@ -250,7 +262,7 @@ require __DIR__ . '/partials/kopf.php';
                 <a class="reihe" href="<?= Util::attr(App::url('/app/kunde.php?id=' . (int) $k['id'])) ?>"
                    style="padding:6px;border-radius:8px;color:inherit">
                   <?= person(Customers::name($k), [
-                        'unter' => trim(((string) $k['hcp'] !== '' ? 'HCP ' . $k['hcp'] . ' · ' : '') . (string) $k['quelle'], ' ·'),
+                        'unter' => trim(((string) $k['hcp'] !== '' ? 'HCP ' . Util::hcp((string) $k['hcp']) . ' · ' : '') . (string) $k['quelle'], ' ·'),
                       ]) ?>
                   <div class="fueller"></div>
                   <span class="winzig gedimmt-2 umbruch-nein"><?= Util::h(Util::relativ((string) $k['erstellt'])) ?></span>

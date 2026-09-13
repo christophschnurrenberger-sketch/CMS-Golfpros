@@ -196,7 +196,7 @@ $spiel     = Gamification::stand($id);
 
 $titel = Customers::name($kunde);
 $unter = trim(implode(' · ', array_filter([
-    (string) $kunde['hcp'] !== '' ? 'HCP ' . $kunde['hcp'] : '',
+    (string) $kunde['hcp'] !== '' ? 'HCP ' . Util::hcp((string) $kunde['hcp']) : '',
     (string) $kunde['heimclub'],
     'Kunde seit ' . Util::datum((string) $kunde['erstellt']),
 ])));
@@ -653,7 +653,7 @@ require __DIR__ . '/partials/kopf.php';
                     <tr>
                       <td class="umbruch-nein"><?= Util::h(Util::datum((string) $l['datum'])) ?></td>
                       <td class="gedimmt"><?= Util::h(Util::kuerzen((string) $l['platz'], 20)) ?></td>
-                      <td class="zahl"><?= Util::h((string) $l['hcp']) ?></td>
+                      <td class="zahl"><?= Util::h(Util::hcp((string) $l['hcp'])) ?></td>
                       <td class="zahl halbfett"><?= (int) $l['score'] ?: '—' ?></td>
                       <td class="zahl nicht-mobil"><?= (int) $l['fairways'] ?: '—' ?></td>
                       <td class="zahl nicht-mobil"><?= (int) $l['gir'] ?: '—' ?></td>
@@ -856,7 +856,7 @@ require __DIR__ . '/partials/kopf.php';
             <div class="feld"><label class="feld__label" for="s-geb">Geburtstag</label>
               <input class="eingabe" id="s-geb" type="date" name="geburtstag" value="<?= Util::attr((string) $kunde['geburtstag']) ?>"></div>
             <div class="feld"><label class="feld__label" for="s-hcp">Handicap</label>
-              <input class="eingabe" id="s-hcp" name="hcp" value="<?= Util::attr((string) $kunde['hcp']) ?>"></div>
+              <input class="eingabe" id="s-hcp" name="hcp" value="<?= Util::attr((string) $kunde['hcp'] !== '' ? Util::hcp((string) $kunde['hcp']) : '') ?>"></div>
             <div class="feld"><label class="feld__label" for="s-hand">Schlaghand</label>
               <select id="s-hand" name="dominante_hand">
                 <option value="rechts"<?= $kunde['dominante_hand'] === 'rechts' ? ' selected' : '' ?>>Rechts</option>
@@ -944,7 +944,7 @@ require __DIR__ . '/partials/kopf.php';
       </div>
       <div class="feld-reihe feld-reihe--3">
         <div class="feld"><label class="feld__label" for="l-hcp">Handicap</label>
-          <input class="eingabe" id="l-hcp" name="hcp" value="<?= Util::attr((string) $kunde['hcp']) ?>"></div>
+          <input class="eingabe" id="l-hcp" name="hcp" value="<?= Util::attr((string) $kunde['hcp'] !== '' ? Util::hcp((string) $kunde['hcp']) : '') ?>"></div>
         <div class="feld"><label class="feld__label" for="l-score">Score</label>
           <input class="eingabe" id="l-score" type="number" name="score" placeholder="88"></div>
         <div class="feld"><label class="feld__label" for="l-putts">Putts</label>

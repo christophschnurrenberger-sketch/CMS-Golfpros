@@ -120,7 +120,45 @@ final class Website
              . '<div class="fuss-band__unten">'
              . '<span>© ' . date('Y') . ' ' . Util::h(Tenant::name()) . '</span>'
              . '<a href="' . Util::attr(App::url('/portal/')) . '">Kundenzugang</a>'
-             . '</div></div></footer>';
+             . '</div></div></footer>'
+             . self::hinweisband();
+    }
+
+    /**
+     * Cookie-Hinweis – nur wenn er eingeschaltet ist.
+     *
+     * Für die eigene, cookiefreie Zählung ist keine Einwilligung nötig:
+     * Es wird nichts auf dem Gerät gespeichert und nichts an Dritte
+     * gegeben. Wer zusätzlich Karten, Videos oder externe Schriften
+     * einbindet, schaltet den Hinweis unter Einstellungen → Datenschutz
+     * ein. Ein Banner, das man nicht braucht, ist kein Datenschutz,
+     * sondern nur eine Hürde vor dem Inhalt.
+     *
+     * Die Entscheidung merkt sich der Browser selbst; sie verlässt das
+     * Gerät nicht und landet in keiner Datenbank.
+     */
+    private static function hinweisband(): string
+    {
+        if (!Tenant::einstellung('cookie_banner', false)) {
+            return '';
+        }
+        $datenschutz = Tenant::one('pages', 'slug = "datenschutz" AND status = "veroeffentlicht"');
+        $link = $datenschutz !== null
+            ? '<a href="' . Util::attr(Pages::url($datenschutz)) . '">Mehr dazu</a>' : '';
+
+        return '<div class="hinweisband" id="hinweisband" hidden>'
+             . '<div class="hinweisband__text">Diese Website kommt ohne Werbe-Cookies aus. '
+             . 'Für eingebundene Inhalte wie Karten oder Videos werden beim Anzeigen Daten an '
+             . 'deren Anbieter übertragen. ' . $link . '</div>'
+             . '<button class="knopf knopf--klein" type="button" id="hinweisband-ok">Verstanden</button>'
+             . '</div>'
+             . '<script>(function(){'
+             . 'var b=document.getElementById("hinweisband");if(!b)return;'
+             . 'try{if(localStorage.getItem("gp-hinweis")==="1")return;}catch(e){}'
+             . 'b.hidden=false;'
+             . 'document.getElementById("hinweisband-ok").addEventListener("click",function(){'
+             . 'b.hidden=true;try{localStorage.setItem("gp-hinweis","1");}catch(e){}});'
+             . '})();</script>';
     }
 
     /**

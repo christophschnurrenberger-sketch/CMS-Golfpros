@@ -112,7 +112,7 @@ final class KI
                   . ' seit mindestens ' . $tage . ' Tagen nicht mehr da:';
             foreach ($kunden as $k) {
                 $text .= "\n• " . Customers::name($k)
-                       . ((string) $k['hcp'] !== '' ? ' (HCP ' . $k['hcp'] . ')' : '');
+                       . ((string) $k['hcp'] !== '' ? ' (HCP ' . Util::hcp((string) $k['hcp']) . ')' : '');
             }
             if ($gesamt > count($kunden)) {
                 $text .= "\n… und " . ($gesamt - count($kunden)) . ' weitere.';

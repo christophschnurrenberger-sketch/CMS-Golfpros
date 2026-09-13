@@ -33,7 +33,7 @@ final class Suche
                     'titel' => Customers::name($k),
                     'unter' => trim(implode(' · ', array_filter([
                         (string) $k['email'],
-                        (string) $k['hcp'] !== '' ? 'HCP ' . $k['hcp'] : '',
+                        (string) $k['hcp'] !== '' ? 'HCP ' . Util::hcp((string) $k['hcp']) : '',
                         (string) $k['heimclub'],
                     ]))),
                     'url' => App::url('/app/kunde.php?id=' . (int) $k['id']),
