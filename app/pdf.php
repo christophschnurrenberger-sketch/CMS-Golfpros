@@ -7,6 +7,11 @@ Auth::fordern('modul.dashboard');
 $art = App::get('art');
 $id  = App::getInt('id');
 
+/*
+ * Die Zweige brauchen kein break: ausliefern() ist als `never` deklariert
+ * und beendet die Anfrage mit dem fertigen PDF. Faellt der Aufruf doch
+ * einmal durch, greift am Ende der Datei die 400er-Antwort.
+ */
 try {
     switch ($art) {
         case 'rechnung':

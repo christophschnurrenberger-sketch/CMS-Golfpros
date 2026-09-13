@@ -669,23 +669,41 @@ select {
 }
 
 .raster { display: grid; gap: var(--r4); }
-.raster--2 { grid-template-columns: repeat(2, 1fr); }
-.raster--3 { grid-template-columns: repeat(3, 1fr); }
-.raster--4 { grid-template-columns: repeat(4, 1fr); }
-.raster--auto { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
-.raster--auto-gross { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.raster--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.raster--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.raster--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.raster--auto { grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
+.raster--auto-gross { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
 .raster--haupt-neben { grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); align-items: start; }
 .raster--neben-haupt { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); align-items: start; }
 
+/*
+ * Ueberall minmax(0, 1fr) statt 1fr.
+ *
+ * Ein blosses `1fr` heisst in Wahrheit `minmax(auto, 1fr)`, und `auto` als
+ * Untergrenze ist die Mindestbreite des Inhalts. Eine breite Tabelle oder
+ * eine lange Zeile ohne Trennmoeglichkeit macht die Spalte dann breiter als
+ * den Bildschirm - sichtbar nur als waagerechter Rollbalken, den niemand
+ * sich erklaeren kann. Mit 0 als Untergrenze darf die Spalte schrumpfen,
+ * und der Inhalt regelt sein Ueberlaufen selbst (Tabellen in
+ * .tabelle-huelle, Text mit Umbruch).
+ */
 @media (max-width: 1180px) {
-  .raster--4 { grid-template-columns: repeat(2, 1fr); }
-  .raster--haupt-neben, .raster--neben-haupt { grid-template-columns: 1fr; }
+  .raster--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .raster--haupt-neben, .raster--neben-haupt { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 860px) {
-  .raster--2, .raster--3, .raster--4 { grid-template-columns: 1fr; }
+  .raster--2, .raster--3, .raster--4 { grid-template-columns: minmax(0, 1fr); }
 }
 
-.stapel { display: flex; flex-direction: column; gap: var(--r4); }
+/*
+ * Dasselbe fuer Flexboxen: Ein Flex-Kind hat von Haus aus min-width:auto
+ * und schrumpft deshalb nicht unter seinen Inhalt. .stapel enthaelt fast
+ * immer Karten mit Tabellen - ohne diese Zeile zieht die breiteste Tabelle
+ * die ganze Seite auseinander.
+ */
+.stapel { display: flex; flex-direction: column; gap: var(--r4); min-width: 0; }
+.stapel > * { min-width: 0; }
 .stapel--eng { gap: var(--r2); }
 .stapel--weit { gap: var(--r6); }
 .reihe { display: flex; align-items: center; gap: var(--r3); }
@@ -899,7 +917,9 @@ table.tabelle {
 }
 .hinweis .ico { color: var(--info); margin-top: 1px; }
 .hinweis__text { flex: 1; min-width: 0; }
-.hinweis__titel { font-weight: 600; margin-bottom: 2px; }
+/* Als Block, nicht inline: Sonst klebt die Ueberschrift am Text und es
+   steht „ZielPlatzreife im Fruehjahr" da. */
+.hinweis__titel { display: block; font-weight: 600; margin-bottom: 2px; }
 .hinweis--erfolg  { background: var(--erfolg-hell);  border-color: color-mix(in srgb, var(--erfolg) 18%, transparent); }
 .hinweis--erfolg .ico { color: var(--erfolg); }
 .hinweis--warnung { background: var(--warnung-hell); border-color: color-mix(in srgb, var(--warnung) 22%, transparent); }
@@ -1104,20 +1124,31 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
 /* ============================================================= Werkzeug- */
 
 .tipp { position: relative; }
+/*
+ * display:none statt opacity:0 – und das ist kein Geschmack, sondern
+ * notwendig: Ein durchsichtiges, absolut gesetztes Element zaehlt weiter
+ * zur scrollbaren Flaeche. Ein Tipp, der breiter ist als sein Knopf, hat
+ * auf dem Telefon jede Seite um zwei Dutzend Pixel nach rechts gezogen –
+ * sichtbar nur als waagerechter Rollbalken, der sich durch nichts erklaert.
+ */
 .tipp::after {
   content: attr(data-tipp);
+  display: none;
   position: absolute; bottom: calc(100% + 7px); left: 50%;
   transform: translateX(-50%);
   background: var(--n-900); color: var(--n-25);
   padding: 5px 9px; border-radius: 7px;
   font-size: 12px; font-weight: 500;
   white-space: nowrap;
-  opacity: 0; pointer-events: none;
-  transition: opacity var(--tempo);
+  pointer-events: none;
   z-index: 80;
   box-shadow: var(--schatten-2);
 }
-.tipp:hover::after { opacity: 1; }
+.tipp:hover::after, .tipp:focus-visible::after { display: block; }
+/* Im Seitenkopf waere oberhalb des Knopfes der Bildschirmrand. */
+.kopf .tipp::after { bottom: auto; top: calc(100% + 7px); }
+/* Am rechten Rand nicht ueber die Kante hinaus, sondern buendig darunter. */
+.kopf__rechts > .tipp:last-child::after { left: auto; right: 0; transform: none; }
 [data-theme="dunkel"] .tipp::after { background: var(--n-200); color: var(--n-950); }
 
 /* ======================================================= Befehlspalette = */
@@ -1683,6 +1714,14 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
   .nur-mobil { display: block; }
   .nicht-mobil { display: none !important; }
   .reiter { gap: var(--r4); }
+  /*
+   * Auf dem Telefon steht im Kopf neben dem Suchfeld noch fuenf weitere
+   * Bedienelemente - da bleiben fuer die Beschriftung achtzig Pixel, und
+   * „Suchen oder Befehl…" bricht mitten im Wort um. Das Feld schrumpft
+   * deshalb auf sein Symbol; die Palette oeffnet sich mit demselben Klick.
+   */
+  .suchknopf { flex: none; min-width: 0; width: 34px; padding: 0; justify-content: center; }
+  .suchknopf span:not(.suchknopf__taste) { display: none; }
   .meldungen { left: 14px; right: 14px; max-width: none; }
   .schritt__name { display: none; }
   .modal__koerper { max-height: calc(100dvh - 180px); }

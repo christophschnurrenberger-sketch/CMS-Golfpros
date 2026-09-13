@@ -33,7 +33,21 @@ $nurMeine  = $istTrainer ? Auth::id() : 0;
 $umsatzHeute = Commerce::umsatz($heute, $heute);
 $umsatzMonat = Commerce::umsatz($monatVon, $heute);
 $umsatzJahr  = Commerce::umsatz($jahrVon, $heute);
-$umsatzVormonat = Commerce::umsatz(date('Y-m-01', strtotime('-1 month')), date('Y-m-t', strtotime('-1 month')));
+/*
+ * Verglichen wird gleich lang mit gleich lang.
+ *
+ * Am 14. eines Monats den halben laufenden Monat gegen den ganzen
+ * vorherigen zu stellen, ergibt jedes Mal ein Minus von rund fünfzig
+ * Prozent - und damit eine Zahl, die niemandem etwas sagt. Deshalb endet
+ * der Vergleichszeitraum am selben Tag des Vormonats. Wo es diesen Tag
+ * nicht gibt (31. gegen Februar), nimmt PHP den Monatsletzten; das ist
+ * die schonendste Näherung.
+ */
+$tagImMonat     = min((int) date('j'), (int) date('t', strtotime('-1 month')));
+$umsatzVormonat = Commerce::umsatz(
+    date('Y-m-01', strtotime('-1 month')),
+    date('Y-m-', strtotime('-1 month')) . str_pad((string) $tagImMonat, 2, '0', STR_PAD_LEFT)
+);
 $umsatzVorjahr  = Commerce::umsatz(date('Y-01-01', strtotime('-1 year')), date('Y-m-d', strtotime('-1 year')));
 
 $termineHeute = Bookings::heute($nurMeine);
@@ -90,7 +104,7 @@ require __DIR__ . '/partials/kopf.php';
   <?= kennzahl('Umsatz diesen Monat', Util::geld($umsatzMonat), [
         'icon' => 'trend-up',
         'delta' => Util::wachstum((float) $umsatzMonat, (float) $umsatzVormonat),
-        'fuss' => 'vs. Vormonat',
+        'fuss' => 'vs. Vormonat bis ' . $tagImMonat . '.',
         'kurve' => $verlauf['werte'],
         'url' => Auth::darf('analytics.view') ? '/app/auswertung.php?zeit=monat' : '',
       ]) ?>

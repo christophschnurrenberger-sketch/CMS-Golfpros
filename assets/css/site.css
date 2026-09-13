@@ -130,7 +130,14 @@
   .kopf__navi.ist-offen { display: flex; }
   .kopf__link { padding: 11px 0; border-bottom: 1px solid var(--rand); }
   .kopf__menue { display: block; margin-left: auto; }
-  .kopf__aktion { display: none; }
+  /*
+   * Zwei Klassen statt einer: `.knopf { display: inline-flex }` steht
+   * weiter unten in dieser Datei und hat dieselbe Gewichtung - bei
+   * Gleichstand gewinnt die spaetere Regel. Ohne den zusaetzlichen
+   * Vorfahren bliebe der Knopf auf dem Telefon stehen und draengte die
+   * Marke in zwei Zeilen.
+   */
+  .kopf-band .kopf__aktion { display: none; }
 }
 
 /* ------------------------------------------------------------- Knöpfe - */
@@ -595,7 +602,15 @@ a.inhaltskarte:hover {
 @media (max-width: 640px) {
   .seite .vorgang__paar { grid-template-columns: 1fr; }
   .seite .ablauf__name { display: none; }
+  /*
+   * Der aktive Schritt behaelt seinen Namen - aber nur, wenn er dafuer
+   * auch Platz bekommt: Mit flex:1 auf allen Teilen wird er auf ein
+   * Drittel gequetscht und endet als „Zeit wae…".
+   */
+  .seite .ablauf__teil { flex: 0 0 auto; }
+  .seite .ablauf__teil.ist-aktiv { flex: 1 1 auto; }
   .seite .ablauf__teil.ist-aktiv .ablauf__name { display: block; }
+  .seite .ablauf__teil + .ablauf__teil::before { margin: 0 8px; }
 }
 
 /* Hinweisband unten – nur sichtbar, wenn es gebraucht wird. */

@@ -186,8 +186,8 @@ $inhalt .= '<form method="post" class="vorgang__form">'
          . '<select id="leistung" name="service_id" onchange="this.form.submit()">';
 foreach ($leistungen as $l) {
     $inhalt .= '<option value="' . (int) $l['id'] . '"' . ((int) $l['id'] === $serviceId ? ' selected' : '') . '>'
-             . Util::h((string) $l['name']) . ' · ' . (int) $l['dauer_min'] . ' Min · '
-             . Util::h(Util::geldKurz((int) $l['preis_cent'])) . '</option>';
+             . Util::h((string) $l['name']) . ' · ' . Util::h(Util::geldKurz((int) $l['preis_cent']))
+             . '</option>';
 }
 $inhalt .= '</select></div>'
          . '<div class="vorgang__feld"><label for="datum">Ab wann</label>'
