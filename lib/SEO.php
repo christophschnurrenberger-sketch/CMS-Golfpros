@@ -104,7 +104,7 @@ final class SEO
             'seite' => 'Gesamt', 'link' => '/app/standorte.php',
         ];
 
-        $impressum = Tenant::count('pages', 'slug IN ("impressum","datenschutz")');
+        $impressum = Tenant::count('pages', "slug IN ('impressum','datenschutz')");
         $pruefungen[] = [
             'titel' => 'Pflichtseiten',
             'status' => $impressum >= 2 ? 'gut' : 'schlecht',
@@ -114,7 +114,7 @@ final class SEO
             'seite' => 'Gesamt', 'link' => '/app/website.php',
         ];
 
-        $beitraege = Tenant::count('posts', 'status = "veroeffentlicht"');
+        $beitraege = Tenant::count('posts', "status = 'veroeffentlicht'");
         $pruefungen[] = [
             'titel' => 'Regelmäßige Inhalte',
             'status' => $beitraege >= 5 ? 'gut' : ($beitraege >= 1 ? 'mittel' : 'schlecht'),
@@ -155,7 +155,7 @@ final class SEO
                   . '</loc><lastmod>' . date('Y-m-d', strtotime((string) ($seite['geaendert'] ?: 'now'))) . '</lastmod>'
                   . '<priority>' . ((int) $seite['startseite'] === 1 ? '1.0' : '0.8') . '</priority></url>' . "\n";
         }
-        foreach (Tenant::all('posts', 'status = "veroeffentlicht"', [], 'veroeffentlicht DESC') as $b) {
+        foreach (Tenant::all('posts', "status = 'veroeffentlicht'", [], 'veroeffentlicht DESC') as $b) {
             $xml .= '  <url><loc>' . Util::h($basis . '/blog/' . $b['slug']) . '</loc><lastmod>'
                   . date('Y-m-d', strtotime((string) ($b['veroeffentlicht'] ?: 'now'))) . '</lastmod>'
                   . '<priority>0.6</priority></url>' . "\n";

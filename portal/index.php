@@ -52,7 +52,7 @@ $kunde = null;
 /* 1. Schlüssel aus dem Link */
 $token = App::get('t');
 if ($token !== '') {
-    $treffer = DB::one('SELECT * FROM customers WHERE portal_token = :t AND portal_token != ""',
+    $treffer = DB::one("SELECT * FROM customers WHERE portal_token = :t AND portal_token != ''",
         ['t' => $token]);
     if ($treffer !== null) {
         Tenant::setzen((int) $treffer['workspace_id']);
@@ -74,7 +74,7 @@ if (isset($_SESSION['portal_kunde'], $_SESSION['portal_workspace'])) {
 /* 3. Anmeldung mit E-Mail und Passwort */
 if ($kunde === null && App::istPost() && App::aktion() === 'anmelden') {
     $email = strtolower(trim(App::post('email')));
-    $treffer = DB::one('SELECT * FROM customers WHERE email = :e AND portal_passwort != ""', ['e' => $email]);
+    $treffer = DB::one("SELECT * FROM customers WHERE email = :e AND portal_passwort != ''", ['e' => $email]);
     if ($treffer !== null && password_verify(App::postRoh('passwort'), (string) $treffer['portal_passwort'])) {
         Tenant::setzen((int) $treffer['workspace_id']);
         $_SESSION['portal_kunde'] = (int) $treffer['id'];
@@ -226,7 +226,7 @@ if (App::istPost()) {
     if ($aktion === 'datenanfrage') {
         $typ = App::post('typ') === 'loeschung' ? 'loeschung' : 'export';
         $offen = Tenant::count('data_requests',
-            'customer_id = :k AND typ = :t AND status != "erledigt"',
+            "customer_id = :k AND typ = :t AND status != 'erledigt'",
             ['k' => (int) $kunde['id'], 't' => $typ]);
         if ($offen > 0) {
             App::melden('Die Anfrage liegt bereits vor und wird bearbeitet.', 'info');
@@ -542,7 +542,7 @@ elseif ($ansicht === 'fortschritt'):
     <div class="karte mb-5">
       <div class="karte__kopf"><h2>Handicap-Entwicklung</h2></div>
       <div class="karte__koerper">
-        <?= Diagramm::kurve($hcpWerte, 640, 130) ?>
+        <?= Diagramm::kurve($hcpWerte, 640, 130, ['kleinerIstBesser' => true]) ?>
         <p class="winzig gedimmt mt-3">Je niedriger, desto besser – die Linie soll nach unten zeigen.</p>
       </div>
     </div>

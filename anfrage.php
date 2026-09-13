@@ -70,7 +70,7 @@ if ($fehler !== '') {
 $volltext = $text . ($weitere !== [] ? "\n\n" . implode("\n", $weitere) : '');
 
 /* Meldet sich jemand zum zweiten Mal, wird der bestehende Lead ergänzt. */
-$vorhanden = Tenant::one('leads', 'email = :e AND stufe NOT IN ("kunde","verloren")', ['e' => $email], 'id DESC');
+$vorhanden = Tenant::one('leads', "email = :e AND stufe NOT IN ('kunde','verloren')", ['e' => $email], 'id DESC');
 
 if ($vorhanden !== null) {
     $leadId = (int) $vorhanden['id'];

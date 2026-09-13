@@ -165,7 +165,7 @@ if ($istNeu) {
             <label class="feld__label" for="customer_id">Kunde</label>
             <select id="customer_id" name="customer_id">
               <option value="0">Ohne Kunde (Blocker, interner Termin)</option>
-              <?php foreach (Tenant::all('customers', 'status = "aktiv"', [], 'nachname, vorname') as $k): ?>
+              <?php foreach (Tenant::all('customers', "status = 'aktiv'", [], 'nachname, vorname') as $k): ?>
                 <option value="<?= (int) $k['id'] ?>"<?= $kundeId === (int) $k['id'] ? ' selected' : '' ?>>
                   <?= Util::h(Customers::name($k)) ?><?= (string) $k['hcp'] !== '' ? ' · HCP ' . Util::h(Util::hcp((string) $k['hcp'])) : '' ?>
                 </option>

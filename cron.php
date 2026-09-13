@@ -54,7 +54,7 @@ foreach (DB::all('SELECT id, name FROM workspaces WHERE aktiv = 1 ORDER BY id') 
 
     /* Fällige Kampagnen in kleinen Schüben – Massenversand mag kein Hoster. */
     try {
-        foreach (Tenant::all('campaigns', 'status = "geplant" AND geplant <= :jetzt',
+        foreach (Tenant::all('campaigns', "status = 'geplant' AND geplant <= :jetzt",
                              ['jetzt' => Util::jetzt()], 'geplant', 3) as $k) {
             $r = Campaigns::versenden((int) $k['id'], 25);
             $zeilen[] = '  Newsletter „' . $k['name'] . '": ' . (int) ($r['gesendet'] ?? 0) . ' verschickt';

@@ -41,9 +41,9 @@ $kommende     = Bookings::kommende(6, $nurMeine);
 $auslastung   = Bookings::auslastung(date('Y-m-d', strtotime('monday this week')),
                                      date('Y-m-d', strtotime('sunday this week')), $nurMeine);
 
-$neueLeads   = Tenant::all('leads', 'stufe = "neu"', [], 'erstellt DESC', 5);
+$neueLeads   = Tenant::all('leads', "stufe = 'neu'", [], 'erstellt DESC', 5);
 $neueKunden  = Tenant::all('customers', 'erstellt >= :seit', ['seit' => date('Y-m-d', strtotime('-30 days'))], 'id DESC', 5);
-$offeneRechnungen = Tenant::all('invoices', 'status IN ("offen","ueberfaellig")', [], 'faellig', 5);
+$offeneRechnungen = Tenant::all('invoices', "status IN ('offen','ueberfaellig')", [], 'faellig', 5);
 $aufgaben    = Tenant::all('tasks', 'erledigt IS NULL AND (user_id = 0 OR user_id = :u)',
                            ['u' => Auth::id()], 'faellig', 6);
 
@@ -54,7 +54,7 @@ $besucher30 = Analytics::besucher(date('Y-m-d', strtotime('-29 days')), $heute);
 $leads30    = Tenant::count('leads', 'erstellt >= :seit', ['seit' => date('Y-m-d', strtotime('-29 days'))]);
 $conversion = $besucher30 > 0 ? $leads30 / $besucher30 * 100 : 0.0;
 
-$aktivePakete = Tenant::count('customer_packages', 'status = "aktiv" AND einheiten_genutzt < einheiten_gesamt');
+$aktivePakete = Tenant::count('customer_packages', "status = 'aktiv' AND einheiten_genutzt < einheiten_gesamt");
 $offeneEinheiten = Tenant::sum('customer_packages', 'einheiten_gesamt - einheiten_genutzt',
     'status = "aktiv" AND einheiten_genutzt < einheiten_gesamt');
 

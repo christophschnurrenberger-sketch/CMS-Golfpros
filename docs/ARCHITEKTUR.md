@@ -1,0 +1,273 @@
+# Architektur
+
+Dieses Dokument erklärt, wie GolfPro CMS aufgebaut ist – und vor allem,
+warum. Wer nur installieren will, ist mit der README schneller fertig.
+
+## Die Randbedingung, aus der alles folgt
+
+Die Zielgruppe sind selbstständige Golf Professionals. Sie haben ein
+Webhosting-Paket für ein paar Euro im Monat, FTP-Zugang und eine
+Verwaltungsoberfläche im Browser. Sie haben keine Kommandozeile, keinen
+Docker-Host und niemanden, der `npm run build` ausführt.
+
+Das ist keine Einschränkung, die man wegdiskutiert, sondern die Grundlage
+des Entwurfs:
+
+* **Kein Composer.** Ein Autoloader über `lib/` reicht bei einer Klasse je
+  Datei völlig und erspart eine Abhängigkeit, die auf günstigem Hosting
+  gern Ärger macht.
+* **Kein Node, kein Bundler.** Das CSS ist handgeschrieben und nutzt
+  Custom Properties statt eines Präprozessors. Das JavaScript ist eine
+  Datei ohne Framework.
+* **Keine externen Dienste als Pflicht.** Stripe, KI und SMTP sind
+  Verbesserungen, keine Voraussetzungen. Ohne sie fehlt eine Funktion,
+  nichts bricht ab.
+* **Kein Cronjob als Pflicht.** Wer einen hat, ruft `cron.php` auf. Wer
+  keinen hat, dem läuft die Wartung beim Öffnen des Dashboards mit –
+  gedrosselt auf einmal je Viertelstunde und mit begrenzter Stückzahl,
+  damit keine Seite darauf wartet.
+
+## Schichten
+
+```
+  Browser
+     │
+     ├── site.php, buchen.php, kaufen.php, anfrage.php   öffentlich
+     ├── portal/                                          Kunde
+     └── app/                                             Anwendung
+              │
+        lib/vorlage.php      Ausgabebausteine (kennzahl, pille, person …)
+              │
+        lib/*.php            Fachlogik: Customers, Bookings, Commerce,
+              │              Invoices, Training, Campaigns, KI …
+              │
+        lib/Tenant.php       Mandantengrenze – hier und nur hier
+              │
+        lib/DB.php           PDO, typisiert gebunden
+              │
+        SQLite oder MySQL
+```
+
+Seiten enthalten Darstellung und den Ablauf eines Formulars. Alles, was
+mehr als eine Seite betrifft, steht in `lib/`. Die Regel ist grob, aber
+sie hält: Wenn zwei Seiten dieselben zwanzig Zeilen brauchen, gehören sie
+in eine Klasse.
+
+## Die Mandantengrenze
+
+Der wichtigste Teil des Systems ist auch der kleinste:
+
+```php
+private static function wo(string $bedingung = ''): string
+{
+    $wo = 'workspace_id = ' . (int) self::$id;
+    return $bedingung !== '' ? $wo . ' AND (' . $bedingung . ')' : $wo;
+}
+```
+
+Jede Abfrage der Anwendung geht durch `Tenant::all()`, `one()`, `find()`,
+`count()`, `sum()`, `insert()`, `update()`, `delete()`. Keine dieser
+Methoden lässt sich ohne den Filter aufrufen, weil der Aufrufer ihn gar
+nicht formuliert. Ein vergessenes `WHERE workspace_id = …` – der klassische
+Fehler in Mandantensystemen – ist so nicht möglich.
+
+`Tenant::find()` liefert für einen fremden Datensatz `null`. Wer eine
+fremde Kennung in die Adresszeile schreibt, bekommt „nicht gefunden" und
+erfährt nicht einmal, dass es den Datensatz gibt.
+
+Die wenigen Stellen mit direktem `DB::`-Zugriff sind Verbünde über mehrere
+Tabellen; sie tragen `workspace_id` ausdrücklich in der Bedingung und sind
+im Code als Ausnahme kenntlich.
+
+## Geld, Zeit, Zahlen
+
+**Geld** ist immer `int` in Cent. Fließkomma auf Preisen erzeugt genau die
+Rundungsfehler, die der Kunde auf der Rechnung sieht und die Buchhaltung
+nicht ausgleichen kann. Rabatte werden mit `Util::verteilen()` auf die
+Positionen aufgeteilt: Die Funktion verteilt den Rest nach dem größten
+Bruchteil, damit die Summe der Teile exakt dem Ganzen entspricht.
+
+**Zeitstempel** sind Text im Format `Y-m-d H:i:s`. Damit sortieren und
+vergleichen SQLite und MySQL gleich, ohne Sonderbehandlung.
+
+**Dezimalzahlen aus Formularen** gehen durch `Util::zahlAus()`. PHPs
+eigener Cast hört beim Komma auf: `(float) "13,6"` ergibt `13` – still und
+ohne Fehlermeldung. Handicaps stehen deshalb mit Punkt in der Datenbank
+(`Util::hcpNormal`) und werden erst bei der Ausgabe deutsch formatiert
+(`Util::hcp`).
+
+**Gebundene Parameter** bekommen ihren Typ mit. `DB::query()` bindet
+Ganzzahlen als `PDO::PARAM_INT`, nicht als Text. Das ist kein
+Schönheitsfehler: SQLite ordnet TEXT über INTEGER, und ein als Text
+gebundenes `60` ließ einen Vergleich `… >= '60'` lautlos ins Leere laufen.
+
+## Das Schema
+
+67 Tabellen, in einer Datei (`lib/Schema.php`) mit Platzhaltern, die je
+Treiber übersetzt werden:
+
+| Platzhalter | SQLite | MySQL |
+|---|---|---|
+| `%PK%` | `INTEGER PRIMARY KEY AUTOINCREMENT` | `INT UNSIGNED … AUTO_INCREMENT` |
+| `%STR(n)%` | `TEXT` | `VARCHAR(n)` |
+| `%TEXT%` | `TEXT` | `MEDIUMTEXT` |
+| `%DT%` | `TEXT` | `DATETIME` |
+
+Die Migration läuft selbsttätig: `lib/bootstrap.php` vergleicht
+`Schema::VERSION` mit dem Wert in `settings` (Zeile mit `workspace_id = 0`)
+und ruft bei Unterschied `Schema::migrate()`. Neue Spalten kommen über
+`Schema::spalteSicherstellen()` dazu – idempotent, in beiden Treibern.
+
+Fremdschlüssel gibt es bewusst nicht als Datenbankbedingung. Auf
+Shared Hosting sind sie je nach Engine unterschiedlich streng, und die
+Anwendung achtet ohnehin selbst auf die Beziehungen – meist mit mehr
+Rücksicht, als ein `ON DELETE CASCADE` nehmen würde (siehe unten).
+
+## Belege sind Dokumente
+
+Eine Rechnungsposition speichert Titel, Einzelpreis und Steuersatz als
+eigene Werte, nicht als Verweis auf das Produkt. Dasselbe gilt für
+Bestellpositionen und für Termine, die Titel und Preis der Leistung beim
+Anlegen kopieren.
+
+Das ist bewusst redundant. Wer im Frühjahr den Preis erhöht, darf die
+Rechnungen des Vorjahres nicht verändern – weder in der Anzeige noch in
+der Summe. Ein Beleg ist eine Momentaufnahme, keine Ansicht auf aktuelle
+Stammdaten.
+
+Daraus folgt der Umgang mit dem Löschen: Rechnungsnummern haben keine
+Lücken, eine ausgestellte Rechnung wird nie gelöscht, sondern mit einer
+Gutschrift korrigiert. Auch die DSGVO-Löschung eines Kunden
+(`Customers::loeschen()`) lässt bezahlte Rechnungen stehen – dort gilt die
+handelsrechtliche Aufbewahrungspflicht – kappt aber den Bezug zur Akte und
+friert den Namen im Beleg ein.
+
+## Rechte
+
+Sieben Rollen, definiert in `lib/Auth.php` als Listen von Mustern:
+
+```php
+'trainer' => [
+    'modul.dashboard', 'modul.customers', 'modul.calendar', …
+    'customers.view', 'customers.write', 'training.*', 'video.*', …
+],
+```
+
+`Auth::darf('training.plan.zuweisen')` prüft auf genaue Übereinstimmung
+oder auf ein Präfix mit `*`. `Auth::fordern()` beendet die Seite mit einer
+erklärenden Meldung statt mit einem nackten 403.
+
+Bereiche, die eine Rolle nicht sehen darf, erscheinen gar nicht erst im
+Menü (`Module::menue()`). Niemand klickt gern auf eine Sperre.
+
+## Module und Tarif
+
+`Module::LISTE` beschreibt 21 Bereiche mit Gruppe, Symbol und Mindesttarif.
+Zwei Ebenen entscheiden, was sichtbar ist:
+
+1. **Der Tarif** legt fest, was verfügbar *wäre* (`Module::imPlan()`).
+2. **Die Schalter** unter *Einstellungen → Tarif* legen fest, was
+   tatsächlich erscheint (`Tenant::modul()`).
+
+Sechs Bereiche sind Kern und lassen sich nicht abschalten: Dashboard,
+Website, Kunden, Kalender, Buchungen, Einstellungen. Alles andere ist
+Angebot. `Module::standardFuerPlan()` schaltet für Einsteiger absichtlich
+wenig ein – wer mit 22 Menüpunkten anfängt, benutzt am Ende drei.
+
+## Der Website-Baukasten
+
+Seiten bestehen aus Blöcken; ein Block ist JSON mit `typ`, `id` und
+`daten`. `lib/Bloecke.php` beschreibt 25 Typen mit ihren Feldern,
+`lib/Renderer.php` macht HTML daraus.
+
+Entscheidend: Der Baukasten in der Anwendung und die öffentliche Website
+benutzen **denselben** Renderer. Die Vorschau kann deshalb nicht von der
+Wirklichkeit abweichen – sie ist die Wirklichkeit, nur in einem anderen
+Rahmen. Ein zweiter Renderer für die Vorschau wäre eine Fehlerquelle, die
+sich nie ganz schließen lässt.
+
+Gerendert wird auf dem Server. Das hält die Website schnell, macht sie für
+Suchmaschinen lesbar und funktioniert ohne JavaScript.
+
+## Verfügbarkeit ist Rechnen, nicht Speichern
+
+`Bookings::freieZeiten()` speichert keine Zeitfenster. Es nimmt die
+Wochenarbeitszeiten (`availability`), zieht Abwesenheiten (`time_off`) und
+bestehende Termine ab, berücksichtigt Dauer, Puffer und Vorlauf der
+Leistung und gibt zurück, was übrig bleibt.
+
+Gespeicherte Fenster müssten bei jeder Änderung nachgeführt werden und
+wären nach dem ersten Sonderfall falsch. Gerechnet ist immer richtig.
+
+Die Online-Buchung prüft die gewählte Zeit vor dem Schreiben noch einmal
+gegen `freieZeiten()` – der Browser des Besuchers könnte seit zwanzig
+Minuten offen liegen.
+
+## Segmente speichern Regeln
+
+Ein Segment ist keine Liste von Kunden, sondern eine Bedingung:
+„Handicap über 36 und seit 60 Tagen kein Termin". `Segments::bedingung()`
+übersetzt die Regel in SQL, `Segments::kunden()` fragt beim Ansehen ab.
+
+Eine gespeicherte Mitgliederliste wäre am nächsten Tag falsch, und
+niemand würde sie pflegen.
+
+## KI
+
+Zwei getrennte Wege in `lib/KI.php`:
+
+**Fragen zu eigenen Zahlen** („Wie viel Umsatz im Mai?") beantwortet
+`datenAntwort()` mit SQL. Kein Modell, keine Übertragung nach außen, keine
+erfundenen Zahlen.
+
+**Textentwürfe** gehen an die Anthropic-API, wenn ein Schlüssel hinterlegt
+ist. Ist keiner da, erzeugt `entwurfAusRegeln()` aus einer kuratierten
+Textbasis einen brauchbaren Entwurf. Der Unterschied ist Qualität, nicht
+Verfügbarkeit.
+
+Vorschläge werden in `ai_suggestions` abgelegt und warten auf Annahme oder
+Ablehnung. Kritische Aktionen – Preise, Kundendaten, Rechnungen, Versand,
+Löschung – führt die KI grundsätzlich nicht selbst aus.
+
+In der Videoanalyse sind `ai_analyse` und `pro_analyse` getrennte Spalten
+und getrennte Blöcke in der Oberfläche. Die Trennung ist Absicht: Ein
+Modell kann auf ein Bewegungsmuster hinweisen, die fachliche Bewertung
+trifft der Trainer.
+
+## Wartung ohne Cronjob
+
+`Wartung::laufen()` erledigt, was regelmäßig anfällt: Rechnungen fällig
+stellen, abgelaufene Pakete aufräumen, Erinnerungen versenden,
+Automationen ausführen, vergangene Termine abschließen, Gesundheitswerte
+auffrischen, alte Daten nach Aufbewahrungsfrist löschen.
+
+Aufgerufen wird sie vom Dashboard – höchstens alle 15 Minuten, gesteuert
+über einen Zeitstempel in den Einstellungen. Wer `cron.php` einrichtet,
+bekommt dieselbe Routine pünktlicher. Beides zusammen schadet nicht: Die
+Zeitsperre verhindert doppelte Arbeit.
+
+Ein Fehler in der Wartung darf das Dashboard nie blockieren; deshalb liegt
+alles in einem `try`, und Fehler landen im Protokoll statt auf der Seite.
+
+## PDF ohne Bibliothek
+
+`lib/PDF.php` schreibt Rechnungen und Trainingspläne selbst: Helvetica aus
+den 14 Standardschriften, WinAnsi-Kodierung, korrekt berechnete
+xref-Verweise. Gut 230 Zeilen – deutlich weniger Aufwand, als eine
+Bibliothek ohne Composer aktuell zu halten, und ohne die Annahme, dass der
+Hoster irgendetwas installiert hat.
+
+## Wo die Grenzen liegen
+
+Ehrlichkeitshalber:
+
+* SQLite schreibt zu einem Zeitpunkt nur einmal. Für einen Betrieb mit
+  einigen tausend Kunden ist das reichlich; für eine Academy mit zwanzig
+  gleichzeitig buchenden Trainern ist MySQL die richtige Wahl.
+* Der Newsletterversand geht über `mail()` beziehungsweise SMTP in
+  Schüben. Für ein paar hundert Empfänger ist das in Ordnung; für
+  Zehntausende gehört ein Versanddienst davor.
+* Videos liegen im Dateisystem und werden unverändert ausgeliefert. Es
+  gibt keine Umkodierung – die würde `ffmpeg` voraussetzen.
+* Es gibt keine automatisierten Tests. Geprüft wurde mit `php -l` über
+  alle Dateien und mit Abrufen aller Routen; das ersetzt keine Testsuite.

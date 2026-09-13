@@ -62,13 +62,13 @@ final class Automations
     public static function ausloesen(string $ausloeser, array $kontext): int
     {
         $gestartet = 0;
-        foreach (Tenant::all('automations', 'ausloeser = :a AND status = "aktiv"', ['a' => $ausloeser]) as $auto) {
+        foreach (Tenant::all('automations', "ausloeser = :a AND status = 'aktiv'", ['a' => $ausloeser]) as $auto) {
             $kundeId = (int) ($kontext['customer_id'] ?? 0);
             $leadId  = (int) ($kontext['lead_id'] ?? 0);
 
             // Niemanden zweimal in denselben laufenden Ablauf stecken.
             if ($kundeId > 0 && Tenant::count('automation_runs',
-                'automation_id = :a AND customer_id = :k AND status = "laufend"',
+                "automation_id = :a AND customer_id = :k AND status = 'laufend'",
                 ['a' => (int) $auto['id'], 'k' => $kundeId]) > 0) {
                 continue;
             }
@@ -95,7 +95,7 @@ final class Automations
     {
         $erledigt = 0;
         $faellig = Tenant::all('automation_runs',
-            'status = "laufend" AND (naechster_lauf IS NULL OR naechster_lauf <= :jetzt)',
+            "status = 'laufend' AND (naechster_lauf IS NULL OR naechster_lauf <= :jetzt)",
             ['jetzt' => Util::jetzt()], 'naechster_lauf', $maximal);
 
         foreach ($faellig as $lauf) {
@@ -238,19 +238,19 @@ final class Automations
         $gestartet = 0;
 
         foreach (Tenant::all('customers',
-            'status = "aktiv" AND geburtstag != "" AND substr(geburtstag, 6, 5) = :heute',
+            "status = 'aktiv' AND geburtstag != '' AND substr(geburtstag, 6, 5) = :heute",
             ['heute' => date('m-d')]) as $k) {
             $gestartet += self::ausloesen('birthday', ['customer_id' => (int) $k['id']]);
         }
 
         foreach (Tenant::all('customer_packages',
-            'status = "aktiv" AND einheiten_gesamt - einheiten_genutzt <= 1 AND einheiten_genutzt > 0') as $p) {
+            "status = 'aktiv' AND einheiten_gesamt - einheiten_genutzt <= 1 AND einheiten_genutzt > 0") as $p) {
             $gestartet += self::ausloesen('package_low', ['customer_id' => (int) $p['customer_id']]);
         }
 
         $grenze = date('Y-m-d H:i:s', strtotime('+14 days'));
         foreach (Tenant::all('customer_packages',
-            'status = "aktiv" AND laeuft_ab <= :g AND laeuft_ab > :jetzt AND einheiten_genutzt < einheiten_gesamt',
+            "status = 'aktiv' AND laeuft_ab <= :g AND laeuft_ab > :jetzt AND einheiten_genutzt < einheiten_gesamt",
             ['g' => $grenze, 'jetzt' => Util::jetzt()]) as $p) {
             $gestartet += self::ausloesen('package_expiring', ['customer_id' => (int) $p['customer_id']]);
         }

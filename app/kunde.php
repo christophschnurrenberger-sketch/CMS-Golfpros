@@ -42,7 +42,7 @@ if (App::istPost()) {
             'newsletter' => App::postBool('newsletter') ? 1 : 0,
         ];
         $felder = [];
-        foreach (Tenant::all('custom_fields', 'objekt = "customer"', [], 'position') as $cf) {
+        foreach (Tenant::all('custom_fields', "objekt = 'customer'", [], 'position') as $cf) {
             $felder[(string) $cf['schluessel']] = App::post('feld_' . $cf['schluessel']);
         }
         $daten['felder'] = Util::json($felder);
@@ -191,7 +191,7 @@ $score     = $scoreDaten['score'];
 [$stufe, $stufeName, $stufeFarbe] = Customers::stufe($score);
 $tags      = Customers::tags($kunde);
 $felder    = Util::ausJson((string) $kunde['felder']);
-$eigenFelder = Tenant::all('custom_fields', 'objekt = "customer"', [], 'position');
+$eigenFelder = Tenant::all('custom_fields', "objekt = 'customer'", [], 'position');
 $spiel     = Gamification::stand($id);
 
 $titel = Customers::name($kunde);

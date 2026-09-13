@@ -75,7 +75,7 @@ final class KI
         if (preg_match('/umsatz|eingenommen|verdient|einnahmen/u', $f)) {
             [$von, $bis, $name] = self::zeitraumAusText($f);
             $umsatz = Commerce::umsatz($von, $bis);
-            $anzahl = Tenant::count('orders', 'status = "bezahlt" AND bezahlt_am >= :v AND bezahlt_am <= :b',
+            $anzahl = Tenant::count('orders', "status = 'bezahlt' AND bezahlt_am >= :v AND bezahlt_am <= :b",
                 ['v' => $von . ' 00:00:00', 'b' => $bis . ' 23:59:59']);
             $bestseller = Commerce::bestseller(3, max(1, (int) ceil((strtotime($bis) - strtotime($von)) / 86400)));
 
@@ -161,7 +161,7 @@ final class KI
 
         /* Offene Rechnungen */
         if (preg_match('/rechnung|offene posten|überfällig|ueberfaellig|schuldet|bezahlt nicht/u', $f)) {
-            $offen = Tenant::all('invoices', 'status IN ("offen","ueberfaellig")', [], 'faellig', 12);
+            $offen = Tenant::all('invoices', "status IN ('offen','ueberfaellig')", [], 'faellig', 12);
             $summe = Invoices::offenerBetrag();
             if ($offen === []) {
                 return ['text' => 'Es ist keine Rechnung offen. Alles bezahlt.',
@@ -726,11 +726,11 @@ final class KI
         [, $stufeName] = Customers::stufe($score['score']);
 
         $letzte = (string) DB::value(
-            'SELECT MAX(start) FROM bookings WHERE workspace_id = :w AND customer_id = :k
-             AND status IN ("bestaetigt","erschienen") AND start <= :jetzt',
+            "SELECT MAX(start) FROM bookings WHERE workspace_id = :w AND customer_id = :k
+             AND status IN ('bestaetigt','erschienen') AND start <= :jetzt",
             ['w' => Tenant::id(), 'k' => $kundeId, 'jetzt' => Util::jetzt()], ''
         );
-        $kommend = Tenant::count('bookings', 'customer_id = :k AND start >= :jetzt AND status != "abgesagt"',
+        $kommend = Tenant::count('bookings', "customer_id = :k AND start >= :jetzt AND status != 'abgesagt'",
             ['k' => $kundeId, 'jetzt' => Util::jetzt()]);
 
         $text = Customers::name($kunde) . ' ist seit ' . Util::datum((string) $kunde['erstellt'])
@@ -835,7 +835,7 @@ final class KI
         $z = Analytics::zeitraum('monat');
         return implode("\n", [
             'Name: ' . Tenant::name(),
-            'Aktive Kunden: ' . Tenant::count('customers', 'status = "aktiv"'),
+            'Aktive Kunden: ' . Tenant::count('customers', "status = 'aktiv'"),
             'Umsatz diesen Monat: ' . Util::geld(Commerce::umsatz($z['von'], $z['bis'])),
             'Termine diese Woche: ' . count(Bookings::zeitraum(
                 date('Y-m-d', strtotime('monday this week')) . ' 00:00:00',

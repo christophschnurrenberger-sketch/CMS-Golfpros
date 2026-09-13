@@ -87,7 +87,7 @@ require __DIR__ . '/partials/kopf.php';
   <div class="raster raster--auto-gross">
     <?php foreach ($leistungen as $s):
       $trainerIds = Util::ausJson((string) $s['trainer_ids'], []);
-      $buchungen = Tenant::count('bookings', 'service_id = :s AND status != "abgesagt"', ['s' => (int) $s['id']]); ?>
+      $buchungen = Tenant::count('bookings', "service_id = :s AND status != 'abgesagt'", ['s' => (int) $s['id']]); ?>
       <div class="karte" style="<?= (int) $s['aktiv'] === 0 ? 'opacity:.6' : '' ?>">
         <div class="karte__koerper">
           <div class="reihe reihe--eng mb-3">

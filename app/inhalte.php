@@ -32,7 +32,7 @@ $ideen = Tenant::einstellung('blogideen', []);
 
 $titel = 'Inhalte';
 $unter = count($beitraege) . ' Beiträge · '
-       . Tenant::count('posts', 'status = "veroeffentlicht"') . ' veröffentlicht';
+       . Tenant::count('posts', "status = 'veroeffentlicht'") . ' veröffentlicht';
 $aktionen = '<a class="btn" href="' . App::url('/app/medien.php') . '">' . Icon::svg('image', 15) . ' Mediathek</a>'
           . (Auth::darf('content.write')
              ? '<a class="btn btn--primaer" href="' . App::url('/app/beitrag.php?id=neu') . '">'
@@ -133,7 +133,7 @@ require __DIR__ . '/partials/kopf.php';
       <div class="karte__kopf"><h3>Meistgelesen</h3></div>
       <div class="karte__koerper karte__koerper--eng">
         <?php
-        $top = Tenant::all('posts', 'status = "veroeffentlicht"', [], 'aufrufe DESC', 5);
+        $top = Tenant::all('posts', "status = 'veroeffentlicht'", [], 'aufrufe DESC', 5);
         if ($top === []): ?>
           <p class="klein gedimmt mitte" style="padding:var(--r3) 0">Noch keine Daten.</p>
         <?php else:

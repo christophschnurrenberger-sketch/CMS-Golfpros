@@ -69,10 +69,10 @@ final class Analytics
         $k['umsatz'] = self::wert($umsatz, $vorher, 'geld');
 
         $bestellungen = Tenant::count('orders',
-            'status = "bezahlt" AND bezahlt_am >= :von AND bezahlt_am <= :bis',
+            "status = 'bezahlt' AND bezahlt_am >= :von AND bezahlt_am <= :bis",
             ['von' => $z['von'] . ' 00:00:00', 'bis' => $z['bis'] . ' 23:59:59']);
         $bestellungenVorher = Tenant::count('orders',
-            'status = "bezahlt" AND bezahlt_am >= :von AND bezahlt_am <= :bis',
+            "status = 'bezahlt' AND bezahlt_am >= :von AND bezahlt_am <= :bis",
             ['von' => $z['vergleich_von'] . ' 00:00:00', 'bis' => $z['vergleich_bis'] . ' 23:59:59']);
         $k['bestellungen'] = self::wert($bestellungen, $bestellungenVorher, 'zahl');
 
@@ -83,10 +83,10 @@ final class Analytics
         );
 
         $buchungen = Tenant::count('bookings',
-            'start >= :von AND start <= :bis AND status != "abgesagt"',
+            "start >= :von AND start <= :bis AND status != 'abgesagt'",
             ['von' => $z['von'] . ' 00:00:00', 'bis' => $z['bis'] . ' 23:59:59']);
         $buchungenVorher = Tenant::count('bookings',
-            'start >= :von AND start <= :bis AND status != "abgesagt"',
+            "start >= :von AND start <= :bis AND status != 'abgesagt'",
             ['von' => $z['vergleich_von'] . ' 00:00:00', 'bis' => $z['vergleich_bis'] . ' 23:59:59']);
         $k['buchungen'] = self::wert($buchungen, $buchungenVorher, 'zahl');
 
@@ -96,7 +96,7 @@ final class Analytics
             ['von' => $z['vergleich_von'] . ' 00:00:00', 'bis' => $z['vergleich_bis'] . ' 23:59:59']);
         $k['neukunden'] = self::wert($neukunden, $neukundenVorher, 'zahl');
 
-        $k['kunden'] = self::wert(Tenant::count('customers', 'status = "aktiv"'), 0, 'zahl');
+        $k['kunden'] = self::wert(Tenant::count('customers', "status = 'aktiv'"), 0, 'zahl');
 
         $leads = Tenant::count('leads', 'erstellt >= :von AND erstellt <= :bis',
             ['von' => $z['von'] . ' 00:00:00', 'bis' => $z['bis'] . ' 23:59:59']);
@@ -302,9 +302,9 @@ final class Analytics
             return ['quote' => null, 'alt' => 0, 'aktiv' => 0];
         }
         $nochAktiv = DB::int(
-            'SELECT COUNT(DISTINCT c.id) FROM customers c
-             JOIN bookings b ON b.customer_id = c.id AND b.start >= :halb AND b.status != "abgesagt"
-             WHERE c.workspace_id = :w AND c.erstellt < :v',
+            "SELECT COUNT(DISTINCT c.id) FROM customers c
+             JOIN bookings b ON b.customer_id = c.id AND b.start >= :halb AND b.status != 'abgesagt'
+             WHERE c.workspace_id = :w AND c.erstellt < :v",
             ['w' => Tenant::id(), 'v' => $vorJahr, 'halb' => date('Y-m-d', strtotime('-6 months'))]
         );
         return ['quote' => round($nochAktiv / $alt * 100, 1), 'alt' => $alt, 'aktiv' => $nochAktiv];
@@ -325,13 +325,13 @@ final class Analytics
     {
         $farben = ['#0d6b4f', '#1d5fa8', '#b08829', '#6b4ea8', '#b4242b', '#17794f', '#a6640d'];
         $zeilen = DB::all(
-            'SELECT p.art, SUM(i.summe_cent) AS summe
+            "SELECT p.art, SUM(i.summe_cent) AS summe
              FROM order_items i
              JOIN orders o ON o.id = i.order_id
              LEFT JOIN products p ON p.id = i.product_id
-             WHERE i.workspace_id = :w AND o.status = "bezahlt"
+             WHERE i.workspace_id = :w AND o.status = 'bezahlt'
                AND o.bezahlt_am >= :von AND o.bezahlt_am <= :bis
-             GROUP BY p.art ORDER BY summe DESC',
+             GROUP BY p.art ORDER BY summe DESC",
             ['w' => Tenant::id(), 'von' => $von . ' 00:00:00', 'bis' => $bis . ' 23:59:59']
         );
         $ergebnis = [];

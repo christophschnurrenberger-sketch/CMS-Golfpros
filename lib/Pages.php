@@ -27,7 +27,7 @@ final class Pages
 
     public static function menue(): array
     {
-        return Tenant::all('pages', 'status = "veroeffentlicht" AND im_menue = 1 AND startseite = 0',
+        return Tenant::all('pages', "status = 'veroeffentlicht' AND im_menue = 1 AND startseite = 0",
             [], 'position, titel');
     }
 

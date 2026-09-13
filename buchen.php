@@ -50,7 +50,8 @@ if (App::istPost() && App::aktion() === 'buchen') {
         $fehler = 'Ohne die Einwilligung zur Verarbeitung der Angaben geht es leider nicht.';
     } else {
         /* Gegen die echte Verfügbarkeit prüfen – der Browser könnte alt sein. */
-        $frei = Bookings::freieZeiten($serviceId, substr($start, 0, 10), $trainerId);
+        $frei = Bookings::freieZeiten($serviceId, substr($start, 0, 10), $trainerId,
+            (int) $service['dauer_min'] >= 60 ? 30 : 15);
         $passt = false;
         foreach ($frei as $z) {
             if ((string) $z['start'] === $start) {
@@ -147,14 +148,25 @@ if (strtotime($datum) === false || $datum < Util::heute()) {
 $gewaehlt = App::post('start');
 
 /*
- * Die nächsten Tage mit freien Zeiten – höchstens vierzehn, damit die Seite
+ * Das Raster der angebotenen Startzeiten.
+ *
+ * Im Backend sind 15 Minuten richtig: Wer von Hand einträgt, will einen
+ * Termin genau dort hinlegen, wo er hinpasst. Auf der Website wäre dieselbe
+ * Feinheit eine Zumutung – ein leerer Tag ergäbe vierzig Knöpfe, und
+ * niemand beginnt eine Stunde gern um 12:45. Halbe Stunden bei längeren
+ * Einheiten, Viertelstunden bei kurzen.
+ */
+$raster = (int) $service['dauer_min'] >= 60 ? 30 : 15;
+
+/*
+ * Die nächsten Tage mit freien Zeiten – höchstens fünf, damit die Seite
  * nicht endlos wird und die Abfrage nicht ausufert.
  */
 $tage = [];
 $gefunden = 0;
 for ($i = 0; $i < 21 && $gefunden < 5; $i++) {
     $tag  = date('Y-m-d', strtotime($datum . ' +' . $i . ' days'));
-    $frei = Bookings::freieZeiten($serviceId, $tag);
+    $frei = Bookings::freieZeiten($serviceId, $tag, 0, $raster);
     if ($frei !== []) {
         $tage[$tag] = $frei;
         $gefunden++;

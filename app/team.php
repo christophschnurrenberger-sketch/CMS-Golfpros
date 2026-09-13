@@ -59,7 +59,7 @@ if (App::istPost()) {
             $alt = Tenant::find('users', $id);
             // Der letzte aktive Inhaber darf sich nicht selbst aussperren.
             if ($alt !== null && (string) $alt['rolle'] === 'owner' && $rolle !== 'owner'
-                && Tenant::count('users', 'rolle = "owner" AND aktiv = 1') <= 1) {
+                && Tenant::count('users', "rolle = 'owner' AND aktiv = 1") <= 1) {
                 App::melden('Es muss mindestens einen Inhaber geben.', 'fehler');
             } else {
                 Tenant::update('users', $id, $daten);
@@ -93,7 +93,7 @@ if (App::istPost()) {
         if ($u !== null) {
             if ($id === Auth::id()) {
                 App::melden('Den eigenen Zugang kann man nicht deaktivieren.', 'fehler');
-            } elseif ((string) $u['rolle'] === 'owner' && Tenant::count('users', 'rolle = "owner" AND aktiv = 1') <= 1) {
+            } elseif ((string) $u['rolle'] === 'owner' && Tenant::count('users', "rolle = 'owner' AND aktiv = 1") <= 1) {
                 App::melden('Es muss mindestens einen aktiven Inhaber geben.', 'fehler');
             } else {
                 $neu = (int) $u['aktiv'] === 1 ? 0 : 1;

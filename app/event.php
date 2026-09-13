@@ -221,7 +221,7 @@ require __DIR__ . '/partials/kopf.php';
     <div class="modal__koerper">
       <div class="feld"><label class="feld__label" for="an-kunde">Kunde</label>
         <select id="an-kunde" name="customer_id" required>
-          <?php foreach (Tenant::all('customers', 'status = "aktiv"', [], 'nachname') as $k): ?>
+          <?php foreach (Tenant::all('customers', "status = 'aktiv'", [], 'nachname') as $k): ?>
             <option value="<?= (int) $k['id'] ?>"><?= Util::h(Customers::name($k)) ?></option>
           <?php endforeach; ?>
         </select></div>

@@ -1711,3 +1711,9 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
   body { background: #fff; }
   .inhalt { padding: 0; max-width: none; }
 }
+
+/* Tarifkarten: Der Knopf gehoert unten an die Karte, nicht direkt unter die
+   Aufzaehlung - sonst steht er bei jedem Tarif auf einer anderen Hoehe und
+   die Reihe wirkt wie versehentlich gesetzt. */
+.tarifkarte { display: flex; flex-direction: column; }
+.tarifkarte .karte__koerper { flex: 1; }

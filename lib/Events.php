@@ -48,7 +48,7 @@ final class Events
 
     public static function belegt(int $eventId): int
     {
-        return Tenant::count('event_registrations', 'event_id = :e AND status = "angemeldet"', ['e' => $eventId]);
+        return Tenant::count('event_registrations', "event_id = :e AND status = 'angemeldet'", ['e' => $eventId]);
     }
 
     public static function freiePlaetze(array $event): int
@@ -63,7 +63,7 @@ final class Events
         if (!$event) {
             return [false, 'Das Event wurde nicht gefunden.'];
         }
-        if (Tenant::count('event_registrations', 'event_id = :e AND customer_id = :k AND status != "abgesagt"',
+        if (Tenant::count('event_registrations', "event_id = :e AND customer_id = :k AND status != 'abgesagt'",
             ['e' => $eventId, 'k' => $kundeId]) > 0) {
             return [false, 'Diese Person ist bereits angemeldet.'];
         }
@@ -109,7 +109,7 @@ final class Events
 
         // Erster von der Warteliste rückt nach.
         $naechster = Tenant::one('event_registrations',
-            'event_id = :e AND status = "warteliste"', ['e' => (int) $a['event_id']], 'id');
+            "event_id = :e AND status = 'warteliste'", ['e' => (int) $a['event_id']], 'id');
         if ($naechster) {
             Tenant::update('event_registrations', (int) $naechster['id'], ['status' => 'angemeldet']);
             $kunde = Tenant::find('customers', (int) $naechster['customer_id']);
@@ -133,7 +133,7 @@ final class Events
 
     public static function kommende(int $limit = 10): array
     {
-        return Tenant::all('events', 'start >= :jetzt AND status != "abgesagt"',
+        return Tenant::all('events', "start >= :jetzt AND status != 'abgesagt'",
             ['jetzt' => Util::jetzt()], 'start', $limit);
     }
 
@@ -150,7 +150,7 @@ final class Events
     {
         $event = Tenant::find('events', $eventId);
         $bezahlt = Tenant::count('event_registrations',
-            'event_id = :e AND status = "angemeldet" AND bezahlt = 1', ['e' => $eventId]);
+            "event_id = :e AND status = 'angemeldet' AND bezahlt = 1", ['e' => $eventId]);
         return $bezahlt * (int) ($event['preis_cent'] ?? 0);
     }
 }

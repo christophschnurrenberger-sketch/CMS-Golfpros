@@ -20,7 +20,7 @@ if (!$workspace) {
 
 if ($workspace) {
     Tenant::setzen((int) $workspace['id']);
-    if (Tenant::count('pages', 'status = "veroeffentlicht"') > 0) {
+    if (Tenant::count('pages', "status = 'veroeffentlicht'") > 0) {
         $_GET['w'] = (string) $workspace['slug'];
         require __DIR__ . '/site.php';
         exit;

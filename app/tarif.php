@@ -77,7 +77,7 @@ require __DIR__ . '/partials/kopf.php';
   <?php foreach ($plaene as $key => $p):
     $istAktuell = $key === $plan;
     $istHoeher  = ($rang[$key] ?? 0) > ($rang[$plan] ?? 0); ?>
-    <div class="karte<?= $istAktuell ? ' karte--heraus' : '' ?>">
+    <div class="karte tarifkarte<?= $istAktuell ? ' karte--heraus' : '' ?>">
       <div class="karte__koerper">
         <div class="reihe reihe--zwischen mb-2">
           <h3><?= Util::h((string) $p['name']) ?></h3>

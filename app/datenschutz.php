@@ -68,13 +68,13 @@ if (App::get('export') === 'kunde') {
     exit;
 }
 
-$offene  = Tenant::all('data_requests', 'status != "erledigt"', [], 'erstellt');
-$erledigt = Tenant::all('data_requests', 'status = "erledigt"', [], 'erledigt DESC', 10);
+$offene  = Tenant::all('data_requests', "status != 'erledigt'", [], 'erstellt');
+$erledigt = Tenant::all('data_requests', "status = 'erledigt'", [], 'erledigt DESC', 10);
 $einwilligungen = Tenant::all('consents', '', [], 'id DESC', 25);
 $anzahlEinw = Tenant::count('consents');
 $newsletter = Tenant::count('customers', 'newsletter = 1');
 $kunden     = Tenant::count('customers');
-$rechtsseiten = Tenant::all('pages', 'slug IN ("impressum","datenschutz","agb")', [], 'slug');
+$rechtsseiten = Tenant::all('pages', "slug IN ('impressum','datenschutz','agb')", [], 'slug');
 $vorhanden  = array_column($rechtsseiten, 'slug');
 
 $titel = 'Datenschutz';

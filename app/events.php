@@ -32,7 +32,7 @@ $events = Tenant::all('events', $wo, ['jetzt' => Util::jetzt()],
 
 $titel = 'Events';
 $unter = Tenant::count('events', 'start >= :jetzt', ['jetzt' => Util::jetzt()]) . ' kommende Termine · '
-       . Tenant::count('event_registrations', 'status = "angemeldet"') . ' Anmeldungen';
+       . Tenant::count('event_registrations', "status = 'angemeldet'") . ' Anmeldungen';
 $aktionen = Auth::darf('events.write')
     ? '<button class="btn btn--primaer" data-modal-auf="modal-event">' . Icon::svg('plus', 15) . ' Event anlegen</button>' : '';
 require __DIR__ . '/partials/kopf.php';

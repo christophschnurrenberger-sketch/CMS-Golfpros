@@ -163,7 +163,7 @@ require __DIR__ . '/partials/kopf.php';
         <div class="feld"><label class="feld__label" for="v-kunde">Kunde</label>
           <select id="v-kunde" name="customer_id">
             <option value="0">Ohne Zuordnung</option>
-            <?php foreach (Tenant::all('customers', 'status = "aktiv"', [], 'nachname') as $k): ?>
+            <?php foreach (Tenant::all('customers', "status = 'aktiv'", [], 'nachname') as $k): ?>
               <option value="<?= (int) $k['id'] ?>"<?= $kundeFilter === (int) $k['id'] ? ' selected' : '' ?>>
                 <?= Util::h(Customers::name($k)) ?></option>
             <?php endforeach; ?>

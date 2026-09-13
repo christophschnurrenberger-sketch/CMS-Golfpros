@@ -47,7 +47,7 @@ require __DIR__ . '/partials/kopf.php';
         'url' => '/app/leads.php']) ?>
   <?= kennzahl('Neue Kunden', Util::zahl($kunden30), ['icon' => 'user-plus',
         'fuss' => $leads30 > 0 ? Util::prozent($kunden30 / max(1, $leads30) * 100, 0) . ' der Anfragen' : '']) ?>
-  <?= kennzahl('Newsletter-Empfänger', Util::zahl(Tenant::count('customers', 'newsletter = 1 AND status = "aktiv"')),
+  <?= kennzahl('Newsletter-Empfänger', Util::zahl(Tenant::count('customers', "newsletter = 1 AND status = 'aktiv'")),
         ['icon' => 'newsletter', 'fuss' => 'mit Einwilligung', 'url' => '/app/newsletter.php']) ?>
 </div>
 

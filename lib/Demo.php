@@ -73,6 +73,7 @@ final class Demo
             self::produkte();
             self::kundenAnlegen();
             self::segmenteUndTags();
+            self::einwilligungen();
             self::verkaeufe();
             self::buchungen();
             self::trainingsdaten();
@@ -417,6 +418,61 @@ final class Demo
         ]);
     }
 
+    /**
+     * Das Einwilligungsprotokoll.
+     *
+     * Ohne Einträge sähe der Datenschutzbereich leer aus, und genau dort
+     * soll man sehen, wie der Nachweis nach Artikel 7 Absatz 1 DSGVO
+     * aussieht: Wortlaut, Zeitpunkt und Quelle, für jede Zustimmung
+     * einzeln. Zwei Widerrufe sind auch dabei – ein Protokoll, in dem nur
+     * Zustimmungen stehen, ist keins.
+     */
+    private static function einwilligungen(): void
+    {
+        foreach (Tenant::all('customers', '', [], 'id') as $i => $k) {
+            $angelegt = (string) $k['erstellt'];
+
+            if ((int) $k['newsletter'] === 1) {
+                Tenant::insert('consents', [
+                    'customer_id' => (int) $k['id'], 'typ' => 'newsletter', 'erteilt' => 1,
+                    'text' => 'Ich möchte Tipps und Termine per E-Mail bekommen. '
+                            . 'Abbestellen geht jederzeit mit einem Klick.',
+                    'quelle' => $i % 3 === 0 ? 'Formular: Platzreife-Anfrage' : 'buchen.php',
+                    'ip' => '', 'erstellt' => $angelegt,
+                ]);
+            }
+
+            /* Die Einwilligung zur Buchung hat jeder gegeben – sonst gäbe es keinen Termin. */
+            Tenant::insert('consents', [
+                'customer_id' => (int) $k['id'], 'typ' => 'buchung', 'erteilt' => 1,
+                'text' => 'Einwilligung zur Verarbeitung der Angaben für die Terminbuchung.',
+                'quelle' => $i % 4 === 0 ? 'Backend' : 'buchen.php',
+                'ip' => '', 'erstellt' => $angelegt,
+            ]);
+
+            /* Zwei Widerrufe, damit auch dieser Fall im Protokoll steht. */
+            if ($i === 6 || $i === 19) {
+                Tenant::insert('consents', [
+                    'customer_id' => (int) $k['id'], 'typ' => 'newsletter', 'erteilt' => 0,
+                    'text' => 'Widerruf über den Abmeldelink im Newsletter.',
+                    'quelle' => 'abmelden-newsletter.php', 'ip' => '',
+                    'erstellt' => date('Y-m-d H:i:s', strtotime('-' . (17 + $i) . ' days')),
+                ]);
+                Tenant::update('customers', (int) $k['id'], ['newsletter' => 0]);
+            }
+        }
+
+        /* Eine offene Auskunftsanfrage – damit der Vorgang sichtbar ist. */
+        $wer = Tenant::one('customers', '', [], 'id DESC');
+        if ($wer !== null) {
+            Tenant::insert('data_requests', [
+                'customer_id' => (int) $wer['id'], 'typ' => 'export', 'status' => 'offen',
+                'notiz' => 'Über das Kundenportal gestellt.',
+                'erstellt' => date('Y-m-d H:i:s', strtotime('-3 days')),
+            ]);
+        }
+    }
+
     /* ------------------------------------------------------ Buchungen - */
 
     private static function buchungen(): void
@@ -505,7 +561,7 @@ final class Demo
                 $start = date('Y-m-d', $zeit) . sprintf(' %02d:00:00', $stunde);
 
                 $paket = Tenant::one('customer_packages',
-                    'customer_id = :k AND status = "aktiv" AND einheiten_genutzt < einheiten_gesamt',
+                    "customer_id = :k AND status = 'aktiv' AND einheiten_genutzt < einheiten_gesamt",
                     ['k' => $k['id']]);
 
                 $buchungId = Tenant::insert('bookings', [
@@ -544,7 +600,7 @@ final class Demo
 
     private static function verkaeufe(): void
     {
-        $produkte = Tenant::all('products', 'art = "paket"', [], 'position');
+        $produkte = Tenant::all('products', "art = 'paket'", [], 'position');
 
         foreach (self::$kunden as $i => $k) {
             if ($k['aktivitaet'] === 0 && $i % 3 !== 0) {
@@ -744,10 +800,17 @@ final class Demo
             if ($hcp >= 50) {
                 continue;
             }
-            $runden = mt_rand(5, 14);
+            /*
+             * Die Reihe endet auf dem Handicap, das in der Kundenakte steht.
+             * Sonst zeigt das Portal oben „Handicap 11,4" und darunter eine
+             * Tabelle, deren jüngste Runde 13,0 sagt - ein Widerspruch, den
+             * jeder Kunde sofort bemerkt.
+             */
+            $runden  = mt_rand(5, 14);
+            $spanne  = min(2.6, max(0.6, $hcp * 0.16));
+            $schritt = $spanne / max(1, $runden - 1);
             for ($n = $runden; $n > 0; $n--) {
-                $verbesserung = ($runden - $n) * 0.12;
-                $aktuellerHcp = max(2.0, $hcp + 2.2 - $verbesserung);
+                $aktuellerHcp = max(1.0, $hcp + ($n - 1) * $schritt);
                 Tenant::insert('performance_entries', [
                     'customer_id' => $k['id'],
                     'datum' => date('Y-m-d', strtotime('-' . ($n * mt_rand(12, 26)) . ' days')),
@@ -1190,6 +1253,7 @@ final class Demo
         foreach ([
             ['Impressum', 'impressum', self::rechtstext('impressum')],
             ['Datenschutz', 'datenschutz', self::rechtstext('datenschutz')],
+            ['AGB', 'agb', self::rechtstext('agb')],
         ] as $i => [$titel, $slug, $text]) {
             Tenant::insert('pages', [
                 'titel' => $titel, 'slug' => $slug,
@@ -1237,6 +1301,30 @@ final class Demo
                  . "schlichtungsstelle sind wir nicht verpflichtet und nicht bereit.\n\n"
                  . "— Dies ist ein Beispieltext der Demo. Vor der Veröffentlichung bitte durch die "
                  . "eigenen Angaben ersetzen und rechtlich prüfen lassen.";
+        }
+        if ($art === 'agb') {
+            return "Allgemeine Geschäftsbedingungen\n\n"
+                 . "**1. Geltung**\n"
+                 . "Diese Bedingungen gelten für alle Trainingsleistungen der Golf Academy Bergmann.\n\n"
+                 . "**2. Buchung und Zahlung**\n"
+                 . "Eine Buchung kommt mit unserer Bestätigung zustande. Der Betrag ist vor der Einheit "
+                 . "oder nach Rechnung innerhalb von 14 Tagen fällig.\n\n"
+                 . "**3. Absage und Verschiebung**\n"
+                 . "Termine können bis 24 Stunden vor Beginn kostenfrei abgesagt oder verschoben werden – "
+                 . "am einfachsten im Kundenbereich. Danach wird die Einheit berechnet. Bei Absagen "
+                 . "unsererseits wird der Termin nachgeholt oder der Betrag erstattet.\n\n"
+                 . "**4. Pakete und Gutscheine**\n"
+                 . "Trainingspakete sind zwölf Monate ab Kauf gültig. Gutscheine sind drei Jahre ab Ende "
+                 . "des Kaufjahres einlösbar und übertragbar, aber nicht in bar auszahlbar.\n\n"
+                 . "**5. Witterung**\n"
+                 . "Training findet auch bei leichtem Regen statt. Bei Gewitter, Sturm oder gesperrtem "
+                 . "Platz wird der Termin ohne Kosten nachgeholt.\n\n"
+                 . "**6. Haftung**\n"
+                 . "Die Teilnahme erfolgt auf eigene Gefahr. Für Schäden haften wir nur bei Vorsatz und "
+                 . "grober Fahrlässigkeit; unberührt bleibt die Haftung für Schäden aus der Verletzung "
+                 . "des Lebens, des Körpers oder der Gesundheit.\n\n"
+                 . "— Dies ist ein Beispieltext der Demo. Vor der Veröffentlichung bitte anpassen und "
+                 . "rechtlich prüfen lassen.";
         }
         return "Datenschutzerklärung\n\n"
              . "Der Schutz deiner Daten ist uns wichtig. Diese Erklärung beschreibt, welche Daten wir "

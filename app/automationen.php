@@ -38,7 +38,7 @@ if (App::istPost()) {
 }
 
 $automationen = Tenant::all('automations', '', [], 'status DESC, id DESC');
-$laufend = Tenant::count('automation_runs', 'status = "laufend"');
+$laufend = Tenant::count('automation_runs', "status = 'laufend'");
 
 $titel = 'Automationen';
 $unter = count(array_filter($automationen, static fn($a) => (string) $a['status'] === 'aktiv'))

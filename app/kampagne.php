@@ -252,7 +252,7 @@ require __DIR__ . '/partials/kopf.php';
           <label class="feld__label" for="segment_id">Segment</label>
           <select id="segment_id" name="segment_id">
             <option value="0">Alle mit Einwilligung (<?= Tenant::count('customers',
-              'newsletter = 1 AND status = "aktiv"') ?>)</option>
+              "newsletter = 1 AND status = 'aktiv'") ?>)</option>
             <?php foreach (Segments::alle() as $s): ?>
               <option value="<?= (int) $s['id'] ?>"<?= (int) $kampagne['segment_id'] === (int) $s['id'] ? ' selected' : '' ?>>
                 <?= Util::h((string) $s['name']) ?> (<?= Segments::anzahl($s) ?>)</option>

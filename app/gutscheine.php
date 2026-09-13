@@ -46,7 +46,7 @@ $hervorgehoben = App::getInt('id') > 0 ? Tenant::find('vouchers', App::getInt('i
 
 $titel = 'Gutscheine';
 $unter = Util::geld($offenerWert) . ' offenes Guthaben · '
-       . Tenant::count('vouchers', 'status = "aktiv"') . ' gültige Gutscheine';
+       . Tenant::count('vouchers', "status = 'aktiv'") . ' gültige Gutscheine';
 $brotkrumen = [['Produkte', '/app/produkte.php'], ['Gutscheine', null]];
 $aktionen = Auth::darf('products.write')
     ? '<button class="btn" data-modal-auf="modal-einloesen">' . Icon::svg('check', 15) . ' Einlösen</button>'
@@ -189,7 +189,7 @@ require __DIR__ . '/partials/kopf.php';
       <div class="feld"><label class="feld__label" for="e-kunde">Auf Kunde buchen</label>
         <select id="e-kunde" name="customer_id">
           <option value="0">Ohne Zuordnung</option>
-          <?php foreach (Tenant::all('customers', 'status = "aktiv"', [], 'nachname') as $k): ?>
+          <?php foreach (Tenant::all('customers', "status = 'aktiv'", [], 'nachname') as $k): ?>
             <option value="<?= (int) $k['id'] ?>"><?= Util::h(Customers::name($k)) ?></option>
           <?php endforeach; ?>
         </select></div>

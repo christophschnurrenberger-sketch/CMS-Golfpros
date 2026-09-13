@@ -53,9 +53,9 @@ if (App::istPost()) {
 
 $demoBenutzer = null;
 try {
-    $demoBenutzer = DB::one('SELECT u.id, u.name, u.email FROM users u
+    $demoBenutzer = DB::one("SELECT u.id, u.name, u.email FROM users u
                              JOIN workspaces w ON w.id = u.workspace_id
-                             WHERE w.demo = 1 AND u.rolle = "owner" LIMIT 1');
+                             WHERE w.demo = 1 AND u.rolle = 'owner' LIMIT 1");
 } catch (Throwable $e) {
     $demoBenutzer = null;
 }

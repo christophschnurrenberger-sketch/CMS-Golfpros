@@ -10,7 +10,7 @@ require __DIR__ . '/lib/bootstrap.php';
 
 $token = App::get('t');
 $kunde = $token !== ''
-    ? DB::one('SELECT * FROM customers WHERE portal_token = :t AND portal_token != ""', ['t' => $token])
+    ? DB::one("SELECT * FROM customers WHERE portal_token = :t AND portal_token != ''", ['t' => $token])
     : null;
 
 if ($kunde === null) {

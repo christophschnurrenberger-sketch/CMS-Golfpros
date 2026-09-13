@@ -69,7 +69,7 @@ final class Empfehlungen
     private static function auslaufendePakete(): array
     {
         $anzahl = Tenant::count('customer_packages',
-            'status = "aktiv" AND einheiten_genutzt < einheiten_gesamt AND laeuft_ab <= :g AND laeuft_ab > :jetzt',
+            "status = 'aktiv' AND einheiten_genutzt < einheiten_gesamt AND laeuft_ab <= :g AND laeuft_ab > :jetzt",
             ['g' => date('Y-m-d H:i:s', strtotime('+30 days')), 'jetzt' => Util::jetzt()]);
         if ($anzahl === 0) {
             return [];
@@ -104,7 +104,7 @@ final class Empfehlungen
 
     private static function offeneRechnungen(): array
     {
-        $ueberfaellig = Tenant::count('invoices', 'status = "ueberfaellig"');
+        $ueberfaellig = Tenant::count('invoices', "status = 'ueberfaellig'");
         if ($ueberfaellig === 0) {
             return [];
         }
@@ -182,7 +182,7 @@ final class Empfehlungen
             $p['g' . $i] = $tag;
         }
         $anzahl = Tenant::count('customers',
-            'status = "aktiv" AND geburtstag != "" AND substr(geburtstag, 6, 5) IN (' . implode(',', $platzhalter) . ')', $p);
+            "status = 'aktiv' AND geburtstag != '' AND substr(geburtstag, 6, 5) IN (" . implode(',', $platzhalter) . ')', $p);
         if ($anzahl === 0) {
             return [];
         }
@@ -197,7 +197,7 @@ final class Empfehlungen
 
     private static function wartelisten(): array
     {
-        $anzahl = Tenant::count('event_registrations', 'status = "warteliste"');
+        $anzahl = Tenant::count('event_registrations', "status = 'warteliste'");
         if ($anzahl === 0) {
             return [];
         }
@@ -230,11 +230,11 @@ final class Empfehlungen
     private static function paketeOhneTermin(): array
     {
         $zeilen = DB::all(
-            'SELECT COUNT(*) AS anzahl FROM customer_packages cp
-             WHERE cp.workspace_id = :w AND cp.status = "aktiv"
+            "SELECT COUNT(*) AS anzahl FROM customer_packages cp
+             WHERE cp.workspace_id = :w AND cp.status = 'aktiv'
                AND cp.einheiten_genutzt < cp.einheiten_gesamt
                AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.customer_id = cp.customer_id
-                               AND b.start >= :jetzt AND b.status != "abgesagt")',
+                               AND b.start >= :jetzt AND b.status != 'abgesagt')",
             ['w' => Tenant::id(), 'jetzt' => Util::jetzt()]
         );
         $anzahl = (int) ($zeilen[0]['anzahl'] ?? 0);
@@ -255,12 +255,12 @@ final class Empfehlungen
         if (!Tenant::modul('newsletter')) {
             return [];
         }
-        $empfaenger = Tenant::count('customers', 'newsletter = 1 AND status = "aktiv"');
+        $empfaenger = Tenant::count('customers', "newsletter = 1 AND status = 'aktiv'");
         if ($empfaenger < 15) {
             return [];
         }
         $letzter = (string) DB::value(
-            'SELECT MAX(versendet) FROM campaigns WHERE workspace_id = :w AND status = "versendet"',
+            "SELECT MAX(versendet) FROM campaigns WHERE workspace_id = :w AND status = 'versendet'",
             ['w' => Tenant::id()], ''
         );
         $tage = $letzter !== '' ? Util::tageSeit($letzter) : 999;
@@ -283,7 +283,7 @@ final class Empfehlungen
     {
         $liste = [];
 
-        if (Tenant::count('pages', 'status = "veroeffentlicht"') === 0) {
+        if (Tenant::count('pages', "status = 'veroeffentlicht'") === 0) {
             $liste[] = [
                 'titel' => 'Deine Website ist noch nicht veröffentlicht',
                 'grund' => 'Ohne veröffentlichte Seite kann dich niemand finden und niemand buchen.',
@@ -329,17 +329,17 @@ final class Empfehlungen
     {
         $vorschlaege = [];
 
-        foreach (Tenant::all('customers', 'status = "aktiv"', [], 'health_score', 60) as $k) {
+        foreach (Tenant::all('customers', "status = 'aktiv'", [], 'health_score', 60) as $k) {
             $kundeId = (int) $k['id'];
             $letzter = (string) DB::value(
-                'SELECT MAX(start) FROM bookings WHERE workspace_id = :w AND customer_id = :k
-                 AND status IN ("bestaetigt","erschienen") AND start <= :jetzt',
+                "SELECT MAX(start) FROM bookings WHERE workspace_id = :w AND customer_id = :k
+                 AND status IN ('bestaetigt','erschienen') AND start <= :jetzt",
                 ['w' => Tenant::id(), 'k' => $kundeId, 'jetzt' => Util::jetzt()], ''
             );
             $tage = $letzter !== '' ? Util::tageSeit($letzter) : 0;
 
             $kommend = Tenant::count('bookings',
-                'customer_id = :k AND start >= :jetzt AND status != "abgesagt"',
+                "customer_id = :k AND start >= :jetzt AND status != 'abgesagt'",
                 ['k' => $kundeId, 'jetzt' => Util::jetzt()]);
             if ($kommend > 0) {
                 continue;    // hat schon einen Termin – kein Anruf nötig

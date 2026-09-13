@@ -97,7 +97,7 @@ final class Website
         $ort = Tenant::one('locations', 'aktiv = 1');
 
         $rechtliches = '';
-        foreach (Tenant::all('pages', 'status = "veroeffentlicht" AND slug IN ("impressum","datenschutz","agb")',
+        foreach (Tenant::all('pages', "status = 'veroeffentlicht' AND slug IN ('impressum','datenschutz','agb')",
                  [], 'position') as $s) {
             $rechtliches .= '<a href="' . Util::attr(Pages::url($s)) . '">' . Util::h((string) $s['titel']) . '</a>';
         }
@@ -142,7 +142,7 @@ final class Website
         if (!Tenant::einstellung('cookie_banner', false)) {
             return '';
         }
-        $datenschutz = Tenant::one('pages', 'slug = "datenschutz" AND status = "veroeffentlicht"');
+        $datenschutz = Tenant::one('pages', "slug = 'datenschutz' AND status = 'veroeffentlicht'");
         $link = $datenschutz !== null
             ? '<a href="' . Util::attr(Pages::url($datenschutz)) . '">Mehr dazu</a>' : '';
 

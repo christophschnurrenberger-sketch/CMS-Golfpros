@@ -77,7 +77,7 @@ final class Gamification
     private static function abzeichenPruefen(int $kundeId): void
     {
         $stand = self::stand($kundeId);
-        $termine = Tenant::count('bookings', 'customer_id = :k AND status IN ("bestaetigt","erschienen")', ['k' => $kundeId]);
+        $termine = Tenant::count('bookings', "customer_id = :k AND status IN ('bestaetigt','erschienen')", ['k' => $kundeId]);
         $runden  = Tenant::count('performance_entries', 'customer_id = :k', ['k' => $kundeId]);
         $kurse   = Tenant::count('course_enrollments', 'customer_id = :k AND abgeschlossen IS NOT NULL', ['k' => $kundeId]);
 
@@ -110,10 +110,10 @@ final class Gamification
     public static function rangliste(int $limit = 10): array
     {
         return DB::all(
-            'SELECT g.*, c.vorname, c.nachname FROM customer_gamification g
+            "SELECT g.*, c.vorname, c.nachname FROM customer_gamification g
              JOIN customers c ON c.id = g.customer_id
-             WHERE g.workspace_id = :w AND c.status = "aktiv"
-             ORDER BY g.xp DESC LIMIT ' . (int) $limit,
+             WHERE g.workspace_id = :w AND c.status = 'aktiv'
+             ORDER BY g.xp DESC LIMIT " . (int) $limit,
             ['w' => Tenant::id()]
         );
     }

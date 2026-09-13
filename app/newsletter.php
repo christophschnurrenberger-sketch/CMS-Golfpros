@@ -6,8 +6,8 @@ require __DIR__ . '/partials/helfer.php';
 Auth::fordern('modul.newsletter');
 
 $kampagnen = Tenant::all('campaigns', '', [], 'id DESC');
-$empfaenger = Tenant::count('customers', 'newsletter = 1 AND status = "aktiv"');
-$ohneEinwilligung = Tenant::count('customers', 'newsletter = 0 AND status = "aktiv" AND email != ""');
+$empfaenger = Tenant::count('customers', "newsletter = 1 AND status = 'aktiv'");
+$ohneEinwilligung = Tenant::count('customers', "newsletter = 0 AND status = 'aktiv' AND email != ''");
 
 $versendet = array_values(array_filter($kampagnen, static fn($k) => (string) $k['status'] === 'versendet'));
 $oeffnungSchnitt = 0.0;

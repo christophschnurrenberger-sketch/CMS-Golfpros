@@ -156,10 +156,10 @@ final class Leads
     {
         $seit = date('Y-m-d', strtotime('-' . $tage . ' days'));
         $zeilen = DB::all(
-            'SELECT quelle, COUNT(*) AS anzahl,
-                    SUM(CASE WHEN stufe = "kunde" THEN 1 ELSE 0 END) AS kunden
+            "SELECT quelle, COUNT(*) AS anzahl,
+                    SUM(CASE WHEN stufe = 'kunde' THEN 1 ELSE 0 END) AS kunden
              FROM leads WHERE workspace_id = :w AND erstellt >= :seit
-             GROUP BY quelle ORDER BY anzahl DESC',
+             GROUP BY quelle ORDER BY anzahl DESC",
             ['w' => Tenant::id(), 'seit' => $seit]
         );
         return array_map(static fn($z) => [
@@ -173,7 +173,7 @@ final class Leads
     public static function unbeantwortet(int $stundenGrenze = 24): array
     {
         return Tenant::all('leads',
-            'stufe = "neu" AND letzter_kontakt IS NULL AND erstellt < :grenze',
+            "stufe = 'neu' AND letzter_kontakt IS NULL AND erstellt < :grenze",
             ['grenze' => date('Y-m-d H:i:s', time() - $stundenGrenze * 3600)], 'erstellt');
     }
 }

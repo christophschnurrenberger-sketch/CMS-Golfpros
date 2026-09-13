@@ -9,8 +9,14 @@
  */
 final class Diagramm
 {
-    /** Kleine Verlaufskurve ohne Achsen – für Kennzahl-Kacheln. */
-    public static function kurve(array $werte, int $breite = 200, int $hoehe = 40): string
+    /**
+     * Kleine Verlaufskurve ohne Achsen – für Kennzahl-Kacheln.
+     *
+     * $o['kleinerIstBesser'] dreht die Farbgebung um. Beim Handicap ist eine
+     * fallende Linie der Erfolg; sie rot einzufärben, weil sie nach unten
+     * zeigt, wäre genau die falsche Botschaft.
+     */
+    public static function kurve(array $werte, int $breite = 200, int $hoehe = 40, array $o = []): string
     {
         $werte = array_values(array_map('floatval', $werte));
         $n = count($werte);
@@ -35,7 +41,9 @@ final class Diagramm
         }
         $linie = self::glatt($punkte);
         $flaeche = $linie . ' L ' . $punkte[$n - 1][0] . ' ' . $hoehe . ' L ' . $punkte[0][0] . ' ' . $hoehe . ' Z';
-        $ab = $werte[$n - 1] < $werte[0] ? ' kurve--ab' : '';
+        $faellt = $werte[$n - 1] < $werte[0];
+        $schlecht = !empty($o['kleinerIstBesser']) ? !$faellt : $faellt;
+        $ab = $schlecht ? ' kurve--ab' : '';
 
         return '<svg class="kurve' . $ab . '" viewBox="0 0 ' . $breite . ' ' . $hoehe . '" '
              . 'preserveAspectRatio="none" width="100%" height="' . $hoehe . '" aria-hidden="true">'

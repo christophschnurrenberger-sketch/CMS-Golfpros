@@ -97,7 +97,7 @@ final class Invoices
         if (!$order) {
             return 0;
         }
-        if (Tenant::count('invoices', 'order_id = :o AND art = "rechnung"', ['o' => $orderId]) > 0) {
+        if (Tenant::count('invoices', "order_id = :o AND art = 'rechnung'", ['o' => $orderId]) > 0) {
             return 0;    // schon geschrieben
         }
         $positionen = [];
@@ -186,7 +186,7 @@ final class Invoices
     public static function faelligkeitPruefen(): int
     {
         return Tenant::updateWhere('invoices', ['status' => 'ueberfaellig'],
-            'status = "offen" AND faellig != "" AND faellig < :heute', ['heute' => Util::heute()]);
+            "status = 'offen' AND faellig != '' AND faellig < :heute", ['heute' => Util::heute()]);
     }
 
     /* ------------------------------------------------------------ Daten */
@@ -243,7 +243,7 @@ final class Invoices
     {
         $saetze = [];
         foreach (Tenant::all('invoices',
-            'status != "entwurf" AND datum >= :von AND datum <= :bis',
+            "status != 'entwurf' AND datum >= :von AND datum <= :bis",
             ['von' => $von, 'bis' => $bis], 'datum, nummer') as $r) {
             $empfaenger = Util::ausJson((string) $r['empfaenger']);
             foreach (self::positionen((int) $r['id']) as $z) {

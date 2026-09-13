@@ -29,7 +29,7 @@ Tenant::setzen((int) $workspace['id']);
 
 $beitragSlug = App::get('beitrag');
 if ($beitragSlug !== '') {
-    $beitrag = Tenant::one('posts', 'slug = :s AND status = "veroeffentlicht"', ['s' => $beitragSlug]);
+    $beitrag = Tenant::one('posts', "slug = :s AND status = 'veroeffentlicht'", ['s' => $beitragSlug]);
     if (!$beitrag) {
         http_response_code(404);
         $beitrag = null;
@@ -70,7 +70,7 @@ if ($beitragSlug !== '') {
 
 $seitenSlug = App::get('s');
 $seite = $seitenSlug !== ''
-    ? Tenant::one('pages', 'slug = :s AND status = "veroeffentlicht"', ['s' => $seitenSlug])
+    ? Tenant::one('pages', "slug = :s AND status = 'veroeffentlicht'", ['s' => $seitenSlug])
     : Pages::startseite();
 
 if (!$seite || (string) $seite['status'] !== 'veroeffentlicht') {

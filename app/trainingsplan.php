@@ -407,7 +407,7 @@ require __DIR__ . '/partials/kopf.php';
       <div class="feld">
         <label class="feld__label" for="z-kunde">Kunde</label>
         <select id="z-kunde" name="customer_id" required>
-          <?php foreach (Tenant::all('customers', 'status = "aktiv"', [], 'nachname, vorname') as $k): ?>
+          <?php foreach (Tenant::all('customers', "status = 'aktiv'", [], 'nachname, vorname') as $k): ?>
             <option value="<?= (int) $k['id'] ?>"><?= Util::h(Customers::name($k)) ?></option>
           <?php endforeach; ?>
         </select>

@@ -87,7 +87,7 @@ require __DIR__ . '/partials/kopf.php';
 <?php else: ?>
   <div class="raster raster--auto-gross">
     <?php foreach ($orte as $o):
-      $termine = Tenant::count('bookings', 'location_id = :l AND status != "abgesagt"', ['l' => (int) $o['id']]);
+      $termine = Tenant::count('bookings', "location_id = :l AND status != 'abgesagt'", ['l' => (int) $o['id']]);
       $anschrift = trim((string) $o['strasse'] . ', ' . (string) $o['plz'] . ' ' . (string) $o['ort'], ', '); ?>
       <div class="karte" style="<?= (int) $o['aktiv'] === 0 ? 'opacity:.6' : '' ?>">
         <div class="karte__koerper">

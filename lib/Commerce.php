@@ -217,7 +217,7 @@ final class Commerce
     public static function offenePakete(int $kundeId): array
     {
         return Tenant::all('customer_packages',
-            'customer_id = :k AND status = "aktiv" AND einheiten_genutzt < einheiten_gesamt',
+            "customer_id = :k AND status = 'aktiv' AND einheiten_genutzt < einheiten_gesamt",
             ['k' => $kundeId], 'laeuft_ab');
     }
 
@@ -225,7 +225,7 @@ final class Commerce
     public static function paketeAufraeumen(): int
     {
         return Tenant::updateWhere('customer_packages', ['status' => 'abgelaufen'],
-            'status = "aktiv" AND laeuft_ab IS NOT NULL AND laeuft_ab < :jetzt', ['jetzt' => Util::jetzt()]);
+            "status = 'aktiv' AND laeuft_ab IS NOT NULL AND laeuft_ab < :jetzt", ['jetzt' => Util::jetzt()]);
     }
 
     /* --------------------------------------------------------- Rabatte */
@@ -314,10 +314,10 @@ final class Commerce
     public static function bestseller(int $limit = 6, int $tage = 90): array
     {
         $zeilen = DB::all(
-            'SELECT i.titel, SUM(i.menge) AS anzahl, SUM(i.summe_cent) AS umsatz
+            "SELECT i.titel, SUM(i.menge) AS anzahl, SUM(i.summe_cent) AS umsatz
              FROM order_items i JOIN orders o ON o.id = i.order_id
-             WHERE i.workspace_id = :w AND o.status = "bezahlt" AND o.bezahlt_am >= :seit
-             GROUP BY i.titel ORDER BY umsatz DESC LIMIT ' . (int) $limit,
+             WHERE i.workspace_id = :w AND o.status = 'bezahlt' AND o.bezahlt_am >= :seit
+             GROUP BY i.titel ORDER BY umsatz DESC LIMIT " . (int) $limit,
             ['w' => Tenant::id(), 'seit' => date('Y-m-d', strtotime('-' . $tage . ' days'))]
         );
         $liste = [];
@@ -329,10 +329,10 @@ final class Commerce
         /* Direkt bezahlte Termine gehören in dieselbe Rangliste – für einen
            Pro ist die Einzelstunde das meistverkaufte Produkt. */
         foreach (DB::all(
-            'SELECT titel, COUNT(*) AS anzahl, SUM(preis_cent) AS umsatz FROM bookings
+            "SELECT titel, COUNT(*) AS anzahl, SUM(preis_cent) AS umsatz FROM bookings
              WHERE workspace_id = :w AND bezahlt = 1 AND order_id = 0 AND customer_package_id = 0
-               AND status IN ("bestaetigt","erschienen") AND start >= :seit
-             GROUP BY titel',
+               AND status IN ('bestaetigt','erschienen') AND start >= :seit
+             GROUP BY titel",
             ['w' => Tenant::id(), 'seit' => date('Y-m-d', strtotime('-' . $tage . ' days'))]
         ) as $z) {
             $titel = (string) $z['titel'];

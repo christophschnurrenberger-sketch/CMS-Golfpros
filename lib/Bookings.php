@@ -118,7 +118,7 @@ final class Bookings
     private static function belegteZeiten(int $trainerId, string $datum): array
     {
         $zeilen = Tenant::all('bookings',
-            'trainer_id = :u AND start >= :a AND start < :b AND status != "abgesagt"',
+            "trainer_id = :u AND start >= :a AND start < :b AND status != 'abgesagt'",
             ['u' => $trainerId, 'a' => $datum . ' 00:00:00', 'b' => $datum . ' 23:59:59'],
             'start');
         $belegt = [];
@@ -441,7 +441,7 @@ final class Bookings
         $morgen = date('Y-m-d H:i:s', time() + 86400);
 
         foreach (Tenant::all('bookings',
-            'status = "bestaetigt" AND erinnerung_24 IS NULL AND start > :jetzt AND start <= :morgen',
+            "status = 'bestaetigt' AND erinnerung_24 IS NULL AND start > :jetzt AND start <= :morgen",
             ['jetzt' => Util::jetzt(), 'morgen' => $morgen], 'start', 25) as $b) {
             if (self::erinnerung($b, '24')) {
                 $versendet++;
@@ -449,7 +449,7 @@ final class Bookings
         }
         $gleich = date('Y-m-d H:i:s', time() + 3600);
         foreach (Tenant::all('bookings',
-            'status = "bestaetigt" AND erinnerung_1 IS NULL AND start > :jetzt AND start <= :gleich',
+            "status = 'bestaetigt' AND erinnerung_1 IS NULL AND start > :jetzt AND start <= :gleich",
             ['jetzt' => Util::jetzt(), 'gleich' => $gleich], 'start', 25) as $b) {
             if (self::erinnerung($b, '1')) {
                 $versendet++;

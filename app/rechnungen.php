@@ -53,9 +53,9 @@ require __DIR__ . '/partials/kopf.php';
 
 <div class="raster raster--3 mb-5">
   <?= kennzahl('Offen', Util::geld($offen), ['icon' => 'clock',
-        'fuss' => Tenant::count('invoices', 'status IN ("offen","ueberfaellig")') . ' Rechnungen']) ?>
+        'fuss' => Tenant::count('invoices', "status IN ('offen','ueberfaellig')") . ' Rechnungen']) ?>
   <?= kennzahl('Überfällig', Util::geld($ueberfaellig), ['icon' => 'alert',
-        'fuss' => Tenant::count('invoices', 'status = "ueberfaellig"') . ' Rechnungen',
+        'fuss' => Tenant::count('invoices', "status = 'ueberfaellig'") . ' Rechnungen',
         'url' => '/app/rechnungen.php?status=ueberfaellig']) ?>
   <?= kennzahl('Bezahlt ' . date('Y'), Util::geld($bezahltJahr), ['icon' => 'check',
         'fuss' => 'im laufenden Jahr']) ?>

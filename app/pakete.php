@@ -80,7 +80,7 @@ $guthaben = Tenant::all('customer_packages', $wo, $p, 'laeuft_ab', 120);
 $offeneEinheiten = Tenant::sum('customer_packages', 'einheiten_gesamt - einheiten_genutzt',
     'status = "aktiv" AND einheiten_genutzt < einheiten_gesamt');
 $offenerWert = 0;
-foreach (Tenant::all('customer_packages', 'status = "aktiv" AND einheiten_genutzt < einheiten_gesamt') as $cp) {
+foreach (Tenant::all('customer_packages', "status = 'aktiv' AND einheiten_genutzt < einheiten_gesamt") as $cp) {
     $gesamtEinheiten = max(1, (int) $cp['einheiten_gesamt']);
     $offenerWert += (int) round((int) $cp['preis_cent'] / $gesamtEinheiten
                     * ((int) $cp['einheiten_gesamt'] - (int) $cp['einheiten_genutzt']));

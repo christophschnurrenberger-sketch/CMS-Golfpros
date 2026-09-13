@@ -58,7 +58,7 @@ $rabatte = Tenant::all('discounts', '', [], 'aktiv DESC, id DESC');
 $bestseller = Commerce::bestseller(5, 180);
 
 $titel = 'Produkte';
-$unter = count($produkte) . ' Produkte · ' . Tenant::count('orders', 'status = "bezahlt"') . ' Bestellungen';
+$unter = count($produkte) . ' Produkte · ' . Tenant::count('orders', "status = 'bezahlt'") . ' Bestellungen';
 $aktionen = Auth::darf('products.write')
     ? '<a class="btn" href="' . App::url('/app/gutscheine.php') . '">' . Icon::svg('gift', 15) . ' Gutscheine</a>'
       . '<button class="btn btn--primaer" data-modal-auf="modal-produkt" data-modal-titel="Neues Produkt">'

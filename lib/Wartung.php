@@ -75,7 +75,7 @@ final class Wartung
         $tageLeads = (int) Tenant::einstellung('aufbewahrung_leads', 730);
         if ($tageLeads > 0) {
             $grenze = date('Y-m-d H:i:s', time() - $tageLeads * 86400);
-            $weg += Tenant::deleteWhere('leads', 'stufe = "verloren" AND erstellt < :g', ['g' => $grenze]);
+            $weg += Tenant::deleteWhere('leads', "stufe = 'verloren' AND erstellt < :g", ['g' => $grenze]);
         }
 
         return $weg;
@@ -89,7 +89,7 @@ final class Wartung
     private static function vergangeneTermine(): int
     {
         $grenze = date('Y-m-d H:i:s', time() - 6 * 3600);
-        $betroffen = Tenant::all('bookings', 'status = "bestaetigt" AND ende < :g', ['g' => $grenze], 'ende', 50);
+        $betroffen = Tenant::all('bookings', "status = 'bestaetigt' AND ende < :g", ['g' => $grenze], 'ende', 50);
         foreach ($betroffen as $b) {
             Tenant::update('bookings', (int) $b['id'], ['status' => 'erschienen']);
             if ((int) $b['customer_id'] > 0) {

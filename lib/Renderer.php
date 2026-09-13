@@ -493,7 +493,7 @@ final class Renderer
 
     private static function blockKurse(array $d): string
     {
-        $kurse = Tenant::all('courses', 'status = "veroeffentlicht"', [], 'position, id', max(1, (int) ($d['anzahl'] ?? 3)));
+        $kurse = Tenant::all('courses', "status = 'veroeffentlicht'", [], 'position, id', max(1, (int) ($d['anzahl'] ?? 3)));
         $karten = '';
         foreach ($kurse as $k) {
             $bild = self::bildUrl((string) $k['bild']);
@@ -513,7 +513,7 @@ final class Renderer
 
     private static function blockEvents(array $d): string
     {
-        $events = Tenant::all('events', 'status = "veroeffentlicht" AND start >= :jetzt',
+        $events = Tenant::all('events', "status = 'veroeffentlicht' AND start >= :jetzt",
             ['jetzt' => Util::jetzt()], 'start', max(1, (int) ($d['anzahl'] ?? 3)));
         $liste = '';
         foreach ($events as $e) {
@@ -540,7 +540,7 @@ final class Renderer
 
     private static function blockBlog(array $d): string
     {
-        $posts = Tenant::all('posts', 'status = "veroeffentlicht"', [], 'veroeffentlicht DESC',
+        $posts = Tenant::all('posts', "status = 'veroeffentlicht'", [], 'veroeffentlicht DESC',
             max(1, (int) ($d['anzahl'] ?? 3)));
         $karten = '';
         $slug = (string) (Tenant::workspace()['slug'] ?? '');

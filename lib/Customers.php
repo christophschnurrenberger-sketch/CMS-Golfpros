@@ -169,8 +169,8 @@ final class Customers
 
         /* 1. Wie lange ist der letzte Termin her? (max 30) */
         $letzte = (string) DB::value(
-            'SELECT MAX(start) FROM bookings WHERE workspace_id = :w AND customer_id = :k
-             AND status IN ("bestaetigt","erschienen") AND start <= :jetzt',
+            "SELECT MAX(start) FROM bookings WHERE workspace_id = :w AND customer_id = :k
+             AND status IN ('bestaetigt','erschienen') AND start <= :jetzt",
             ['w' => Tenant::id(), 'k' => $kundeId, 'jetzt' => Util::jetzt()],
             ''
         );
@@ -181,8 +181,8 @@ final class Customers
 
         /* 2. Wie regelmäßig in den letzten 90 Tagen? (max 25) */
         $anzahl = DB::int(
-            'SELECT COUNT(*) FROM bookings WHERE workspace_id = :w AND customer_id = :k
-             AND status IN ("bestaetigt","erschienen") AND start >= :seit',
+            "SELECT COUNT(*) FROM bookings WHERE workspace_id = :w AND customer_id = :k
+             AND status IN ('bestaetigt','erschienen') AND start >= :seit",
             ['w' => Tenant::id(), 'k' => $kundeId, 'seit' => date('Y-m-d', strtotime('-90 days'))]
         );
         $wert = min(25, $anzahl * 5);
@@ -196,7 +196,7 @@ final class Customers
         $teile[] = ['name' => 'Umsatz (12 Monate)', 'wert' => $wert, 'max' => 20, 'text' => Util::geld($umsatz)];
 
         /* 4. Bewegt sich etwas im Training? (max 15) */
-        $plaene = Tenant::count('plan_assignments', 'customer_id = :k AND status = "aktiv"', ['k' => $kundeId]);
+        $plaene = Tenant::count('plan_assignments', "customer_id = :k AND status = 'aktiv'", ['k' => $kundeId]);
         $daten  = Tenant::count('performance_entries', 'customer_id = :k AND datum >= :seit',
             ['k' => $kundeId, 'seit' => date('Y-m-d', strtotime('-90 days'))]);
         $wert = min(15, $plaene * 8 + $daten * 2);
@@ -226,7 +226,7 @@ final class Customers
     /** Läuft beim Öffnen des Dashboards – hält die Werte ohne Cronjob frisch. */
     public static function scoresAuffrischen(int $maximal = 40): void
     {
-        foreach (Tenant::all('customers', 'status = "aktiv"', [], 'letzte_aktivitaet', $maximal) as $k) {
+        foreach (Tenant::all('customers', "status = 'aktiv'", [], 'letzte_aktivitaet', $maximal) as $k) {
             self::scoreSpeichern((int) $k['id']);
         }
     }
@@ -250,7 +250,7 @@ final class Customers
         $w = ['k' => $kundeId];
         return [
             'buchungen' => Tenant::all('bookings', 'customer_id = :k', $w, 'start DESC', 40),
-            'kommend'   => Tenant::all('bookings', 'customer_id = :k AND start >= :jetzt AND status != "abgesagt"',
+            'kommend'   => Tenant::all('bookings', "customer_id = :k AND start >= :jetzt AND status != 'abgesagt'",
                             $w + ['jetzt' => Util::jetzt()], 'start', 5),
             'pakete'    => Tenant::all('customer_packages', 'customer_id = :k', $w, 'status, laeuft_ab'),
             'rechnungen'=> Tenant::all('invoices', 'customer_id = :k', $w, 'datum DESC', 20),
@@ -280,7 +280,7 @@ final class Customers
     {
         return [
             'umsatz'     => Tenant::sum('orders', 'summe_cent', 'customer_id = :k AND status = "bezahlt"', ['k' => $kundeId]),
-            'termine'    => Tenant::count('bookings', 'customer_id = :k AND status IN ("bestaetigt","erschienen")', ['k' => $kundeId]),
+            'termine'    => Tenant::count('bookings', "customer_id = :k AND status IN ('bestaetigt','erschienen')", ['k' => $kundeId]),
             'offen'      => Tenant::sum('invoices', 'summe_cent - bezahlt_cent',
                             'customer_id = :k AND status IN ("offen","ueberfaellig")', ['k' => $kundeId]),
             'einheiten'  => Tenant::sum('customer_packages', 'einheiten_gesamt - einheiten_genutzt',

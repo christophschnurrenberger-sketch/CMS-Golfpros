@@ -23,9 +23,9 @@ $offenTermine = Tenant::sum('bookings', 'preis_cent',
     'bezahlt = 0 AND customer_package_id = 0 AND status IN ("bestaetigt","erschienen")');
 
 $methoden = DB::all(
-    'SELECT methode, COUNT(*) AS anzahl, SUM(betrag_cent) AS summe FROM payments
-     WHERE workspace_id = :w AND status = "bezahlt" AND erstellt >= :von
-     GROUP BY methode ORDER BY summe DESC',
+    "SELECT methode, COUNT(*) AS anzahl, SUM(betrag_cent) AS summe FROM payments
+     WHERE workspace_id = :w AND status = 'bezahlt' AND erstellt >= :von
+     GROUP BY methode ORDER BY summe DESC",
     ['w' => Tenant::id(), 'von' => $z['von'] . ' 00:00:00']
 );
 
