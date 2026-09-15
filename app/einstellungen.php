@@ -39,6 +39,7 @@ if (App::istPost()) {
         Tenant::einstellungSetzen('erinnerung_24', App::postBool('erinnerung_24'));
         Tenant::einstellungSetzen('erinnerung_1', App::postBool('erinnerung_1'));
         Tenant::einstellungSetzen('buchung_bestaetigung', App::post('buchung_bestaetigung'));
+        Tenant::einstellungSetzen('registrierung_offen', App::postBool('registrierung_offen'));
         App::melden('Buchungseinstellungen gespeichert.');
     }
     App::weiter('/app/einstellungen.php');
@@ -202,6 +203,17 @@ require __DIR__ . '/partials/kopf.php';
           <input type="checkbox" name="erinnerung_1" value="1"
                  <?= Tenant::einstellung('erinnerung_1', false) ? ' checked' : '' ?>>
           <span class="haken__text">Eine Stunde vorher</span>
+        </label>
+      </div>
+      <div class="feld">
+        <span class="feld__label">Kundenzugang</span>
+        <label class="haken">
+          <input type="checkbox" name="registrierung_offen" value="1"
+                 <?= Tenant::einstellung('registrierung_offen', true) ? ' checked' : '' ?>>
+          <span class="haken__text">Kunden dürfen sich selbst ein Konto anlegen
+            <span class="haken__hinweis">Über <code>/portal/registrieren.php</code>, verlinkt aus dem
+              Kundenzugang. Abgeschaltet legst nur du Kunden an – buchen kann trotzdem jeder,
+              dafür braucht es kein Konto.</span></span>
         </label>
       </div>
       <div class="feld"><label class="feld__label" for="buchung_bestaetigung">Text der Buchungsbestätigung</label>

@@ -304,6 +304,23 @@ buchen" jederzeit zur Gastbuchung zurück. Eine Buchung, die eine
 Registrierung verlangt, verliert genau die Kundschaft, die man gewinnen
 wollte.
 
+**Ein Konto gibt es auch ohne Termin.** `portal/registrieren.php` legt
+eines an, ohne dass gebucht wird – verlinkt aus dem Kundenzugang, aus dem
+Fuß jeder Website und klein aus dem Anmeldekasten der Buchung. Der Pro
+kann den Weg abschalten (`registrierung_offen`, Einstellungen →
+Buchung); die Gastbuchung bleibt davon unberührt, denn sie ist kein
+Konto.
+
+`Kundenlogin::registrieren()` antwortet mit einem von drei Wörtern:
+`fehler`, `angemeldet` oder `mail`. Der dritte Fall ist der wichtige. Ist
+die Adresse hier schon bekannt, sagt die Seite das **nicht** – sonst
+ließe sich durchprobieren, wer bei diesem Pro Kunde ist, und das ist eine
+Kundenliste. Stattdessen geht eine Mail mit dem Zugangslink an die
+Adresse selbst; wer sie besitzt, kommt hinein, alle anderen erfahren
+nichts. Nach außen sieht dieser Fall genauso aus wie eine frische
+Registrierung. Ein bestehendes Konto wird dabei nie überschrieben:
+„Registrieren" mit einer fremden Adresse wäre sonst eine Übernahme.
+
 Beim Angemeldeten gelten seine hinterlegten Daten, nicht die aus dem
 Formular – sonst könnte ein manipuliertes Formular auf fremde Namen
 buchen. Und weil er den Einwilligungshaken gar nicht sieht, wird für ihn

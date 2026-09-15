@@ -203,7 +203,11 @@ final class Website
              . '</div>'
              . '<div class="fuss-band__unten">'
              . '<span>© ' . date('Y') . ' ' . Util::h(Tenant::name()) . '</span>'
-             . '<a href="' . Util::attr(App::url('/portal/')) . '">Kundenzugang</a>'
+             /* Mit ?w=, solange der Betrieb keine eigene Domain hat – sonst
+                landet der Besucher auf einer Installation mit mehreren
+                Golfschulen im Portal der falschen. Oeffentlich::url()
+                hängt den Slug nur an, wenn er gebraucht wird. */
+             . '<a href="' . Util::attr(Oeffentlich::url('/portal/')) . '">Kundenzugang</a>'
              . '</div></div></footer>'
              . self::hinweisband();
     }

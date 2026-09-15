@@ -31,6 +31,14 @@ require __DIR__ . '/../lib/bootstrap.php';
  * wieder ein Fremder gewesen – und genau das soll er nicht sein.
  */
 
+/*
+ * Zuerst der Betrieb – aus eigener Domain oder ?w=. Findet sich keiner,
+ * bleibt er offen: Auf einer Installation mit mehreren Golfschulen sagt
+ * erst der angemeldete Kunde, um welche es geht. Deshalb hier `false`
+ * statt des sonst üblichen 404.
+ */
+Oeffentlich::mandantSetzen(false);
+
 if (App::get('abmelden') !== '') {
     Kundenlogin::abmelden();
 }
@@ -60,64 +68,50 @@ $kunde = Kundenlogin::kunde();
 /* ------------------------------------------------- Anmeldeformular ----- */
 
 if ($kunde === null) {
+    /*
+     * Steht immer noch kein Betrieb fest – mehrere Golfschulen auf einer
+     * Installation, und der Besucher kam ohne ?w= –, dann wird für die
+     * Gestaltung der erste genommen. Es geht hier nur um Farbe und Name;
+     * wohin die Anmeldung führt, entscheidet gleich der Kunde selbst.
+     */
     if (!Tenant::gesetzt()) {
         $erster = Tenant::erster();
         if ($erster !== null) {
             Tenant::setzen((int) $erster['id']);
         }
     }
-    $branding = Tenant::gesetzt() ? Tenant::branding() : ['primaer' => '#1d6f4a', 'akzent' => '#c8a44d'];
-    ?><!DOCTYPE html>
-    <html lang="de" data-theme="hell">
-    <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="robots" content="noindex, nofollow">
-    <title>Anmelden · <?= Util::h(Tenant::gesetzt() ? Tenant::name() : 'Kundenportal') ?></title>
-    <?php /* Schriften vom eigenen Server – wie im übrigen Portal.
-             Hier stand bis zuletzt ein Link zu Google Fonts: Der hätte die
-             IP-Adresse jedes Besuchers nach Kalifornien geschickt, bevor er
-             auch nur „Anmelden" angeklickt hat – und dazu eine Schrift
-             geladen, die app.css gar nicht verwendet. */ ?>
-    <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/schriften.css')) ?>">
-    <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/app.css')) ?>">
-    <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/portal.css')) ?>">
-    <style>:root{--marke:<?= Util::attr((string) $branding['primaer']) ?>;
-      --marke-hell: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 10%, #fff);}</style>
-    </head>
-    <body class="portal">
-    <main class="portal__inhalt" style="max-width:400px;padding-top:12vh">
-      <div class="mitte mb-5">
-        <span class="marke__zeichen" style="width:46px;height:46px;font-size:20px;margin:0 auto 14px">
-          <?= Util::h(mb_substr(Tenant::gesetzt() ? Tenant::name() : 'G', 0, 1)) ?></span>
-        <h1 style="font-size:21px;font-weight:680">Dein Bereich</h1>
-        <p class="gedimmt klein mt-2">Termine, Trainingsplan und Unterlagen an einem Ort.</p>
-      </div>
-      <?php /* Auf den Inhalt prüfen, nicht auf isset: $fehler ist immer
-               gesetzt, nur meistens leer. */ ?>
-      <?php if ($fehler !== ''): ?>
-        <div class="hinweis hinweis--gefahr mb-4">
-          <?= Icon::svg('alert', 17) ?><div class="hinweis__text"><?= Util::h($fehler) ?></div></div>
-      <?php endif; ?>
-      <form method="post" class="karte">
-        <input type="hidden" name="aktion" value="anmelden">
-        <div class="karte__koerper">
-          <div class="feld"><label class="feld__label" for="pe">E-Mail</label>
-            <input class="eingabe" id="pe" type="email" name="email" required autocomplete="email"></div>
-          <div class="feld"><label class="feld__label" for="pp">Passwort</label>
-            <input class="eingabe" id="pp" type="password" name="passwort" required autocomplete="current-password"></div>
-          <button class="btn btn--primaer btn--voll" type="submit">Anmelden</button>
-        </div>
-      </form>
-      <div class="hinweis hinweis--still mt-4">
-        <?= Icon::svg('info', 17) ?>
-        <div class="hinweis__text">Noch kein Passwort? Dein Trainer schickt dir einen persönlichen
-          Link – damit kommst du ohne Anmeldung hinein und kannst dort ein Passwort setzen.</div>
-      </div>
-    </main>
-    </body></html>
-    <?php
-    exit;
+
+    require __DIR__ . '/partials/zugang.php';
+
+    zugangSeite('Dein Bereich', 'Termine, Trainingsplan und Unterlagen an einem Ort.', ''
+        /* Auf den Inhalt prüfen, nicht auf isset: $fehler ist immer
+           gesetzt, nur meistens leer. */
+        . ($fehler !== ''
+           ? '<div class="hinweis hinweis--gefahr mb-4">' . Icon::svg('alert', 17)
+             . '<div class="hinweis__text">' . Util::h($fehler) . '</div></div>'
+           : '')
+        . '<form method="post" class="karte">'
+        . '<input type="hidden" name="aktion" value="anmelden">'
+        . '<div class="karte__koerper">'
+        . '<div class="feld"><label class="feld__label" for="pe">E-Mail</label>'
+        . '<input class="eingabe" id="pe" type="email" name="email" required autocomplete="email"></div>'
+        . '<div class="feld"><label class="feld__label" for="pp">Passwort</label>'
+        . '<input class="eingabe" id="pp" type="password" name="passwort" required'
+        . ' autocomplete="current-password"></div>'
+        . '<button class="btn btn--primaer btn--voll" type="submit">Anmelden</button>'
+        . '</div></form>'
+        /*
+         * Der Weg zum Konto steht sichtbar darunter, nicht im Kleingedruckten:
+         * Wer hier ohne Zugang landet, soll ihn in einem Klick bekommen und
+         * nicht erst auf die nächste Terminbestätigung warten.
+         */
+        . (Kundenlogin::registrierungOffen()
+           ? '<p class="zugang__wechsel">Noch kein Konto? '
+             . '<a href="' . Util::attr(Oeffentlich::url('/portal/registrieren.php')) . '">Jetzt anlegen</a></p>'
+           : '')
+        . '<div class="hinweis hinweis--still mt-4">' . Icon::svg('info', 17)
+        . '<div class="hinweis__text">Noch kein Passwort? Dein Trainer schickt dir einen persönlichen '
+        . 'Link – damit kommst du ohne Anmeldung hinein und kannst dort ein Passwort setzen.</div></div>');
 }
 
 /* ---------------------------------------------------------- Aktionen --- */

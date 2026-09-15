@@ -390,3 +390,40 @@
 .portal .avatar--gross { width: 64px; height: 64px; font-size: 21px; }
 .portal .avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .portal .ico { flex: none; }
+
+/* ------------------------------------------ Anmelden und Registrieren -- */
+
+/*
+ * Die Seiten vor der Anmeldung: eine schmale Spalte, sonst nichts. Die
+ * Werte standen vorher als style-Attribute im Anmeldeformular; jetzt
+ * teilen sich zwei Seiten dieselbe Regel, statt dass eine davon beim
+ * nächsten Feinschliff zurückbleibt.
+ */
+.portal .portal__zugang { max-width: 420px; padding-top: clamp(28px, 10vh, 110px); }
+.portal .portal__zugang-zeichen {
+  width: 46px; height: 46px;
+  font-size: 20px;
+  margin: 0 auto 14px;
+}
+.portal .portal__zugang-titel { font-size: 21px; font-weight: 680; }
+
+/* Der Wechsel zwischen Anmelden und Registrieren – beide Wege sichtbar,
+   keiner versteckt: Wer auf der falschen Seite gelandet ist, soll das in
+   einem Klick merken, nicht in drei. */
+.portal .zugang__wechsel {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-3);
+  margin-top: 18px;
+}
+.portal .zugang__wechsel a {
+  color: var(--marke);
+  font-weight: 500;
+  border-bottom: 1.5px solid currentColor;
+  padding-bottom: 1px;
+}
+
+/* Die Falle für Formularroboter. Steht in site.css schon so da – das
+   Portal lädt site.css aber nicht, und ein sichtbares Feld namens
+   „website" würden echte Besucher ausfüllen und dann abgewiesen. */
+.portal .honigtopf { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }

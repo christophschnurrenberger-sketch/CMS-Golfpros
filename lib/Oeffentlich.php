@@ -14,8 +14,12 @@ final class Oeffentlich
      * Bestimmt den Mandanten wie site.php: eigene Domain, dann ?w=slug,
      * dann – bei nur einer Installation – der einzige Workspace.
      * Ohne Treffer endet die Anfrage hier mit einem 404.
+     *
+     * Mit `$pflicht = false` gibt die Methode stattdessen null zurück.
+     * Das Portal braucht das: Dort darf offenbleiben, zu welchem Betrieb
+     * der Besucher gehört – die Anmeldung beantwortet es gleich selbst.
      */
-    public static function mandantSetzen(): array
+    public static function mandantSetzen(bool $pflicht = true): ?array
     {
         $host = strtolower(preg_replace('/^www\./', '', (string) ($_SERVER['HTTP_HOST'] ?? '')) ?? '');
         $workspace = Tenant::nachDomain($host);
@@ -28,6 +32,9 @@ final class Oeffentlich
             $workspace = Tenant::erster();
         }
         if (!$workspace) {
+            if (!$pflicht) {
+                return null;
+            }
             http_response_code(404);
             exit('Diese Adresse gehört zu keiner Website.');
         }
@@ -133,7 +140,18 @@ final class Oeffentlich
              . '</form>'
              . '<p class="anmeldekasten__klein">Kein Passwort gesetzt? Der Link aus deiner '
              . 'letzten Terminbestätigung meldet dich ohne Passwort an. '
-             . 'Sonst einfach unten als Gast buchen – das geht genauso.</p>'
+             . 'Sonst einfach unten als Gast buchen – das geht genauso.'
+             /*
+              * Der Weg zum Konto steht hier bewusst am Ende und klein: An
+              * dieser Stelle will jemand einen Termin, kein Konto. Ganz
+              * verschweigen wäre trotzdem falsch – manche legen lieber
+              * erst eines an.
+              */
+             . (Kundenlogin::registrierungOffen()
+                ? ' <a href="' . Util::attr(self::url('/portal/registrieren.php'))
+                  . '">Oder ein Konto anlegen.</a>'
+                : '')
+             . '</p>'
              . '</div></details>';
     }
 

@@ -154,6 +154,130 @@ final class Kundenlogin
         return trim((string) ($kunde['portal_passwort'] ?? '')) !== '';
     }
 
+    /* -------------------------------------------------- Konto anlegen --- */
+
+    /**
+     * Ist die Selbstregistrierung für diesen Betrieb offen?
+     *
+     * Standardmäßig ja. Wer sie abschaltet, hat meist einen guten Grund:
+     * Ein Pro mit geschlossenem Kundenkreis will keine fremden Datensätze
+     * in seiner Kartei. Die Buchung als Gast bleibt davon unberührt – die
+     * ist kein Konto.
+     */
+    public static function registrierungOffen(): bool
+    {
+        return (bool) Tenant::einstellung('registrierung_offen', true);
+    }
+
+    /**
+     * Ein Kundenkonto anlegen, ohne dass ein Termin im Spiel ist.
+     *
+     * Der Rückgabewert sagt, was die Seite anzeigen soll:
+     *
+     *   'fehler'     – die Eingaben stimmen nicht, Meldung steht daneben
+     *   'angemeldet' – Konto ist da, der Kunde ist eingeloggt
+     *   'mail'       – wir haben eine E-Mail geschickt und sagen sonst nichts
+     *
+     * Der dritte Fall ist der interessante. Ist die Adresse hier schon
+     * bekannt, darf die Seite das **nicht** sagen: Sonst könnte jeder
+     * durchprobieren, wer bei diesem Pro Kunde ist, und das ist eine
+     * Kundenliste. Die Adresse bekommt stattdessen eine Mail mit ihrem
+     * Zugangslink – wer sie wirklich besitzt, kommt damit hinein, alle
+     * anderen erfahren nichts. Nach außen sieht dieser Fall genauso aus
+     * wie eine frische Registrierung.
+     *
+     * Ein bestehendes Konto wird dabei nie überschrieben. „Registrieren"
+     * mit einer fremden Adresse wäre sonst eine Übernahme.
+     *
+     * @param array<string,mixed> $d vorname, nachname, email, telefon,
+     *                               passwort, einwilligung
+     * @return array{0:string,1:string}
+     */
+    public static function registrieren(array $d): array
+    {
+        if (!self::registrierungOffen()) {
+            return ['fehler', 'Ein Konto lässt sich hier zurzeit nicht selbst anlegen.'];
+        }
+
+        $vorname  = trim((string) ($d['vorname'] ?? ''));
+        $nachname = trim((string) ($d['nachname'] ?? ''));
+        $email    = strtolower(trim((string) ($d['email'] ?? '')));
+        $telefon  = trim((string) ($d['telefon'] ?? ''));
+        $passwort = (string) ($d['passwort'] ?? '');
+
+        if ($vorname === '' || $nachname === '') {
+            return ['fehler', 'Bitte Vor- und Nachnamen angeben.'];
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['fehler', 'Diese E-Mail-Adresse sieht nicht richtig aus.'];
+        }
+        [$okay, $meldung] = Auth::passwortPruefen($passwort);
+        if (!$okay) {
+            return ['fehler', $meldung];
+        }
+        if (empty($d['einwilligung'])) {
+            return ['fehler', 'Ohne die Einwilligung zur Verarbeitung der Angaben geht es leider nicht.'];
+        }
+
+        /*
+         * Adresse schon bekannt: nichts anlegen, nichts überschreiben,
+         * nichts verraten – nur den Zugangslink an die Adresse selbst.
+         */
+        $vorhanden = Tenant::one('customers', 'email = :e', ['e' => $email]);
+        if ($vorhanden !== null) {
+            /* Über anKunden(), damit die Mail in seiner Akte steht – der Pro
+               soll sehen, dass da jemand nach seinem Zugang gesucht hat. */
+            Mail::anKunden($vorhanden, 'Dein Zugang bei ' . Tenant::name(),
+                "Hallo " . (string) $vorhanden['vorname'] . ",\n\n"
+                . "unter dieser Adresse gibt es schon einen Zugang. Ein zweites Konto\n"
+                . "braucht es also nicht – mit diesem Link kommst du direkt hinein:\n\n"
+                . Customers::portalLink($vorhanden) . "\n\n"
+                . "Dort kannst du auch ein Passwort setzen oder ein neues vergeben.\n\n"
+                . "Hast du das nicht angefordert, ignoriere diese Mail einfach – es\n"
+                . "wurde nichts geändert.\n\n"
+                . Tenant::name());
+            return ['mail', 'Wir haben dir eine E-Mail geschickt. Schau bitte in dein Postfach – '
+                          . 'der Link darin bringt dich in deinen Bereich.'];
+        }
+
+        /* Über Customers::speichern(), damit der Pro seine Benachrichtigung
+           bekommt und die Automationen anspringen wie bei jedem Neukunden. */
+        $kundeId = Customers::speichern([
+            'vorname'  => $vorname,
+            'nachname' => $nachname,
+            'email'    => $email,
+            'telefon'  => $telefon,
+            'status'   => 'aktiv',
+            'quelle'   => 'Registrierung',
+        ]);
+        if ($kundeId === 0) {
+            return ['fehler', 'Das Konto konnte nicht angelegt werden. Bitte später noch einmal versuchen.'];
+        }
+        /* Das Passwort geht bewusst nicht durch speichern(): Diese Spalte
+           steht dort nicht in der Liste der erlaubten Felder, damit kein
+           Formular sie je mitschicken kann. */
+        Tenant::update('customers', $kundeId, ['portal_passwort' => Auth::hash($passwort)]);
+
+        Oeffentlich::einwilligung($kundeId, 0, 'konto',
+            'Einwilligung zur Verarbeitung der Angaben für den Kundenzugang.', 'registrieren.php');
+
+        $kunde = Tenant::find('customers', $kundeId);
+        if ($kunde === null) {
+            return ['fehler', 'Das Konto konnte nicht angelegt werden. Bitte später noch einmal versuchen.'];
+        }
+
+        Mail::anKunden($kunde, 'Willkommen bei ' . Tenant::name(),
+            "Hallo " . $vorname . ",\n\n"
+            . "dein Zugang steht. Termine, Trainingsplan und Unterlagen findest du hier:\n\n"
+            . Customers::portalLink($kunde) . "\n\n"
+            . "Der Link funktioniert auch ohne Passwort – bewahre ihn also wie einen\n"
+            . "Schlüssel auf.\n\n"
+            . Tenant::name());
+
+        self::sitzungSetzen($kunde);
+        return ['angemeldet', ''];
+    }
+
     /* ------------------------------------------------------------ raus */
 
     public static function abmelden(bool $weiter = true): void

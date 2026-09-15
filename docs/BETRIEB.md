@@ -140,6 +140,15 @@ Entwurfsauftrag übertragen – wer das nicht möchte, lässt das Feld leer.
   mit Frist. Die Frist beträgt einen Monat.
 * Der Datenexport eines Kunden ist eine JSON-Datei mit allem, was zu ihm
   gespeichert ist – ohne Passwörter und ohne interne Zugangstoken.
+* Jede Einwilligung wird im Wortlaut protokolliert, mit Quelle und
+  Zeitpunkt: `buchung` beim Buchen als Gast, `konto` beim Anlegen eines
+  Kundenzugangs, `anfrage` und `newsletter` bei den Formularen. Wer
+  angemeldet bucht, bekommt **keinen** zweiten Eintrag – er hat in dem
+  Moment nichts erklärt, und ein Protokoll über eine nicht abgegebene
+  Erklärung wäre als Nachweis wertlos.
+* Sollen sich Kunden nicht selbst registrieren dürfen, schaltet der Haken
+  unter *Einstellungen → Buchung* den Weg ab. Buchen geht weiter – dafür
+  braucht es kein Konto.
 * Die Schriften der öffentlichen Website liegen in `assets/fonts/` auf dem
   eigenen Server; es geht kein Aufruf an Google. Wer unter *Website →
   Design* eine andere Schrift wählt, holt sie wieder von dort – dann
