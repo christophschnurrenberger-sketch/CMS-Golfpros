@@ -49,7 +49,7 @@ jobs:
     name: Syntax prüfen
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Geprüft wird gegen 8.1, die niedrigste unterstützte Version. Gegen
       # 8.4 zu prüfen ginge auch durch, wenn im Code etwas steht, das auf
@@ -93,7 +93,7 @@ jobs:
     needs: pruefen
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Solange die Zugangsdaten fehlen, soll der Lauf nicht mit einer
       # kryptischen FTP-Meldung scheitern, sondern sagen, was zu tun ist.

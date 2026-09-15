@@ -166,6 +166,11 @@ Netz. Vertretbar, wenn es ein eigener, eingeschränkter Zugang ist; beim
 Hoster nachfragen, ob FTPS nachgerüstet werden kann. `sftp` unterstützt
 diese Action nicht.
 
+**Gelbe Warnung „Node.js 20 is deprecated“** – kein Fehler und nichts, was
+sich hier beheben lässt. Die FTP-Action gibt in ihrer Beschreibung noch
+Node 20 an; GitHub führt sie trotzdem auf Node 24 aus. Verschwindet, sobald
+der Autor der Action nachzieht.
+
 **Die Dateien landen im falschen Ordner** – `FTP_VERZEICHNIS` prüfen. Der
 Wert muss auf einen Schrägstrich enden.
 
