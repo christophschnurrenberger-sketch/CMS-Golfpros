@@ -32,7 +32,20 @@
  */
 final class Schema
 {
-    public const VERSION = 1;
+    /*
+     * Die Schemaversion.
+     *
+     * bootstrap.php vergleicht sie mit dem Wert in den Einstellungen und
+     * laesst migrate() nur laufen, wenn sie abweichen. Wer eine Spalte
+     * ergaenzt, MUSS diese Zahl erhoehen - sonst laeuft der Nachtrag auf
+     * bestehenden Anlagen nie, und die erste Abfrage auf die neue Spalte
+     * endet mit einem Serverfehler. Genau das ist bei der Terminabrechnung
+     * passiert.
+     *
+     *   1  erste Fassung
+     *   2  bookings.invoice_id - Termine auf Rechnungen
+     */
+    public const VERSION = 2;
 
     public static function migrate(): void
     {

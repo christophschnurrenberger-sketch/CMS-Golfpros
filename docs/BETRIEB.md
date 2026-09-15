@@ -49,6 +49,22 @@ GitHub ist in [DEPLOY.md](DEPLOY.md) beschrieben. Er fasst Datenbank,
 `config.php` und den `uploads`-Ordner nicht an – ein Umzug betrifft also
 nur die Zugangsdaten im Repository.
 
+## Schemaänderungen
+
+Die Datenbank zieht sich selbst nach, aber nicht bei jedem Aufruf: In den
+Einstellungen steht eine Versionsnummer, und `lib/bootstrap.php` lässt
+`Schema::migrate()` nur laufen, wenn sie von `Schema::VERSION` abweicht.
+
+**Wer eine Spalte ergänzt, muss diese Zahl erhöhen.** Sonst läuft der
+Nachtrag auf bestehenden Anlagen nie – eine frische Installation
+funktioniert, eine aktualisierte quittiert die erste Abfrage auf die neue
+Spalte mit einem Serverfehler. Neue Spalten gehören außerdem in
+`Schema::nachtragen()`, denn `CREATE TABLE IF NOT EXISTS` lässt eine
+bestehende Tabelle in Ruhe.
+
+Nach dem Hochladen genügt ein Seitenaufruf: Der erste Aufruf nach dem
+Update trägt nach und merkt sich die neue Version.
+
 ## Cronjob
 
 Ohne Cronjob läuft die Wartung beim Öffnen des Dashboards mit. Das genügt
