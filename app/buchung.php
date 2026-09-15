@@ -116,7 +116,8 @@ if ($istNeu) {
      * kaputt. Gesucht wird darum der naechste Tag, an dem wirklich etwas
      * frei ist; gefunden sich in zwei Wochen keiner, bleibt es bei heute.
      */
-    $gewuenscht = App::get('datum');
+    $zeitVorgabe = App::get('zeit');
+    $gewuenscht  = App::get('datum');
     $datum      = $gewuenscht !== '' ? $gewuenscht : Util::heute();
     $frei       = $serviceId > 0 ? Bookings::freieZeiten($serviceId, $datum) : [];
 
@@ -138,6 +139,49 @@ if ($istNeu) {
     $brotkrumen = [['Kalender', '/app/kalender.php'], ['Neuer Termin', null]];
     require __DIR__ . '/partials/kopf.php';
     ?>
+    <?php /*
+     * Warum hier eine eigene Funktion steht statt des naheliegenden
+     * this.form.submit() mit method=get:
+     *
+     * Ein GET-Absenden ersetzt die gesamte Abfrage in der Adresse durch die
+     * Formularfelder. Damit ging id=neu verloren - es steht nur in der
+     * Adresse, nicht im Formular -, und die Seite hielt den Aufruf fuer
+     * einen bestehenden Termin mit der Nummer 0. Heraus kam "Dieser Termin
+     * wurde nicht gefunden", sobald jemand einen anderen Tag waehlte.
+     *
+     * Dazu kommt: Die Seite liest ihre Vorgaben unter anderen Namen, als
+     * das Formular seine Felder nennt - leistung gegen service_id, kunde
+     * gegen customer_id. Ein blindes Absenden kann das nicht treffen.
+     *
+     * Und das CSRF-Merkmal landete in der Adresszeile und damit im Verlauf
+     * des Browsers. Das gehoert in keinen Verlauf.
+     */ ?>
+    <script>
+    function terminNeuLaden(f) {
+      var u = new URL(location.pathname, location.origin);
+      u.searchParams.set('id', 'neu');
+      u.searchParams.set('leistung', f.service_id.value);
+      u.searchParams.set('datum', f.datum.value);
+      if (f.customer_id && f.customer_id.value !== '0') {
+        u.searchParams.set('kunde', f.customer_id.value);
+      }
+      /*
+       * Eine schon gewaehlte Uhrzeit mitnehmen. Ohne das loescht ein
+       * Wechsel des Kunden - der nur die Pakete nachladen soll - die
+       * Uhrzeit, die jemand gerade von Hand eingetippt hat.
+       */
+      var gewaehlt = f.zeit_frei && f.zeit_frei.value ? f.zeit_frei.value : '';
+      if (!gewaehlt && f.start_zeit) {
+        var radios = f.start_zeit.length ? f.start_zeit : [f.start_zeit];
+        for (var i = 0; i < radios.length; i++) {
+          if (radios[i].checked) { gewaehlt = radios[i].value; break; }
+        }
+      }
+      if (gewaehlt) { u.searchParams.set('zeit', gewaehlt); }
+      location.href = u.toString();
+    }
+    </script>
+
     <form method="post" class="raster raster--haupt-neben" style="align-items:start">
       <?= Auth::csrfFeld() ?>
       <input type="hidden" name="aktion" value="anlegen">
@@ -147,7 +191,7 @@ if ($istNeu) {
           <div class="feld-reihe feld-reihe--2">
             <div class="feld">
               <label class="feld__label" for="service_id">Leistung</label>
-              <select id="service_id" name="service_id" onchange="this.form.method='get';this.form.action='';this.form.submit()">
+              <select id="service_id" name="service_id" onchange="terminNeuLaden(this.form)">
                 <?php foreach ($leistungen as $s): ?>
                   <option value="<?= (int) $s['id'] ?>"<?= $serviceId === (int) $s['id'] ? ' selected' : '' ?>>
                     <?= Util::h((string) $s['name']) ?> · <?= (int) $s['dauer_min'] ?> Min ·
@@ -159,7 +203,7 @@ if ($istNeu) {
               <label class="feld__label" for="start_datum">Tag</label>
               <input class="eingabe" id="start_datum" type="date" name="datum"
                      value="<?= Util::attr($datum) ?>" min="<?= Util::attr(Util::heute()) ?>"
-                     onchange="this.form.method='get';this.form.action='';this.form.submit()">
+                     onchange="terminNeuLaden(this.form)">
             </div>
           </div>
 
@@ -180,14 +224,23 @@ if ($istNeu) {
               </div>
             <?php else: ?>
               <div class="reihe reihe--eng reihe--umbruch" id="zeiten">
-                <?php foreach ($frei as $i => $z): ?>
-                  <label class="pille pille--gross <?= $i === 0 ? 'pille--marke' : 'pille--offen' ?>"
+                <?php
+                /* Kommt eine Uhrzeit aus der Adresse, ist sie gemeint - sonst
+                   der erste Vorschlag. */
+                $zeitPasst = false;
+                foreach ($frei as $z) {
+                    if (date('H:i', strtotime($z['start'])) === $zeitVorgabe) { $zeitPasst = true; break; }
+                }
+                foreach ($frei as $i => $z):
+                    $diese = date('H:i', strtotime($z['start']));
+                    $aktiv = $zeitPasst ? ($diese === $zeitVorgabe) : ($i === 0); ?>
+                  <label class="pille pille--gross <?= $aktiv ? 'pille--marke' : 'pille--offen' ?>"
                          style="cursor:pointer">
-                    <input type="radio" name="start_zeit" value="<?= Util::attr(date('H:i', strtotime($z['start']))) ?>"
-                           <?= $i === 0 ? 'checked' : '' ?> style="display:none"
+                    <input type="radio" name="start_zeit" value="<?= Util::attr($diese) ?>"
+                           <?= $aktiv ? 'checked' : '' ?> style="display:none"
                            onchange="document.querySelectorAll('#zeiten label').forEach(l=>l.className='pille pille--gross pille--offen');this.parentNode.className='pille pille--gross pille--marke';document.getElementById('trainer_id').value=this.dataset.trainer||document.getElementById('trainer_id').value"
                            data-trainer="<?= (int) $z['trainer_id'] ?>">
-                    <?= Util::h(date('H:i', strtotime($z['start']))) ?>
+                    <?= Util::h($diese) ?>
                   </label>
                 <?php endforeach; ?>
               </div>
@@ -212,7 +265,10 @@ if ($istNeu) {
             <label class="feld__label" for="zeit_frei">
               <?= $frei === [] ? 'Uhrzeit eintragen' : 'Oder eine andere Uhrzeit' ?>
             </label>
+            <?php /* Nur zurueckschreiben, wenn die Zeit nicht schon oben
+                      angekreuzt steht - sonst stuenden beide da. */ ?>
             <input class="eingabe" id="zeit_frei" type="time" name="zeit_frei"
+                   value="<?= Util::attr(($zeitPasst ?? false) ? '' : $zeitVorgabe) ?>"
                    step="300" style="max-width:150px">
             <div class="feld__hinweis">
               <?= $frei === []
@@ -223,7 +279,7 @@ if ($istNeu) {
 
           <div class="feld">
             <label class="feld__label" for="customer_id">Kunde</label>
-            <select id="customer_id" name="customer_id">
+            <select id="customer_id" name="customer_id" onchange="terminNeuLaden(this.form)">
               <option value="0">Ohne Kunde (Blocker, interner Termin)</option>
               <?php foreach (Tenant::all('customers', "status = 'aktiv'", [], 'nachname, vorname') as $k): ?>
                 <option value="<?= (int) $k['id'] ?>"<?= $kundeId === (int) $k['id'] ? ' selected' : '' ?>>
