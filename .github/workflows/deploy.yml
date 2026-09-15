@@ -192,11 +192,14 @@ jobs:
           #   config.php                     Zugangsdaten des Betriebs.
           #       Liegt ohnehin nicht im Repository; die Zeile ist die
           #       zweite Sicherung.
-          #   data/*.sqlite*, data/cache     Die Datenbank mit allen
-          #       Kundendaten.
-          #   uploads/w*/                    Logos, Videos, Unterlagen der
-          #       Kunden. uploads/.htaccess und uploads/index.html gehen
-          #       weiterhin mit – sie sperren den Ordner für den Browser.
+          #   data/*.sqlite*, data/*/        Die Datenbank mit allen
+          #       Kundendaten, samt allem, was daneben entsteht.
+          #   uploads/*/                     Alles, was der Betrieb
+          #       hochlädt. Bewusst jeder Unterordner und nicht nur
+          #       uploads/w*: Der Installer legt auch bilder/, videos/ und
+          #       dokumente/ an, und die stehen in keinem Repository.
+          #       uploads/.htaccess und uploads/index.html gehen weiterhin
+          #       mit – sie sperren den Ordner für den Browser.
           #   install.php                    Richtet die Anlage ein und
           #       soll danach vom Server verschwinden. Ein Upload, der ihn
           #       jedes Mal zurückbringt, macht die Empfehlung wertlos.
@@ -214,8 +217,9 @@ jobs:
             data/*.sqlite
             data/*.sqlite-shm
             data/*.sqlite-wal
-            data/cache/**
-            uploads/w*/**
+            data/*/**
+            uploads/*/
+            uploads/*/**
             install.php
             docs/**
             README.md
@@ -275,16 +279,21 @@ jobs:
           #
           #   ^\.git        .gitignore und das Verzeichnis selbst
           #   ^config\.php  Zugangsdaten des Betriebs
-          #   ^data/.*sqlite, ^data/cache/   die Datenbank
-          #   ^uploads/w    Logos, Videos, Unterlagen der Kunden
+          #   ^data/.*sqlite, ^data/[^/]+/   die Datenbank und alles,
+          #                 was in Unterordnern daneben liegt
+          #   ^uploads/[^/]+/  jeder Unterordner von uploads - w1, w2, aber
+          #                 auch bilder, videos, dokumente, die der
+          #                 Installer anlegt und die in keinem Repository
+          #                 stehen. Die beiden Schutzdateien direkt in
+          #                 uploads/ gehen weiterhin mit.
           #   ^install\.php der Installer
           #   ^docs/, ^README\.md            interne Unterlagen
           aus="--exclude ^\.git"
           aus="$aus --exclude ^\.github/"
           aus="$aus --exclude ^config\.php$"
           aus="$aus --exclude ^data/.*\.sqlite"
-          aus="$aus --exclude ^data/cache/"
-          aus="$aus --exclude ^uploads/w"
+          aus="$aus --exclude ^data/[^/]+/"
+          aus="$aus --exclude ^uploads/[^/]+/"
           aus="$aus --exclude ^install\.php$"
           aus="$aus --exclude ^docs/"
           aus="$aus --exclude ^README\.md$"

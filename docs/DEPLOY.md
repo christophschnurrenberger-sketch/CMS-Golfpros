@@ -117,7 +117,10 @@ das Repository enthält den Betrieb nicht:
   Mailversand. Steht in `.gitignore` und ist zusätzlich ausgeschlossen.
 * **`data/*.sqlite`** – die Datenbank mit allen Kunden, Terminen und
   Rechnungen.
-* **`uploads/w*/`** – Logos, Schwungvideos, Trainingsunterlagen.
+* **jeder Unterordner von `uploads/`** – Logos, Schwungvideos,
+  Trainingsunterlagen. Bewusst *jeder*, nicht nur `uploads/w1`,
+  `uploads/w2`: Der Installer legt auch `bilder/`, `videos/` und
+  `dokumente/` an, und die stehen in keinem Repository.
   `uploads/.htaccess` und `uploads/index.html` gehen weiterhin mit; sie
   sperren den Ordner für den Browser.
 * **`install.php`** – siehe oben. Ein Upload, der den Installer nach jeder
@@ -172,6 +175,26 @@ Die Action legt im Zielordner eine Datei `.ftp-deploy-sync-state.json` an
 und merkt sich darin, welche Datei in welcher Fassung oben liegt. Beim
 nächsten Lauf werden nur die Unterschiede übertragen – nach der ersten
 vollständigen Übertragung dauert ein Upload meist wenige Sekunden.
+
+### Warum die Änderungszeiten zurückgesetzt werden
+
+Ein frischer Checkout stempelt jede Datei auf „jetzt". Für den SFTP-Weg,
+der am Änderungsdatum erkennt, was neu ist, sieht damit das ganze
+Repository neu aus – er lädt bei jedem Lauf alle Dateien hoch, obwohl sich
+zwei geändert haben.
+
+Das ist nicht nur langsam. `lftp` entfernt jede Datei, bevor es sie neu
+schreibt; auf einer laufenden Website heißt das ein Zeitfenster pro Datei,
+in dem sie fehlt. Wer in dieser Sekunde die Seite aufruft und
+`lib/bootstrap.php` erwischt, sieht einen Fehler.
+
+Deshalb setzt ein Schritt vor dem Upload jede Datei auf das Datum ihres
+letzten Commits. Eine unveränderte Datei behält damit ihr altes Datum, und
+`lftp` lässt sie in Ruhe. Gemessen: ohne diesen Schritt 142 Dateien pro
+Lauf, mit ihm 0 – und nach einer echten Änderung genau die eine.
+
+Dafür holt der Upload-Job die ganze Historie (`fetch-depth: 0`). Ohne sie
+gäbe es keine Commit-Daten zum Zurücksetzen.
 
 Zwei Folgen davon:
 
