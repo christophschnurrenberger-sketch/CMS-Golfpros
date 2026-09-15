@@ -36,6 +36,30 @@ final class Demo
 
     /* ==================================================== Einstiegspunkt */
 
+    /**
+     * Ist dieser Demo-Termin schon bezahlt?
+     *
+     * Abgesagte nie. Aus dem Paket immer. Von den Einzelstunden der
+     * letzten Wochen bleibt gut ein Drittel offen - das ist der Stapel,
+     * den ein Pro am Monatsende abrechnet, und ohne ihn haette die
+     * Demo-Anlage nichts zu zeigen.
+     */
+    private static function terminBezahlt(string $status, int $paketId, string $start): int
+    {
+        if ($status === 'abgesagt') {
+            return 0;
+        }
+        if ($paketId > 0) {
+            return 1;
+        }
+        $liegtZurueck = strtotime($start) <= time();
+        $jung = strtotime($start) >= strtotime('-35 days');
+        if ($liegtZurueck && $jung && mt_rand(1, 10) <= 4) {
+            return 0;
+        }
+        return 1;
+    }
+
     public static function anlegen(array $o = []): int
     {
         mt_srand(20260913);
@@ -535,9 +559,17 @@ final class Demo
                     'start' => $start, 'ende' => $ende,
                     'status' => $status, 'teilnehmer' => 1,
                     'preis_cent' => (int) $service['preis_cent'],
-                    // Ein Termin aus dem Paket ist bezahlt, zählt aber nicht
-                    // noch einmal als Umsatz – das regelt Commerce::umsatz().
-                    'bezahlt' => $status === 'abgesagt' ? 0 : 1,
+                    /*
+                     * Ein Termin aus dem Paket ist bezahlt, zählt aber nicht
+                     * noch einmal als Umsatz – das regelt Commerce::umsatz().
+                     *
+                     * Ein Teil der jüngsten Einzelstunden bleibt bewusst
+                     * offen: So hat der Demo-Betrieb auch etwas zum
+                     * Abrechnen, und die Liste der offenen Posten steht
+                     * nicht leer da. Ohne Paket, denn aus einem Paket
+                     * bezahlte Stunden schreibt man nicht noch einmal an.
+                     */
+                    'bezahlt' => self::terminBezahlt($status, $paketId, $start),
                     'customer_package_id' => $paketId,
                     'quelle' => mt_rand(1, 10) <= 4 ? 'website' : 'backend',
                     'erstellt' => date('Y-m-d H:i:s', strtotime($start) - mt_rand(2, 20) * 86400),

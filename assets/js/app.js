@@ -632,6 +632,102 @@
     form.submit();
   });
 
+  /* ------------------------------------------- Zeit aufziehen -------- */
+
+  /**
+   * Im Kalender eine Lücke markieren und buchen.
+   *
+   * Der Pro denkt in Flächen, nicht in Formularen: „von hier bis hier, und
+   * zwar für den". Deshalb zieht man die Zeit auf, wie man es von Outlook
+   * kennt, und bekommt erst danach den kurzen Dialog.
+   *
+   * Gerastert wird auf 15 Minuten. Feiner gezogen bringt nichts – kein
+   * Training beginnt um 10:07 –, und gröber verliert die Viertelstunde,
+   * die im Golfunterricht durchaus vorkommt.
+   */
+  const gitter = $('.kalender__gitter[data-von-stunde]');
+  if (gitter) {
+    const vonStunde = parseInt(gitter.dataset.vonStunde, 10) || 0;
+    const hoehe     = parseInt(gitter.dataset.stundenhoehe, 10) || 52;
+    const raster    = parseInt(gitter.dataset.raster, 10) || 15;
+
+    let spalte = null, startY = null, flaeche = null;
+
+    /** Pixel ab Spaltenoberkante -> Minuten seit Mitternacht, gerastert. */
+    function minuten(sp, y) {
+      const k = sp.getBoundingClientRect();
+      const roh = (y - k.top) / hoehe * 60 + vonStunde * 60;
+      const gerastert = Math.round(roh / raster) * raster;
+      return Math.max(vonStunde * 60, Math.min(24 * 60, gerastert));
+    }
+
+    const alsUhrzeit = (m) =>
+      String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+
+    function flaecheZeigen(vonMin, bisMin) {
+      if (!flaeche) {
+        flaeche = document.createElement('div');
+        flaeche.className = 'zeitwahl-flaeche';
+        flaeche.setAttribute('aria-hidden', 'true');
+        spalte.appendChild(flaeche);
+      }
+      const oben = (Math.min(vonMin, bisMin) - vonStunde * 60) / 60 * hoehe;
+      const hoch = Math.abs(bisMin - vonMin) / 60 * hoehe;
+      flaeche.style.top = oben + 'px';
+      flaeche.style.height = Math.max(hoch, 2) + 'px';
+      flaeche.textContent = alsUhrzeit(Math.min(vonMin, bisMin)) + '–' + alsUhrzeit(Math.max(vonMin, bisMin));
+    }
+
+    function aufraeumen() {
+      if (flaeche) { flaeche.remove(); flaeche = null; }
+      spalte = null; startY = null;
+    }
+
+    gitter.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      const sp = e.target.closest('[data-aufziehbar]');
+      // Auf einem Termin will man den Termin öffnen, nicht daneben buchen.
+      if (!sp || e.target.closest('.termin')) return;
+      e.preventDefault();
+      spalte = sp;
+      startY = minuten(sp, e.clientY);
+      flaecheZeigen(startY, startY + raster);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!spalte) return;
+      flaecheZeigen(startY, minuten(spalte, e.clientY));
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (!spalte) return;
+      const bis = minuten(spalte, e.clientY);
+      const a = Math.min(startY, bis);
+      // Ein einzelner Klick ist kein Aufziehen, meint aber sichtbar eine
+      // Stunde ab dieser Stelle - das ist die bequemere Auslegung.
+      const b = Math.abs(bis - startY) < raster ? a + 60 : Math.max(startY, bis);
+      const tag = spalte.dataset.tag;
+      aufraeumen();
+
+      const d = document.getElementById('modal-schnellbuchung');
+      if (!d || typeof d.showModal !== 'function') return;
+      d.querySelector('#sb-tag').value = tag;
+      d.querySelector('#sb-von').value = alsUhrzeit(a);
+      d.querySelector('#sb-bis').value = alsUhrzeit(b);
+      const anzeige = d.querySelector('#sb-zeit');
+      if (anzeige) {
+        anzeige.textContent = new Date(tag + 'T00:00:00')
+          .toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })
+          + ', ' + alsUhrzeit(a) + '–' + alsUhrzeit(b) + ' Uhr';
+      }
+      d.showModal();
+    });
+
+    // Verlässt die Maus das Fenster mitten im Zug, bleibt sonst ein
+    // Rechteck stehen, das auf nichts mehr reagiert.
+    document.addEventListener('mouseleave', () => { if (spalte) aufraeumen(); });
+  }
+
   /* ------------------------------------------------------ Kleinkram --- */
 
   // Textfelder wachsen mit

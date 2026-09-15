@@ -485,6 +485,61 @@ final class Bookings
         return $ergebnis;
     }
 
+    /**
+     * Die Bedingung, unter der ein Termin auf eine Rechnung gehört.
+     *
+     * An einer Stelle, weil sie an mehreren gebraucht wird: in der Liste
+     * der offenen Posten, auf der Terminseite und beim Erzeugen selbst.
+     * Zwei Fassungen davon wären zwei Wahrheiten.
+     *
+     * Nicht abrechenbar ist ein Termin, der
+     *   - abgesagt wurde oder zu dem niemand kam,
+     *   - keinem Kunden gehört (ein Blocker im Kalender),
+     *   - nichts kostet,
+     *   - schon bezahlt ist oder aus einem Paket bezahlt wurde,
+     *   - bereits auf einer Rechnung steht.
+     */
+    public const ABRECHENBAR =
+        "status IN ('bestaetigt','erschienen')
+         AND customer_id > 0
+         AND preis_cent > 0
+         AND bezahlt = 0
+         AND customer_package_id = 0
+         AND invoice_id = 0";
+
+    /**
+     * Termine, die noch abgerechnet werden müssen.
+     *
+     * @param  int  $kundeId       0 = alle Kunden
+     * @param  bool $nurVergangene nur, was schon stattgefunden hat
+     * @return list<array<string,mixed>>
+     */
+    public static function abrechenbar(int $kundeId = 0, bool $nurVergangene = true): array
+    {
+        $wo = self::ABRECHENBAR;
+        $p  = [];
+        if ($kundeId > 0) {
+            $wo .= ' AND customer_id = :k';
+            $p['k'] = $kundeId;
+        }
+        if ($nurVergangene) {
+            $wo .= ' AND start <= :jetzt';
+            $p['jetzt'] = Util::jetzt();
+        }
+        return Tenant::all('bookings', $wo, $p, 'customer_id, start');
+    }
+
+    /** Ist genau dieser Termin abrechenbar? */
+    public static function istAbrechenbar(array $termin): bool
+    {
+        return in_array((string) $termin['status'], ['bestaetigt', 'erschienen'], true)
+            && (int) $termin['customer_id'] > 0
+            && (int) $termin['preis_cent'] > 0
+            && (int) $termin['bezahlt'] === 0
+            && (int) $termin['customer_package_id'] === 0
+            && (int) ($termin['invoice_id'] ?? 0) === 0;
+    }
+
     public static function block(int $stunde): string
     {
         if ($stunde < 11) {

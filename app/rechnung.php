@@ -313,6 +313,35 @@ require __DIR__ . '/partials/kopf.php';
       <?php endif;
     endif; ?>
 
+    <?php /*
+     * Die Termine hinter der Rechnung.
+     *
+     * Auf dem Beleg steht das Datum in der Positionsbeschreibung, damit
+     * der Kunde es liest. Hier steht der Weg zurueck in den Kalender -
+     * fuer die Frage "welche Stunde war das noch?", die beim Nachfassen
+     * immer kommt.
+     */
+    $dazuTermine = Invoices::termine($id);
+    if ($dazuTermine !== []): ?>
+      <div class="karte">
+        <div class="karte__kopf"><h3>Abgerechnete Termine</h3>
+          <span class="pille"><?= count($dazuTermine) ?></span></div>
+        <div class="karte__koerper karte__koerper--eng">
+          <div class="stapel stapel--eng">
+            <?php foreach ($dazuTermine as $tm): ?>
+              <a class="reihe" href="<?= Util::attr(App::url('/app/buchung.php?id=' . (int) $tm['id'])) ?>">
+                <span class="klein gedimmt" style="min-width:74px">
+                  <?= Util::h(Util::datum((string) $tm['start'], false)) ?></span>
+                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                  <?= Util::h((string) $tm['titel']) ?></span>
+                <span class="klein gedimmt"><?= Util::h(Util::uhrzeit((string) $tm['start'])) ?></span>
+              </a>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      </div>
+    <?php endif; ?>
+
     <div class="karte">
       <div class="karte__kopf"><h3>Verlauf</h3></div>
       <div class="karte__koerper karte__koerper--eng">

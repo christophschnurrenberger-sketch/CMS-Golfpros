@@ -90,6 +90,81 @@ final class Invoices
         });
     }
 
+    /**
+     * Rechnung über gehaltene Trainingsstunden.
+     *
+     * Der übliche Weg im Betrieb: Am Monatsende stehen acht Einheiten von
+     * Herrn Berger offen, und daraus soll ein Beleg werden. Jede Stunde
+     * wird zu einer Position mit ihrem Datum – der Kunde soll auf der
+     * Rechnung wiederfinden, wann er da war, sonst ruft er an.
+     *
+     * Der Preis kommt aus dem Termin, nicht aus der Leistung: Er wurde bei
+     * der Buchung kopiert und gilt, auch wenn die Preisliste sich seither
+     * geändert hat. Dasselbe Prinzip wie überall sonst in diesem System.
+     *
+     * @param  list<int> $terminIds
+     * @return array{0:int,1:string} Rechnungsnummer-ID und Fehlertext
+     */
+    public static function ausTerminen(array $terminIds, array $o = []): array
+    {
+        $termine = [];
+        foreach (array_unique(array_map('intval', $terminIds)) as $tid) {
+            $t = $tid > 0 ? Tenant::find('bookings', $tid) : null;
+            if (!$t) {
+                return [0, 'Ein Termin wurde nicht gefunden.'];
+            }
+            if (!Bookings::istAbrechenbar($t)) {
+                return [0, 'Der Termin vom ' . Util::datum((string) $t['start'])
+                         . ' lässt sich nicht abrechnen – abgesagt, schon bezahlt oder bereits auf einer Rechnung.'];
+            }
+            $termine[] = $t;
+        }
+        if ($termine === []) {
+            return [0, 'Es war kein Termin ausgewählt.'];
+        }
+
+        /* Eine Rechnung geht an einen Kunden. Mehrere zusammenzuwerfen
+           ergäbe einen Beleg, den niemand bezahlen kann. */
+        $kundeId = (int) $termine[0]['customer_id'];
+        foreach ($termine as $t) {
+            if ((int) $t['customer_id'] !== $kundeId) {
+                return [0, 'Die Termine gehören zu verschiedenen Kunden. Bitte je Kunde abrechnen.'];
+            }
+        }
+
+        usort($termine, static fn ($a, $b) => strcmp((string) $a['start'], (string) $b['start']));
+
+        $positionen = [];
+        foreach ($termine as $t) {
+            $positionen[] = [
+                'titel'        => (string) $t['titel'] !== '' ? (string) $t['titel'] : 'Training',
+                'beschreibung' => Util::datum((string) $t['start']) . ', '
+                                . Util::uhrzeit((string) $t['start']) . '–'
+                                . Util::uhrzeit((string) $t['ende']) . ' Uhr',
+                'menge'        => 1,
+                'preis_cent'   => (int) $t['preis_cent'],
+            ];
+        }
+
+        $id = self::erstellen($positionen, $o + ['customer_id' => $kundeId]);
+
+        foreach ($termine as $t) {
+            Tenant::update('bookings', (int) $t['id'], ['invoice_id' => $id]);
+        }
+        Audit::schreiben('erstellt', 'invoice', $id,
+            count($termine) . ' Termin' . (count($termine) === 1 ? '' : 'e') . ' abgerechnet');
+
+        return [$id, ''];
+    }
+
+    /** Die Termine, die auf dieser Rechnung stehen. */
+    public static function termine(int $invoiceId): array
+    {
+        return $invoiceId > 0
+            ? Tenant::all('bookings', 'invoice_id = :r', ['r' => $invoiceId], 'start')
+            : [];
+    }
+
     /** Rechnung aus einer bezahlten Bestellung – der Normalfall. */
     public static function ausBestellung(int $orderId): int
     {
@@ -135,6 +210,12 @@ final class Invoices
 
     public static function alsBezahlt(int $id, int $betragCent = 0): void
     {
+        /* Was auf einer bezahlten Rechnung steht, ist bezahlt - sonst
+           taucht derselbe Termin naechsten Monat wieder unter den offenen
+           Posten auf. */
+        foreach (self::termine($id) as $t) {
+            Tenant::update('bookings', (int) $t['id'], ['bezahlt' => 1]);
+        }
         $r = Tenant::find('invoices', $id);
         if (!$r) {
             return;

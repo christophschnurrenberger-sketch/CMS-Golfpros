@@ -1314,6 +1314,60 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
 .kalender__zelle:hover { background: var(--flaeche-2); }
 .kalender__spalte.ist-heute { background: color-mix(in srgb, var(--marke) 3%, transparent); }
 
+/*
+ * Die aufgezogene Zeit.
+ *
+ * Sie zeigt die Uhrzeiten mit, solange man zieht - sonst zielt man auf
+ * eine Flaeche und weiss erst im Dialog, was man getroffen hat.
+ * pointer-events: none, damit das Rechteck dem Mauszeiger nicht selbst im
+ * Weg steht und mousemove weiter an der Spalte ankommt.
+ */
+.zeitwahl-flaeche {
+  position: absolute; left: 3px; right: 3px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--marke) 22%, transparent);
+  border: 1.5px solid var(--marke);
+  color: var(--marke);
+  font-size: 11px; font-weight: 600;
+  padding: 2px 6px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Aufziehbare Spalten zeigen es am Zeiger an. */
+.kalender__spalte[data-aufziehbar] { cursor: cell; }
+
+/* --------------------------------------- Offene Posten abrechnen ----- */
+
+.abrechnung {
+  border: 1px solid var(--rand);
+  border-radius: var(--radius);
+  background: var(--flaeche);
+}
+.abrechnung__kopf {
+  display: flex; align-items: center; gap: var(--r3);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--rand);
+}
+.abrechnung__zeilen { padding: 4px 6px 6px; }
+
+/*
+ * Die einzelne Stunde. Wer nur einen Teil abrechnen will - weil eine
+ * Einheit noch strittig ist -, haekelt sie hier ab; sonst laesst er alles
+ * stehen und drueckt oben auf Rechnung.
+ */
+.abrechnung__zeile {
+  display: flex; align-items: center; gap: 9px;
+  padding: 5px 7px; border-radius: 7px;
+  font-size: 13px; color: var(--text-2); cursor: pointer;
+}
+.abrechnung__zeile:hover { background: var(--flaeche-3); }
+.abrechnung__datum { color: var(--text-4); font-size: 12px; min-width: 76px; }
+.abrechnung__titel { color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.kalender__spalte[data-aufziehbar] .termin { cursor: pointer; }
+
 .termin {
   position: absolute; left: 3px; right: 3px;
   border-radius: 7px;

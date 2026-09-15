@@ -39,6 +39,7 @@ final class Schema
         foreach (self::tabellen() as $sql) {
             DB::pdo()->exec(self::uebersetzen($sql));
         }
+        self::nachtragen();
         foreach (self::indizes() as $sql) {
             if (!DB::istSqlite()) {
                 $sql = str_replace('CREATE INDEX IF NOT EXISTS', 'CREATE INDEX', $sql);
@@ -52,6 +53,23 @@ final class Schema
                 }
             }
         }
+    }
+
+    /**
+     * Spalten, die nach der ersten Fassung dazugekommen sind.
+     *
+     * CREATE TABLE IF NOT EXISTS lässt eine bestehende Tabelle in Ruhe –
+     * auch dann, wenn die Definition oben inzwischen eine Spalte mehr
+     * kennt. Wer aktualisiert, statt neu zu installieren, bekommt sie
+     * deshalb hier nachgereicht. Die Liste wächst mit jeder Fassung und
+     * darf nie schrumpfen: Sie ist die einzige Verbindung zwischen einer
+     * alten Datenbank und dem heutigen Code.
+     */
+    private static function nachtragen(): void
+    {
+        /* Seit der Terminabrechnung: Auf welcher Rechnung steht dieser
+           Termin? 0 heißt „noch auf keiner". */
+        self::spalteSicherstellen('bookings', 'invoice_id', '%INT% NOT NULL DEFAULT 0');
     }
 
     /** Ergänzt eine Spalte, wenn sie fehlt. Für Updates bestehender Installationen. */
@@ -396,6 +414,7 @@ final class Schema
                 bezahlt %INT% NOT NULL DEFAULT 0,
                 customer_package_id %INT% NOT NULL DEFAULT 0,
                 order_id %INT% NOT NULL DEFAULT 0,
+                invoice_id %INT% NOT NULL DEFAULT 0,           -- abgerechnet auf dieser Rechnung
                 notiz %TEXT%,
                 interne_notiz %TEXT%,
                 quelle %STR(32)% NOT NULL DEFAULT "backend",   -- backend|website|portal|automation
@@ -1130,7 +1149,7 @@ final class Schema
             'services' => ['workspace_id', 'slug'],
             'availability' => ['workspace_id', 'user_id'],
             'time_off' => ['workspace_id', 'user_id'],
-            'bookings' => ['workspace_id', 'start', 'customer_id', 'trainer_id', 'status'],
+            'bookings' => ['workspace_id', 'start', 'customer_id', 'trainer_id', 'status', 'invoice_id'],
             'booking_participants' => ['booking_id', 'customer_id'],
             'waitlist' => ['workspace_id', 'event_id'],
             'packages' => ['workspace_id'],

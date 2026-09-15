@@ -86,6 +86,17 @@ if (App::istPost()) {
         App::weiter('/app/buchung.php?id=' . $id);
     }
 
+    if ($aktion === 'abrechnen' && $id > 0) {
+        Auth::fordern('invoices.write');
+        [$rechnungId, $fehler] = Invoices::ausTerminen([$id], ['status' => 'offen']);
+        if ($rechnungId > 0) {
+            App::melden('Rechnung erstellt.');
+            App::weiter('/app/rechnung.php?id=' . $rechnungId);
+        }
+        App::melden($fehler ?: 'Die Rechnung konnte nicht erstellt werden.', 'fehler');
+        App::weiter('/app/buchung.php?id=' . $id);
+    }
+
     if ($aktion === 'loeschen' && $id > 0) {
         Tenant::delete('bookings', $id);
         Audit::schreiben('geloescht', 'booking', $id);
@@ -401,6 +412,28 @@ $aktionen = '';
 if (Auth::darf('bookings.write') && (string) $termin['status'] !== 'abgesagt') {
     $aktionen .= '<button class="btn" data-modal-auf="modal-umbuchen">' . Icon::svg('repeat', 15) . ' Umbuchen</button>'
                . '<button class="btn" data-modal-auf="modal-absagen">' . Icon::svg('x', 15) . ' Absagen</button>';
+}
+
+/*
+ * Rechnung schreiben - aber nur, wenn es etwas zu schreiben gibt.
+ *
+ * Steht der Termin schon auf einer Rechnung, fuehrt der Knopf dorthin
+ * statt eine zweite anzulegen. Das ist die Frage, die der Pro an dieser
+ * Stelle wirklich hat: "Habe ich das schon abgerechnet?"
+ */
+$aufRechnung = (int) ($termin['invoice_id'] ?? 0);
+if ($aufRechnung > 0) {
+    $rechnung = Tenant::find('invoices', $aufRechnung);
+    if ($rechnung) {
+        $aktionen .= '<a class="btn" href="' . Util::attr(App::url('/app/rechnung.php?id=' . $aufRechnung)) . '">'
+                   . Icon::svg('invoices', 15) . ' Rechnung '
+                   . Util::h((string) $rechnung['nummer'] !== '' ? (string) $rechnung['nummer'] : 'ansehen') . '</a>';
+    }
+} elseif (Auth::darf('invoices.write') && Bookings::istAbrechenbar($termin)) {
+    $aktionen .= '<form method="post" style="display:inline">' . Auth::csrfFeld()
+               . '<input type="hidden" name="aktion" value="abrechnen">'
+               . '<button class="btn btn--primaer" type="submit">'
+               . Icon::svg('invoices', 15) . ' Rechnung schreiben</button></form>';
 }
 require __DIR__ . '/partials/kopf.php';
 ?>

@@ -17,6 +17,28 @@ if (App::get('aktion') === 'csv') {
 }
 
 $status = App::get('status', 'alle');
+/*
+ * Mehrere Termine eines Kunden in einem Beleg.
+ *
+ * Der Normalfall am Monatsende: acht Einheiten stehen offen, und daraus
+ * soll eine Rechnung werden - nicht acht. Die Arbeit macht
+ * Invoices::ausTerminen(); hier steht nur die Uebergabe.
+ */
+if (App::istPost() && App::aktion() === 'termine_abrechnen') {
+    Auth::csrfFordern();
+    Auth::fordern('invoices.write');
+    $gewaehlt = array_map('intval', App::postListe('termine'));
+    [$neueId, $fehler] = Invoices::ausTerminen($gewaehlt, ['status' => 'offen']);
+    if ($neueId > 0) {
+        App::melden(count($gewaehlt) === 1
+            ? 'Rechnung über einen Termin erstellt.'
+            : 'Rechnung über ' . count($gewaehlt) . ' Termine erstellt.');
+        App::weiter('/app/rechnung.php?id=' . $neueId);
+    }
+    App::melden($fehler ?: 'Die Rechnung konnte nicht erstellt werden.', 'fehler');
+    App::weiter('/app/rechnungen.php');
+}
+
 $suche  = App::get('q');
 $seite  = max(1, App::getInt('seite', 1));
 $proSeite = 50;
@@ -35,9 +57,17 @@ $bedingung = implode(' AND ', $wo);
 $gesamt = Tenant::count('invoices', $bedingung, $p);
 $liste = Tenant::all('invoices', $bedingung, $p, 'id DESC', $proSeite, ($seite - 1) * $proSeite);
 
+/* Termine, die noch auf keiner Rechnung stehen - nach Kunde gebuendelt,
+   weil eine Rechnung immer an einen Kunden geht. */
+$abrechenbar = Auth::darf('invoices.write') ? Bookings::abrechenbar() : [];
+$nachKunde = [];
+foreach ($abrechenbar as $termin) {
+    $nachKunde[(int) $termin['customer_id']][] = $termin;
+}
+
 $offen = Invoices::offenerBetrag();
-$ueberfaellig = Tenant::sum('invoices', 'summe_cent - bezahlt_cent', 'status = "ueberfaellig"');
-$bezahltJahr = Tenant::sum('invoices', 'summe_cent', 'status = "bezahlt" AND datum >= :j',
+$ueberfaellig = Tenant::sum('invoices', 'summe_cent - bezahlt_cent', "status = 'ueberfaellig'");
+$bezahltJahr = Tenant::sum('invoices', 'summe_cent', "status = 'bezahlt' AND datum >= :j",
     ['j' => date('Y-01-01')]);
 
 $titel = 'Rechnungen';
@@ -60,6 +90,67 @@ require __DIR__ . '/partials/kopf.php';
   <?= kennzahl('Bezahlt ' . date('Y'), Util::geld($bezahltJahr), ['icon' => 'check',
         'fuss' => 'im laufenden Jahr']) ?>
 </div>
+
+<?php if ($nachKunde !== []): ?>
+  <?php /*
+   * Offene Posten stehen ueber der Rechnungsliste, nicht darunter.
+   *
+   * Wer den Rechnungsbereich oeffnet, will meistens eine schreiben und
+   * nicht eine alte suchen. Je Kunde eine Karte, weil eine Rechnung an
+   * einen Kunden geht - ein Sammelbeleg ueber mehrere Kunden waere
+   * nicht bezahlbar.
+   */ ?>
+  <div class="karte mb-5">
+    <div class="karte__kopf">
+      <h2><?= Icon::svg('clock', 17) ?> Noch nicht abgerechnet</h2>
+      <span class="pille pille--akzent"><?= count($abrechenbar) ?></span>
+      <div class="fueller"></div>
+      <span class="klein gedimmt nicht-mobil">gehaltene Stunden ohne Rechnung</span>
+    </div>
+    <div class="karte__koerper karte__koerper--eng">
+      <div class="stapel stapel--eng">
+        <?php foreach ($nachKunde as $kundeId => $termine):
+          $kunde  = Tenant::find('customers', $kundeId);
+          $summe  = array_sum(array_map(static fn ($t) => (int) $t['preis_cent'], $termine));
+          $aeltester = Util::tageSeit((string) $termine[0]['start']); ?>
+          <form method="post" class="abrechnung">
+            <?= Auth::csrfFeld() ?>
+            <input type="hidden" name="aktion" value="termine_abrechnen">
+
+            <div class="abrechnung__kopf">
+              <div style="min-width:0">
+                <a class="halbfett" href="<?= Util::attr(App::url('/app/kunde.php?id=' . $kundeId)) ?>">
+                  <?= Util::h($kunde ? Customers::name($kunde) : 'Unbekannt') ?></a>
+                <div class="klein gedimmt">
+                  <?= count($termine) ?> Termin<?= count($termine) === 1 ? '' : 'e' ?>
+                  <?php if ($aeltester > 0): ?> · ältester seit <?= (int) $aeltester ?> Tag<?= $aeltester === 1 ? '' : 'en' ?><?php endif; ?>
+                </div>
+              </div>
+              <div class="fueller"></div>
+              <span class="halbfett mono"><?= Util::h(Util::geld($summe)) ?></span>
+              <button class="btn btn--klein btn--primaer" type="submit">
+                <?= Icon::svg('invoices', 14) ?> Rechnung</button>
+            </div>
+
+            <div class="abrechnung__zeilen">
+              <?php foreach ($termine as $termin): ?>
+                <label class="abrechnung__zeile">
+                  <input type="checkbox" name="termine[]" value="<?= (int) $termin['id'] ?>" checked>
+                  <span class="abrechnung__datum"><?= Util::h(Util::datum((string) $termin['start'], false)) ?></span>
+                  <a class="abrechnung__titel"
+                     href="<?= Util::attr(App::url('/app/buchung.php?id=' . (int) $termin['id'])) ?>">
+                    <?= Util::h((string) $termin['titel']) ?></a>
+                  <span class="fueller"></span>
+                  <span class="mono klein"><?= Util::h(Util::geldKurz((int) $termin['preis_cent'])) ?></span>
+                </label>
+              <?php endforeach; ?>
+            </div>
+          </form>
+        <?php endforeach; ?>
+      </div>
+    </div>
+  </div>
+<?php endif; ?>
 
 <div class="karte">
   <form method="get" class="filterleiste">
