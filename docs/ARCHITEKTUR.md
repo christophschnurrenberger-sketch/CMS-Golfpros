@@ -298,6 +298,19 @@ Zwei Wege führen hinein: der Schlüssel aus der Terminbestätigung
 Kundenverzeichnis – deshalb prüft `mitPasswort()` auch ohne Treffer gegen
 einen Wegwerf-Hash, damit die Antwort gleich lange dauert.
 
+**Jeder POST im Portal trägt das CSRF-Merkmal.** `Auth::csrfFordern()`
+steht in jedem Zweig, `Auth::csrfFeld()` in jedem Formular – auch in der
+Anmeldung selbst. Ohne das nahm eine fremde Seite jeden Vorgang entgegen,
+den der angemeldete Kunde ausführen darf, bis hin zum Passwortwechsel.
+Dass moderne Browser das Kennzeichen bei seitenfremden POSTs ohnehin
+zurückhalten (`SameSite=Lax`), ist eine Eigenschaft des Browsers – nicht
+des Servers.
+
+**Der Passwortwechsel verlangt das alte Passwort**, sobald eines gesetzt
+ist, und schickt danach eine Nachricht an den Kunden. Wer über den
+Zugangslink hereinkam und noch keines hat, darf eines setzen; dafür ist
+der Link da.
+
 **Die Anmeldung bleibt freiwillig.** Auf `buchen.php` steht sie als
 zugeklappter Kasten über dem Formular; daneben führt „Für jemand anderen
 buchen" jederzeit zur Gastbuchung zurück. Eine Buchung, die eine
@@ -326,6 +339,55 @@ Formular – sonst könnte ein manipuliertes Formular auf fremde Namen
 buchen. Und weil er den Einwilligungshaken gar nicht sieht, wird für ihn
 auch keine Einwilligung protokolliert: Ein Eintrag über eine Erklärung,
 die niemand abgegeben hat, ist als Nachweis wertlos.
+
+## Persönliche Dateien gehen durch eine Tür
+
+Schwungvideos und Unterlagen lagen bis zum Sicherheitsdurchgang unter
+`uploads/` und waren damit für jeden abrufbar, der die Adresse kannte oder
+erriet – ohne Anmeldung, ohne Mandantenprüfung. Der Haken „sichtbar im
+Portal" blendete nur den Link aus, nicht die Datei.
+
+Jetzt liegen sie unter `data/privat/w<id>/`, wo die `.htaccess` jeden
+direkten Abruf verweigert, und kommen ausschließlich über `datei.php`
+heraus. Das prüft der Reihe nach: Gehört der Datensatz zum Mandanten des
+Fragenden (dafür sorgt `Tenant::find()` von selbst), ist es sein eigener,
+und ist die Unterlage überhaupt fürs Portal freigegeben. Wer nicht darf,
+bekommt 404 statt 403 – ein „verboten" bestätigt, dass es die Datei gibt.
+
+Die Bilder der Website bleiben unter `uploads/`. Die sollen öffentlich
+sein; alles andere wäre ein Umweg ohne Gewinn.
+
+> **Bei nginx nachziehen.** Die Sperre auf `data/` steht in einer
+> `.htaccess` und wirkt damit nur unter Apache. Wer nginx einsetzt, muss
+> `location ^~ /data/ { deny all; }` selbst eintragen – sonst liegt dort
+> nicht nur jedes Video offen, sondern auch die Datenbank.
+
+## Zugangslink und Abmeldelink sind zwei Schlüssel
+
+Früher war beides derselbe Wert in `customers.portal_token`, und er galt
+unbegrenzt: Eine weitergeleitete Terminbestätigung von vor zwei Jahren
+meldete heute noch an.
+
+Heute hängen zwei Schlüssel am Kunden, weil sie zwei verschiedene Dinge
+tun müssen:
+
+* **`portal_token` – der Zugangslink.** Wird bei jedem Versand neu
+  gezogen (`Customers::zugangLink()`) und trägt in `portal_token_bis`
+  eine Frist von 14 Tagen. Die alte Mail hört damit von selbst auf, ein
+  Generalschlüssel zu sein. Bewusst *nicht* einmalig: Wer die Bestätigung
+  auf dem Telefon öffnet und abends noch einmal am Rechner, soll nicht
+  vor einer Fehlermeldung stehen. Den eigentlichen Fall – die alte Mail
+  im Postfach – erledigt die Frist.
+
+* **`abmelde_token` – der Abmeldelink des Newsletters.** Dauerhaft und
+  ohne Frist, denn ein Abmeldelink, der abläuft, ist keiner: Wer sich
+  nicht mit zwei Klicks abmelden kann, drückt auf „Spam". Er führt auch
+  nur zum Abmelden, nicht ins Portal.
+
+`Customers::portalLink()` zieht keinen neuen Schlüssel – das ist die
+Fassung für die Anzeige in der Kundenakte, wo der Trainer den Link
+vorliest oder kopiert. Würde allein das Öffnen der Akte den Schlüssel
+wechseln, wäre die Mail von gestern jedes Mal entwertet.
 
 ## Segmente speichern Regeln
 

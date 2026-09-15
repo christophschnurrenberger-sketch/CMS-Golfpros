@@ -97,7 +97,7 @@ require __DIR__ . '/partials/kopf.php';
   <div>
     <div class="video-buehne">
       <?php if ((string) $video['datei'] !== '' && is_file(GP_ROOT . '/' . $video['datei'])): ?>
-        <video id="analyse-video" src="<?= Util::attr(App::url((string) $video['datei'])) ?>"
+        <video id="analyse-video" src="<?= Util::attr(App::url('/datei.php?art=video&id=' . (int) $video['id'])) ?>"
                playsinline preload="auto"></video>
       <?php else: ?>
         <div class="video-buehne__platzhalter">

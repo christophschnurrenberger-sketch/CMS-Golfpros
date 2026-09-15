@@ -24,6 +24,17 @@ final class Kundenlogin
 {
     private const KUNDE     = 'portal_kunde';
     private const WORKSPACE = 'portal_workspace';
+    private const ZEIT      = 'portal_zeit';
+
+    /**
+     * Nach so vielen Sekunden Untätigkeit ist Schluss.
+     *
+     * Zwölf Stunden, dieselbe Spanne wie im Backend. Ohne Ablauf bleibt
+     * die Anmeldung, bis der Browser das Kennzeichen vergisst – auf einem
+     * geteilten Rechner ist das der Unterschied zwischen „später
+     * abgemeldet" und „nie abgemeldet".
+     */
+    private const FRIST = 43200;
 
     /** @var array<string,mixed>|null Einmal geladen, dann gemerkt. */
     private static ?array $kunde = null;
@@ -57,6 +68,13 @@ final class Kundenlogin
         if ($kundeId <= 0 || $workspaceId <= 0 || !self::passtZumMandanten($workspaceId)) {
             return null;
         }
+
+        /* Abgelaufen: Sitzung räumen, als wäre er abgemeldet. */
+        if (time() - (int) ($_SESSION[self::ZEIT] ?? 0) > self::FRIST) {
+            self::abmelden(false);
+            return null;
+        }
+        $_SESSION[self::ZEIT] = time();
 
         Tenant::setzen($workspaceId);
         $treffer = Tenant::find('customers', $kundeId);
@@ -101,6 +119,13 @@ final class Kundenlogin
         if ($treffer === null || !self::passtZumMandanten((int) $treffer['workspace_id'])) {
             return false;
         }
+
+        /* Abgelaufen ist abgelaufen – der Link aus einer weitergeleiteten
+           Mail von vor zwei Jahren meldet niemanden mehr an. */
+        $bis = trim((string) ($treffer['portal_token_bis'] ?? ''));
+        if ($bis !== '' && strtotime($bis) < time()) {
+            return false;
+        }
         self::sitzungSetzen($treffer);
         return true;
     }
@@ -118,6 +143,17 @@ final class Kundenlogin
         if ($email === '' || $passwort === '') {
             return false;
         }
+
+        /*
+         * Dieselbe Bremse wie im Backend. Sie fehlte hier, und ohne sie
+         * liessen sich gestohlene Zugangsdaten unbegrenzt und unbemerkt
+         * durchprobieren: 25 Fehlversuche in Folge hinterliessen nicht
+         * einmal eine Protokollzeile.
+         */
+        if (self::gebremst($email)) {
+            return false;
+        }
+
         $treffer = DB::one(
             "SELECT * FROM customers WHERE email = :e AND portal_passwort != '' AND status != 'geloescht'",
             ['e' => $email]
@@ -136,9 +172,11 @@ final class Kundenlogin
              * genauso lange dauert wie eine echte.
              */
             password_verify($passwort, '$2y$12$FPrItkMNqON1CKZBjWXrj.WFDaGh0nozQNY3jrhLg4WsxX5o0uPhK');
+            Auth::versuchMerken($email, self::BREMSE);
             return false;
         }
         if (!password_verify($passwort, (string) $treffer['portal_passwort'])) {
+            Auth::versuchMerken($email, self::BREMSE);
             return false;
         }
         if (!self::passtZumMandanten((int) $treffer['workspace_id'])) {
@@ -146,6 +184,29 @@ final class Kundenlogin
         }
         self::sitzungSetzen($treffer);
         return true;
+    }
+
+    /**
+     * Eigene Kennung im Protokoll.
+     *
+     * Getrennt von den Mitarbeiteranmeldungen, damit eine Welle gegen die
+     * Kundenanmeldung nicht nebenbei den Trainer aussperrt – und damit im
+     * Protokoll erkennbar bleibt, wogegen sich der Versuch richtete.
+     */
+    private const BREMSE = 'portal_login_fehlgeschlagen';
+
+    /**
+     * Läuft für diese Adresse gerade eine Sperre?
+     *
+     * Damit die Seite „zu viele Versuche" sagen kann statt „Passwort
+     * falsch". Verraten wird dabei nichts: Die Sperre entsteht durch die
+     * Versuche des Fragenden selbst, nicht dadurch, dass es das Konto
+     * gibt. Wer stattdessen weiter „Passwort falsch" liest, probiert
+     * ratlos weiter und ruft irgendwann beim Trainer an.
+     */
+    public static function gebremst(string $email): bool
+    {
+        return Auth::versuchGesperrt(strtolower(trim($email)), self::BREMSE);
     }
 
     /** Hat dieser Kunde überhaupt ein Passwort gesetzt? */
@@ -231,7 +292,7 @@ final class Kundenlogin
                 "Hallo " . (string) $vorhanden['vorname'] . ",\n\n"
                 . "unter dieser Adresse gibt es schon einen Zugang. Ein zweites Konto\n"
                 . "braucht es also nicht – mit diesem Link kommst du direkt hinein:\n\n"
-                . Customers::portalLink($vorhanden) . "\n\n"
+                . Customers::zugangLink($vorhanden) . "\n\n"
                 . "Dort kannst du auch ein Passwort setzen oder ein neues vergeben.\n\n"
                 . "Hast du das nicht angefordert, ignoriere diese Mail einfach – es\n"
                 . "wurde nichts geändert.\n\n"
@@ -269,7 +330,7 @@ final class Kundenlogin
         Mail::anKunden($kunde, 'Willkommen bei ' . Tenant::name(),
             "Hallo " . $vorname . ",\n\n"
             . "dein Zugang steht. Termine, Trainingsplan und Unterlagen findest du hier:\n\n"
-            . Customers::portalLink($kunde) . "\n\n"
+            . Customers::zugangLink($kunde) . "\n\n"
             . "Der Link funktioniert auch ohne Passwort – bewahre ihn also wie einen\n"
             . "Schlüssel auf.\n\n"
             . Tenant::name());
@@ -283,7 +344,7 @@ final class Kundenlogin
     public static function abmelden(bool $weiter = true): void
     {
         Auth::start();
-        unset($_SESSION[self::KUNDE], $_SESSION[self::WORKSPACE]);
+        unset($_SESSION[self::KUNDE], $_SESSION[self::WORKSPACE], $_SESSION[self::ZEIT]);
         self::$kunde = null;
         self::$geladen = true;
 
@@ -326,6 +387,7 @@ final class Kundenlogin
 
         $_SESSION[self::KUNDE]     = (int) $kunde['id'];
         $_SESSION[self::WORKSPACE] = (int) $kunde['workspace_id'];
+        $_SESSION[self::ZEIT]      = time();
 
         Tenant::setzen((int) $kunde['workspace_id']);
         self::$kunde   = $kunde;

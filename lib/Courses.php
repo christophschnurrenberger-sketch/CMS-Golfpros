@@ -80,7 +80,7 @@ final class Courses
                 "Hallo " . $kunde['vorname'] . ",\n\n"
                 . "der Kurs \"" . ($kurs['titel'] ?? '') . "\" steht ab sofort für dich bereit.\n\n"
                 . "Du kannst jederzeit starten und in deinem Tempo weitermachen.",
-                ['knopf_text' => 'Kurs starten', 'knopf_url' => Customers::portalLink($kunde)]);
+                ['knopf_text' => 'Kurs starten', 'knopf_url' => Customers::zugangLink($kunde)]);
         }
         return $id;
     }

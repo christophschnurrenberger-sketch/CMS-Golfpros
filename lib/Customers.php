@@ -118,6 +118,8 @@ final class Customers
         }
 
         $satz['portal_token']      = Util::token(16);
+        $satz['portal_token_bis']  = date('Y-m-d H:i:s', time() + self::ZUGANG_TAGE * 86400);
+        $satz['abmelde_token']     = Util::token(16);
         $satz['letzte_aktivitaet'] = Util::jetzt();
         $satz['health_score']      = 60;   // Neukunden starten wohlwollend
         $neu = Tenant::insert('customers', $satz);
@@ -292,9 +294,64 @@ final class Customers
 
     /* ------------------------------------------------------ Portalzugang */
 
+    /**
+     * Ein frischer Zugangslink – befristet, für den Versand per E-Mail.
+     *
+     * Der Schlüssel wird bei jedem Versand neu gezogen und bekommt eine
+     * Frist. Damit hört eine weitergeleitete Terminbestätigung von vor
+     * zwei Jahren auf, ein Generalschlüssel zu sein: Sie läuft ab, und
+     * die nächste Mail entwertet sie ohnehin.
+     *
+     * Bewusst *nicht* einmalig: Wer die Bestätigung auf dem Telefon
+     * öffnet und abends noch einmal am Rechner, soll nicht vor einer
+     * Fehlermeldung stehen. Die Frist erledigt den eigentlichen Fall –
+     * die alte Mail im Postfach – und kostet niemanden etwas.
+     */
+    public const ZUGANG_TAGE = 14;
+
+    public static function zugangLink(array $kunde): string
+    {
+        $id = (int) ($kunde['id'] ?? 0);
+        if ($id <= 0) {
+            return App::absolut('/portal/');
+        }
+        $token = Util::token(16);
+        Tenant::update('customers', $id, [
+            'portal_token'     => $token,
+            'portal_token_bis' => date('Y-m-d H:i:s', time() + self::ZUGANG_TAGE * 86400),
+        ]);
+        return App::absolut('/portal/?t=' . rawurlencode($token));
+    }
+
+    /**
+     * Der Abmeldelink des Newsletters – dauerhaft und ohne Frist.
+     *
+     * Er hängt an einem eigenen Schlüssel. Ein Abmeldelink, der abläuft,
+     * ist keiner: Wer sich nicht mit zwei Klicks abmelden kann, drückt
+     * auf „Spam", und das beschädigt die Zustellbarkeit aller künftigen
+     * Mails. Er führt auch nur zum Abmelden, nicht ins Portal.
+     */
+    public static function abmeldeLink(array $kunde): string
+    {
+        $id    = (int) ($kunde['id'] ?? 0);
+        $token = trim((string) ($kunde['abmelde_token'] ?? ''));
+        if ($token === '' && $id > 0) {
+            $token = Util::token(16);
+            Tenant::update('customers', $id, ['abmelde_token' => $token]);
+        }
+        return App::absolut('/abmelden-newsletter.php?t=' . rawurlencode($token));
+    }
+
+    /**
+     * Zugangslink ohne neuen Schlüssel – für die Anzeige im Backend.
+     *
+     * Der Trainer sieht ihn in der Kundenakte, um ihn vorzulesen oder zu
+     * kopieren. Würde allein das Öffnen der Akte den Schlüssel wechseln,
+     * wäre die Mail von gestern jedes Mal entwertet.
+     */
     public static function portalLink(array $kunde): string
     {
-        return App::absolut('/portal/?t=' . rawurlencode((string) $kunde['portal_token']));
+        return App::absolut('/portal/?t=' . rawurlencode((string) ($kunde['portal_token'] ?? '')));
     }
 
     /* -------------------------------------------------------- Löschen -- */
@@ -336,7 +393,7 @@ final class Customers
         if (!$kunde) {
             return [];
         }
-        unset($kunde['portal_passwort'], $kunde['portal_token']);
+        unset($kunde['portal_passwort'], $kunde['portal_token'], $kunde['abmelde_token']);
         return ['stammdaten' => $kunde] + self::akte($kundeId);
     }
 }

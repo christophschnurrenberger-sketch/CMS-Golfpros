@@ -3,6 +3,9 @@ data/*.sqlite
 data/*.sqlite-shm
 data/*.sqlite-wal
 data/cache/
+# Schwungvideos und Unterlagen der Kunden. Personenbezogen – die gehören
+# weder ins Repository noch auf einen Rechner, der nicht der Server ist.
+data/privat/
 uploads/*
 !uploads/index.html
 !uploads/.htaccess

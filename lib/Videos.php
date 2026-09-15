@@ -80,7 +80,7 @@ final class Videos
                 "Hallo " . $kunde['vorname'] . ",\n\n"
                 . "ich habe mir dein Video angesehen und die Analyse für dich zusammengestellt.\n\n"
                 . "Du findest sie mit allen Markierungen und meinen Anmerkungen in deinem Bereich.",
-                ['knopf_text' => 'Analyse ansehen', 'knopf_url' => Customers::portalLink($kunde)]);
+                ['knopf_text' => 'Analyse ansehen', 'knopf_url' => Customers::zugangLink($kunde)]);
         }
         Gamification::punkte((int) $a['customer_id'], 30, 'Analyse erhalten');
         Audit::schreiben('veroeffentlicht', 'video_analysis', $id, 'Für den Kunden freigegeben');

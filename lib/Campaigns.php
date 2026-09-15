@@ -71,7 +71,7 @@ final class Campaigns
         $gesendet = 0;
 
         foreach ($teil as $kunde) {
-            $abmelden = App::absolut('/abmelden-newsletter.php?t=' . rawurlencode((string) $kunde['portal_token']));
+            $abmelden = Customers::abmeldeLink($kunde);
             $betreff = (int) $k['ab_test'] === 1 && $gesendet % 2 === 1 && (string) $k['ab_betreff'] !== ''
                 ? (string) $k['ab_betreff']
                 : (string) $k['betreff'];

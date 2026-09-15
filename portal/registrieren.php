@@ -45,6 +45,7 @@ $fehler  = '';
 $fertig  = '';
 
 if (App::istPost() && App::aktion() === 'registrieren') {
+    Auth::csrfFordern();
     if (Oeffentlich::istRoboter()) {
         $fehler = 'Das sah nach einem automatischen Versand aus. Bitte noch einmal versuchen.';
     } else {
@@ -89,6 +90,7 @@ zugangSeite('Konto anlegen', 'Termine, Trainingsplan und Unterlagen an einem Ort
          . '<div class="hinweis__text">' . Util::h($fehler) . '</div></div>'
        : '')
     . '<form method="post" class="karte">'
+    . Auth::csrfFeld()
     . '<input type="hidden" name="aktion" value="registrieren">'
     . '<input type="hidden" name="w" value="' . Util::attr($slug) . '">'
     . '<input type="hidden" name="begonnen" value="' . time() . '">'

@@ -39,6 +39,7 @@ $schritte = ['Zeit wählen', 'Deine Angaben', 'Bestätigung'];
  */
 $anmeldefehler = '';
 if (App::istPost() && App::aktion() === 'kunde_anmelden') {
+    Auth::csrfFordern();
     if (Kundenlogin::mitPasswort(App::post('email'), App::postRoh('passwort'))) {
         /* Zurück auf dieselbe Zeit, die schon gewählt war. */
         App::weiter('/buchen.php?' . http_build_query(array_filter([
@@ -48,7 +49,9 @@ if (App::istPost() && App::aktion() === 'kunde_anmelden') {
             'trainer_id' => App::postInt('trainer_id') ?: null,
         ])));
     }
-    $anmeldefehler = 'E-Mail oder Passwort stimmt nicht.';
+    $anmeldefehler = Kundenlogin::gebremst(App::post('email'))
+        ? 'Zu viele Versuche. Bitte in 15 Minuten erneut probieren.'
+        : 'E-Mail oder Passwort stimmt nicht.';
 }
 
 if (App::get('gast') !== '') {
@@ -173,7 +176,7 @@ if (App::istPost() && App::aktion() === 'buchen') {
                    ? Tenant::einstellung('buchung_bestaetigung') . "\n\n" : '')
                 . "Absagen kannst du bis "
                 . (int) Tenant::einstellung('stornofrist_stunden', 24) . " Stunden vorher kostenfrei – "
-                . "am einfachsten in deinem Bereich:\n" . Customers::portalLink($kunde ?? []) . "\n\n"
+                . "am einfachsten in deinem Bereich:\n" . Customers::zugangLink($kunde ?? []) . "\n\n"
                 . Tenant::name());
 
             $ortZeile = $ort !== null ? Util::h((string) $ort['name']) : '';

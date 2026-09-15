@@ -140,7 +140,7 @@ final class Training
                 . "ich habe dir einen Trainingsplan zusammengestellt: \"" . ($plan['name'] ?? '') . "\".\n\n"
                 . "Du findest ihn jederzeit in deinem Bereich – mit allen Übungen, Videos und Zielen.\n\n"
                 . "Viel Freude beim Üben!",
-                ['knopf_text' => 'Trainingsplan ansehen', 'knopf_url' => Customers::portalLink($kunde)]);
+                ['knopf_text' => 'Trainingsplan ansehen', 'knopf_url' => Customers::zugangLink($kunde)]);
         }
         Audit::schreiben('geaendert', 'training_plan', $planId, 'Zugewiesen an ' . Customers::nameVonId($kundeId));
         return $id;

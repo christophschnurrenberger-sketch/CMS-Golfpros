@@ -385,28 +385,72 @@ final class Auth
 
     /* ---------------------------------------------------- Bremse ------- */
 
-    private static function fehlversuchMerken(string $email): void
+    /**
+     * Die Bremse gegen Durchprobieren – für Mitarbeiter wie für Kunden.
+     *
+     * Gezählt wird in zwei Richtungen, und beide sind nötig:
+     *
+     *   **Nach Adresse.** Hält den Angreifer auf, der ein Konto mit einer
+     *   Passwortliste bearbeitet.
+     *
+     *   **Nach Herkunft.** Hält den auf, der eine gestohlene Liste aus
+     *   tausend Zugangsdaten durchprobiert und jede Adresse nur einmal
+     *   anfasst. Eine Zählung allein nach Adresse sieht davon nichts –
+     *   und genau so läuft das Durchprobieren heute.
+     *
+     * Die Grenze nach Herkunft liegt höher: Hinter einer IP kann ein
+     * ganzer Golfclub sitzen, und wer die Familie aussperrt, weil der
+     * Sohn sein Passwort vergessen hat, hat nichts gewonnen.
+     */
+    public const BREMSE_FENSTER = 900;      // 15 Minuten
+    public const BREMSE_ADRESSE = 8;
+    public const BREMSE_HERKUNFT = 30;
+
+    public static function versuchMerken(string $kennung, string $aktion = 'login_fehlgeschlagen'): void
     {
         DB::insert('audit_log', [
             'workspace_id' => 0,
             'user_id'      => 0,
-            'aktion'       => 'login_fehlgeschlagen',
+            'aktion'       => $aktion,
             'objekt'       => 'user',
             'objekt_id'    => 0,
-            'beschreibung' => $email,
+            'beschreibung' => $kennung,
             'ip'           => Util::ip(),
             'erstellt'     => Util::jetzt(),
         ]);
     }
 
+    public static function versuchGesperrt(string $kennung, string $aktion = 'login_fehlgeschlagen'): bool
+    {
+        $seit = date('Y-m-d H:i:s', time() - self::BREMSE_FENSTER);
+
+        $nachAdresse = DB::int(
+            'SELECT COUNT(*) FROM audit_log WHERE aktion = :a AND beschreibung = :e AND erstellt > :seit',
+            ['a' => $aktion, 'e' => $kennung, 'seit' => $seit]
+        );
+        if ($nachAdresse >= self::BREMSE_ADRESSE) {
+            return true;
+        }
+
+        $ip = Util::ip();
+        if ($ip === '') {
+            return false;
+        }
+        $nachHerkunft = DB::int(
+            'SELECT COUNT(*) FROM audit_log WHERE aktion = :a AND ip = :ip AND erstellt > :seit',
+            ['a' => $aktion, 'ip' => $ip, 'seit' => $seit]
+        );
+        return $nachHerkunft >= self::BREMSE_HERKUNFT;
+    }
+
+    private static function fehlversuchMerken(string $email): void
+    {
+        self::versuchMerken($email);
+    }
+
     private static function gesperrt(string $email): bool
     {
-        $seit = date('Y-m-d H:i:s', time() - 900);
-        $versuche = DB::int(
-            'SELECT COUNT(*) FROM audit_log WHERE aktion = :a AND beschreibung = :e AND erstellt > :seit',
-            ['a' => 'login_fehlgeschlagen', 'e' => $email, 'seit' => $seit]
-        );
-        return $versuche >= 8;
+        return self::versuchGesperrt($email);
     }
 
     /* ------------------------------------------------------- Team ------ */

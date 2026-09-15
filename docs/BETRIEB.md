@@ -149,6 +149,9 @@ Entwurfsauftrag übertragen – wer das nicht möchte, lässt das Feld leer.
 * Sollen sich Kunden nicht selbst registrieren dürfen, schaltet der Haken
   unter *Einstellungen → Buchung* den Weg ab. Buchen geht weiter – dafür
   braucht es kein Konto.
+* Schwungvideos und Unterlagen liegen unter `data/privat/` und werden nur
+  über `datei.php` herausgegeben, das vorher prüft, wer fragt. Sie gehören
+  in keine Sicherung, die jemand unverschlüsselt herumliegen lässt.
 * Die Schriften der öffentlichen Website liegen in `assets/fonts/` auf dem
   eigenen Server; es geht kein Aufruf an Google. Wer unter *Website →
   Design* eine andere Schrift wählt, holt sie wieder von dort – dann
@@ -157,6 +160,46 @@ Entwurfsauftrag übertragen – wer das nicht möchte, lässt das Feld leer.
 * Die erzeugten Texte für Impressum, Datenschutzerklärung und AGB sind
   Gerüste mit Platzhaltern. Sie sind keine Rechtsberatung und sollten vor
   dem Online-Gehen von jemandem mit Fachkenntnis angesehen werden.
+
+## Nach dem Einrichten einmal durchgehen
+
+Fünf Punkte, die keine zehn Minuten kosten und die häufigsten offenen
+Türen schließen:
+
+1. **`install.php` löschen.** Sie weigert sich zwar, ein zweites Mal zu
+   laufen, solange eine `config.php` daliegt – aber was weg ist, kann
+   nicht überraschen.
+2. **`demo.php` löschen**, falls kein öffentlicher Demo-Bereich betrieben
+   wird. Die Datei meldet Besucher ohne Passwort als Eigentümer des
+   Demo-Workspace an; seit dem Sicherheitsdurchgang nur noch, wenn in der
+   `config.php` ausdrücklich `'demo_zugang' => true` steht. Gelöscht ist
+   gelöscht.
+3. **`base_url` in der `config.php` prüfen.** Sie ist die Grundlage aller
+   Links in E-Mails *und* die Liste der zulässigen Hostnamen: Steht sie
+   dort vollständig, kann eine gefälschte Host-Kopfzeile die Links nicht
+   mehr auf einen fremden Server umlenken.
+4. **Einen Testversand ansehen.** Einen Termin für sich selbst buchen und
+   den Zugangslink in der Mail anklicken. Er gilt 14 Tage; jede neue Mail
+   erneuert ihn.
+5. **Dateirechte nachsehen.** `config.php` auf 640, `data/` und alles
+   darin für andere Benutzer des Servers unlesbar. Der Auslieferungs-
+   Workflow setzt das; bei einem Upload von Hand macht es niemand.
+
+### Bei nginx statt Apache
+
+Die Schutzregeln stehen in `.htaccess`-Dateien, und die wertet nur Apache
+aus. Wer nginx einsetzt, überträgt sie sinngemäß – vor allem diese, denn
+ohne sie liegen die Kundendatenbank und jedes Schwungvideo offen:
+
+```nginx
+location ^~ /data/     { deny all; }
+location ~ /\.         { deny all; }
+location = /config.php { deny all; }
+location ^~ /uploads/  { location ~ \.(php|phtml|pl|py|cgi|sh)$ { deny all; } }
+```
+
+Die Sicherheitskopfzeilen kommen seit dem Sicherheitsdurchgang zusätzlich
+aus PHP und sind damit serverunabhängig da.
 
 ## Fehlersuche
 

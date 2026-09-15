@@ -52,14 +52,22 @@ if ($token !== '' && Kundenlogin::mitToken($token)) {
 /* 2. Anmeldung mit E-Mail und Passwort */
 $fehler = '';
 if (!Kundenlogin::angemeldet() && App::istPost() && App::aktion() === 'anmelden') {
+    /* Auch die Anmeldung selbst: Sonst meldet eine fremde Seite den
+       Besucher unbemerkt im Konto des Angreifers an. */
+    Auth::csrfFordern();
+
     if (Kundenlogin::mitPasswort(App::post('email'), App::postRoh('passwort'))) {
         App::weiter('/portal/');
     }
     /*
      * Eine Fehlermeldung, die nicht verrät, ob es die Adresse gibt –
      * sonst ließe sich das Portal als Kundenverzeichnis missbrauchen.
+     * Die Sperre darf dagegen benannt werden: Sie entsteht durch die
+     * Versuche des Fragenden, nicht dadurch, dass es das Konto gibt.
      */
-    $fehler = 'E-Mail oder Passwort stimmt nicht.';
+    $fehler = Kundenlogin::gebremst(App::post('email'))
+        ? 'Zu viele Versuche. Bitte in 15 Minuten erneut probieren.'
+        : 'E-Mail oder Passwort stimmt nicht.';
 }
 
 /* 3. Bestehende Sitzung */
@@ -91,6 +99,7 @@ if ($kunde === null) {
              . '<div class="hinweis__text">' . Util::h($fehler) . '</div></div>'
            : '')
         . '<form method="post" class="karte">'
+        . Auth::csrfFeld()
         . '<input type="hidden" name="aktion" value="anmelden">'
         . '<div class="karte__koerper">'
         . '<div class="feld"><label class="feld__label" for="pe">E-Mail</label>'
@@ -119,6 +128,17 @@ if ($kunde === null) {
 $ansicht = App::get('ansicht', 'start');
 
 if (App::istPost()) {
+    /*
+     * Das Merkmal gegen gefälschte Anfragen – im Portal bis hierher nicht
+     * geprüft. Ohne diese Zeile nahm eine fremde Seite jeden Vorgang
+     * entgegen, den der angemeldete Kunde ausführen darf: Termin absagen,
+     * Löschanfrage stellen und, am teuersten, das Passwort setzen. Dass
+     * moderne Browser das Kennzeichen bei seitenfremden POSTs ohnehin
+     * zurückhalten (SameSite=Lax), ist eine Eigenschaft des Browsers –
+     * nicht des Servers. Der Server hatte dazu bisher keine Meinung.
+     */
+    Auth::csrfFordern();
+
     $aktion = App::aktion();
 
     if ($aktion === 'absagen') {
@@ -180,12 +200,37 @@ if (App::istPost()) {
 
         $neu = App::postRoh('passwort');
         if ($neu !== '') {
+            /*
+             * Wer schon ein Passwort hat, muss es nennen.
+             *
+             * Sonst genügt eine offene Sitzung, um den Zugang dauerhaft zu
+             * übernehmen – ein geliehener Laptop, ein nicht abgemeldetes
+             * Familien-Tablet, ein weitergeleiteter Zugangslink. Wer über
+             * den Link hereinkam und noch kein Passwort hat, darf eines
+             * setzen: Dafür ist der Link da.
+             */
+            if (Kundenlogin::hatPasswort($kunde)
+                && !password_verify(App::postRoh('passwort_alt'), (string) $kunde['portal_passwort'])) {
+                App::melden('Das bisherige Passwort stimmt nicht. Die übrigen Daten wurden gespeichert.', 'fehler');
+                App::weiter('/portal/?ansicht=profil');
+            }
             [$okay, $meldung] = Auth::passwortPruefen($neu);
             if (!$okay) {
                 App::melden($meldung, 'fehler');
                 App::weiter('/portal/?ansicht=profil');
             }
             Tenant::update('customers', (int) $kunde['id'], ['portal_passwort' => Auth::hash($neu)]);
+
+            /* Ein Passwortwechsel ist der Vorgang, bei dem eine Nachricht am
+               meisten wert ist: Wer sie bekommt, ohne ihn ausgelöst zu haben,
+               weiß sofort, dass jemand an seinem Konto war. */
+            Mail::anKunden($kunde, 'Dein Passwort wurde geändert',
+                "Hallo " . (string) $kunde['vorname'] . ",\n\n"
+                . "das Passwort für deinen Bereich wurde gerade geändert.\n\n"
+                . "Warst du das nicht, melde dich bitte umgehend bei uns – dann\n"
+                . "sperren wir den Zugang und richten ihn neu ein.\n\n"
+                . Tenant::name());
+
             App::melden('Daten und Passwort gespeichert.');
         } else {
             App::melden('Daten gespeichert.');
@@ -358,7 +403,7 @@ elseif ($ansicht === 'termine'):
           <?php if ($absagbar): ?>
             <form method="post" class="inline"
                   data-bestaetigen="Termin am <?= Util::attr(Util::datum((string) $b['start'])) ?> wirklich absagen?">
-              <input type="hidden" name="aktion" value="absagen">
+              <?= Auth::csrfFeld() ?><input type="hidden" name="aktion" value="absagen">
               <input type="hidden" name="id" value="<?= (int) $b['id'] ?>">
               <button class="btn btn--klein" type="submit">Absagen</button>
             </form>
@@ -451,7 +496,7 @@ elseif ($ansicht === 'training'):
         <?php if ($video !== null && (string) $video['datei'] !== ''): ?>
           <video class="mb-3" controls playsinline preload="metadata"
                  style="width:100%;border-radius:var(--radius-m);background:#000"
-                 src="<?= Util::attr(App::url((string) $video['datei'])) ?>"></video>
+                 src="<?= Util::attr(App::url('/datei.php?art=video&id=' . (int) $video['id'])) ?>"></video>
         <?php endif; ?>
         <?php if ((string) $a['pro_analyse'] !== ''): ?>
           <div class="halbfett klein mb-2">Einschätzung deines Trainers</div>
@@ -663,7 +708,7 @@ elseif ($ansicht === 'unterlagen'):
   <?php else: ?>
     <div class="pt-liste">
       <?php foreach ($dokumente as $d): ?>
-        <a class="pt-zeile" href="<?= Util::attr(App::url((string) $d['pfad'])) ?>" target="_blank" rel="noopener">
+        <a class="pt-zeile" href="<?= Util::attr(App::url('/datei.php?art=dokument&id=' . (int) $d['id'])) ?>" target="_blank" rel="noopener">
           <span style="color:var(--text-3);display:flex"><?= Icon::svg('folder', 17) ?></span>
           <span class="pt-zeile__text">
             <span class="pt-zeile__titel"><?= Util::h((string) $d['titel']) ?></span>
@@ -681,7 +726,7 @@ elseif ($ansicht === 'unterlagen'):
 elseif ($ansicht === 'nachrichten'):
 ?>
   <form method="post" class="karte mb-5">
-    <input type="hidden" name="aktion" value="nachricht">
+    <?= Auth::csrfFeld() ?><input type="hidden" name="aktion" value="nachricht">
     <div class="karte__koerper">
       <div class="feld"><label class="feld__label" for="n-text">Nachricht an deinen Trainer</label>
         <textarea class="eingabe" id="n-text" name="text" rows="3" data-waechst required
@@ -713,7 +758,7 @@ elseif ($ansicht === 'nachrichten'):
 else:
 ?>
   <form method="post" class="karte mb-4">
-    <input type="hidden" name="aktion" value="profil">
+    <?= Auth::csrfFeld() ?><input type="hidden" name="aktion" value="profil">
     <div class="karte__koerper">
       <div class="feld-reihe feld-reihe--2">
         <div class="feld"><label class="feld__label">Name</label>
@@ -743,6 +788,13 @@ else:
       <div class="feld"><label class="feld__label" for="pr-ziele">Woran willst du arbeiten?</label>
         <textarea class="eingabe" id="pr-ziele" name="ziele" rows="2" data-waechst><?= Util::h((string) $kunde['ziele']) ?></textarea>
         <div class="feld__hinweis">Dein Trainer sieht das und richtet den Plan danach aus.</div></div>
+      <?php if (Kundenlogin::hatPasswort($kunde)): ?>
+        <div class="feld"><label class="feld__label" for="pr-passwort-alt">Bisheriges Passwort</label>
+          <input class="eingabe" id="pr-passwort-alt" type="password" name="passwort_alt"
+                 autocomplete="current-password" placeholder="nur nötig, wenn du das Passwort änderst">
+          <div class="feld__hinweis">Fragen wir ab, damit niemand an einem offenen Rechner
+            dein Passwort austauschen kann.</div></div>
+      <?php endif; ?>
       <div class="feld"><label class="feld__label" for="pr-passwort">Neues Passwort</label>
         <input class="eingabe" id="pr-passwort" type="password" name="passwort" autocomplete="new-password"
                placeholder="leer lassen, um es nicht zu ändern">
@@ -765,13 +817,13 @@ else:
         (Artikel 17 DSGVO). Beide Anfragen werden innerhalb eines Monats beantwortet.</p>
       <div class="reihe reihe--eng reihe--umbruch">
         <form method="post" class="inline">
-          <input type="hidden" name="aktion" value="datenanfrage">
+          <?= Auth::csrfFeld() ?><input type="hidden" name="aktion" value="datenanfrage">
           <input type="hidden" name="typ" value="export">
           <button class="btn btn--klein" type="submit"><?= Icon::svg('download', 14) ?> Datenkopie anfordern</button>
         </form>
         <form method="post" class="inline"
               data-bestaetigen="Löschung deiner Daten beantragen? Bezahlte Rechnungen müssen aus steuerlichen Gründen aufbewahrt werden.">
-          <input type="hidden" name="aktion" value="datenanfrage">
+          <?= Auth::csrfFeld() ?><input type="hidden" name="aktion" value="datenanfrage">
           <input type="hidden" name="typ" value="loeschung">
           <button class="btn btn--klein" type="submit"><?= Icon::svg('trash', 14) ?> Löschung beantragen</button>
         </form>

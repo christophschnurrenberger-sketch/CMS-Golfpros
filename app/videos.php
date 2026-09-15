@@ -16,7 +16,8 @@ if (App::istPost()) {
 
         if ($datei && (int) $datei['error'] === UPLOAD_ERR_OK) {
             $erlaubt = ['video/mp4' => 'mp4', 'video/quicktime' => 'mov', 'video/webm' => 'webm'];
-            $typ = (string) ($datei['type'] ?? '');
+            /* Aus dem Inhalt bestimmt, nicht aus der Angabe des Browsers. */
+            $typ = Medientyp::erkennen((string) ($datei['tmp_name'] ?? ''));
             if (!isset($erlaubt[$typ])) {
                 App::melden('Nur MP4, MOV und WebM werden unterstützt.', 'fehler');
                 App::weiter('/app/videos.php');
@@ -25,13 +26,20 @@ if (App::istPost()) {
                 App::melden('Das Video ist größer als 200 MB. Bitte kürzen oder verkleinern.', 'fehler');
                 App::weiter('/app/videos.php');
             }
-            $ordner = GP_ROOT . '/uploads/w' . Tenant::id() . '/video';
+            /*
+             * Unter data/, nicht unter uploads/: Schwungvideos zeigen einen
+             * namentlich benannten Menschen und gehen niemanden an, der die
+             * Adresse errät. In data/ verweigert die .htaccess jeden direkten
+             * Abruf; herausgegeben werden sie nur über datei.php, das vorher
+             * prüft, wer fragt.
+             */
+            $ordner = GP_ROOT . '/data/privat/w' . Tenant::id() . '/video';
             if (!is_dir($ordner)) {
                 @mkdir($ordner, 0750, true);
             }
             $name = 'v' . Util::token(8) . '.' . $erlaubt[$typ];
             if (move_uploaded_file((string) $datei['tmp_name'], $ordner . '/' . $name)) {
-                $pfad = 'uploads/w' . Tenant::id() . '/video/' . $name;
+                $pfad = 'data/privat/w' . Tenant::id() . '/video/' . $name;
                 $groesse = (int) $datei['size'];
             }
         }
@@ -105,7 +113,7 @@ require __DIR__ . '/partials/kopf.php';
           <div style="aspect-ratio:16/10;background:#0b0d0e;display:grid;place-items:center;
                       border-radius:var(--radius-m) var(--radius-m) 0 0;color:#5a5a54;position:relative">
             <?php if ((string) $v['datei'] !== ''): ?>
-              <video src="<?= Util::attr(App::url((string) $v['datei'])) ?>" preload="metadata"
+              <video src="<?= Util::attr(App::url('/datei.php?art=video&id=' . (int) $v['id'])) ?>" preload="metadata"
                      style="width:100%;height:100%;object-fit:contain"></video>
             <?php else: ?>
               <?= Icon::svg('video', 34) ?>

@@ -10,6 +10,7 @@
 final class App
 {
     private static ?string $basis = null;
+    private static ?array $hosts = null;
     private static array $meldungen = [];
 
     public static function basis(): string
@@ -51,11 +52,116 @@ final class App
         return self::url($pfad) . '?v=' . substr(md5($stempel), 0, 8);
     }
 
+    /**
+     * Vollständige Adresse mit Schema und Host – für E-Mails, Sitemap und
+     * alles andere, was den Server verlässt.
+     *
+     * Zwei Fallen stecken hier drin, und beide sind teuer gewesen:
+     *
+     * **Doppelte Adresse.** Steht in der config.php eine vollständige
+     * `base_url` – und der Installer schreibt immer eine –, dann liefert
+     * `url()` bereits eine absolute Adresse. Wer dann noch einmal Schema
+     * und Host davorsetzt, erzeugt
+     * `https://beispiel.dehttps://beispiel.de/portal/`. Das ist keine
+     * gültige Adresse, und genau so sah bis hierher jeder Link in jeder
+     * E-Mail aus: Zugangslink, Passwort-zurücksetzen und der
+     * Newsletter-Abmeldelink, den § 7 UWG verlangt.
+     *
+     * **Gefälschte Host-Kopfzeile.** Fehlt die `base_url`, bleibt nur
+     * `HTTP_HOST` – ein Wert, den der Anfragende frei bestimmt. Wer für
+     * eine fremde Adresse ein Passwort zurücksetzen lässt und dabei
+     * `Host: boese.example` mitschickt, bekommt den Klick des Opfers samt
+     * gültigem Token auf den eigenen Server. Deshalb wird der Host gegen
+     * die Namen geprüft, die zu dieser Anlage gehören.
+     */
     public static function absolut(string $pfad = '/'): string
     {
-        $schema = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host   = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
-        return $schema . '://' . $host . self::url($pfad);
+        $url = self::url($pfad);
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+            return $url;
+        }
+
+        $schema = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+               || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https' ? 'https' : 'http';
+
+        return $schema . '://' . self::host() . $url;
+    }
+
+    /**
+     * Der Hostname, unter dem diese Anlage erreichbar ist.
+     *
+     * Zulässig ist, was in der `base_url` steht und was als eigene Domain
+     * eines Workspace eingetragen ist – alles andere wird verworfen und
+     * durch den ersten zulässigen Namen ersetzt. Ein Link in einer E-Mail
+     * zeigt damit nie irgendwo hin, nur weil jemand eine Kopfzeile
+     * gefälscht hat.
+     */
+    public static function host(): string
+    {
+        $gemeldet = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        $erlaubt  = self::erlaubteHosts();
+
+        if ($erlaubt !== []) {
+            return in_array($gemeldet, $erlaubt, true) ? $gemeldet : $erlaubt[0];
+        }
+
+        /*
+         * Nichts konfiguriert und keine Domain hinterlegt – der Installer
+         * schreibt zwar immer eine base_url, aber jemand kann sie geleert
+         * haben. Dann zählt SERVER_NAME vor HTTP_HOST: Der erste Wert
+         * stammt aus der Serverkonfiguration, der zweite aus der Anfrage.
+         * Nur wenn es auch den nicht gibt, bleibt der gemeldete Name –
+         * bereinigt, damit über ihn nichts in die Kopfzeile gerät.
+         */
+        $server = strtolower(trim((string) ($_SERVER['SERVER_NAME'] ?? '')));
+        $name   = $server !== '' ? $server : $gemeldet;
+
+        return preg_replace('/[^a-z0-9.\-:]/', '', $name) ?: 'localhost';
+    }
+
+    /** @return string[] kleingeschrieben, ohne Schema, mit Port falls angegeben */
+    private static function erlaubteHosts(): array
+    {
+        if (self::$hosts !== null) {
+            return self::$hosts;
+        }
+        $liste = [];
+
+        $basis = trim((string) Config::get('base_url', ''));
+        if ($basis !== '') {
+            $teil = parse_url($basis, PHP_URL_HOST);
+            $port = parse_url($basis, PHP_URL_PORT);
+            if (is_string($teil) && $teil !== '') {
+                $liste[] = strtolower($teil) . ($port ? ':' . $port : '');
+            }
+        }
+        foreach ((array) Config::get('erlaubte_hosts', []) as $eintrag) {
+            $eintrag = strtolower(trim((string) $eintrag));
+            if ($eintrag !== '') {
+                $liste[] = $eintrag;
+            }
+        }
+
+        /*
+         * Die eigenen Domains der Workspaces zählen mit – sonst trüge eine
+         * Mail an den Kunden einer Golfschule mit eigener Domain den
+         * Hostnamen der Anlage statt ihren eigenen.
+         */
+        try {
+            if (Config::installed()) {
+                foreach (DB::all("SELECT domain FROM workspaces WHERE domain != ''") as $z) {
+                    $d = strtolower(trim((string) $z['domain']));
+                    if ($d !== '') {
+                        $liste[] = $d;
+                        $liste[] = 'www.' . $d;
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            // Vor der Einrichtung gibt es die Tabelle noch nicht.
+        }
+
+        return self::$hosts = array_values(array_unique($liste));
     }
 
     public static function weiter(string $pfad): never

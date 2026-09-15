@@ -115,7 +115,8 @@ final class Oeffentlich
         int $trainerId,
         string $fehler = ''
     ): string {
-        $verstecktes = '<input type="hidden" name="aktion" value="kunde_anmelden">'
+        $verstecktes = Auth::csrfFeld()
+                     . '<input type="hidden" name="aktion" value="kunde_anmelden">'
                      . '<input type="hidden" name="w" value="' . Util::attr($slug) . '">'
                      . '<input type="hidden" name="service_id" value="' . $serviceId . '">'
                      . '<input type="hidden" name="start" value="' . Util::attr($start) . '">'

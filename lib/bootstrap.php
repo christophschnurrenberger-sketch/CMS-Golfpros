@@ -30,6 +30,43 @@ Config::load();
 
 date_default_timezone_set('Europe/Berlin');
 
+/*
+ * Sicherheitskopfzeilen – hier und nicht nur in der .htaccess.
+ *
+ * Dort stehen sie in einem <IfModule mod_headers.c>. Fehlt das Modul,
+ * ignoriert der Hoster die .htaccess oder läuft nginx, verschwinden sie
+ * ohne jede Fehlermeldung, und niemand merkt es. Aus PHP heraus gesetzt
+ * sind sie da, solange PHP läuft. Doppelt gesetzte Kopfzeilen sind kein
+ * Problem: `header()` ersetzt, es hängt nicht an.
+ *
+ * Die CSP läuft vorerst nur im Beobachtungsmodus. Die Oberfläche benutzt
+ * an einigen Stellen onclick-Attribute und eingebettete Stile; die
+ * scharfe Fassung würde sie heute zerlegen. Report-Only blockiert nichts
+ * und zeigt dem Browser-Werkzeugkasten trotzdem jeden Verstoß.
+ */
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+    header('Content-Security-Policy-Report-Only: '
+         . "default-src 'self'; "
+         . "img-src 'self' data:; "
+         . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+         . "font-src 'self' https://fonts.gstatic.com; "
+         . "script-src 'self' 'unsafe-inline'; "
+         . "frame-ancestors 'self'; "
+         . "base-uri 'self'; "
+         . "form-action 'self'");
+
+    /* HSTS nur, wenn die Anfrage wirklich über HTTPS kam – sonst sperrt
+       man eine Anlage aus, die noch kein Zertifikat hat, für ein Jahr aus. */
+    if ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') {
+        header('Strict-Transport-Security: max-age=31536000');
+    }
+}
+
 if (Config::get('debug', false)) {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');

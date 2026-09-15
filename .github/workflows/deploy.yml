@@ -192,7 +192,8 @@ jobs:
           #   config.php                     Zugangsdaten des Betriebs.
           #       Liegt ohnehin nicht im Repository; die Zeile ist die
           #       zweite Sicherung.
-          #   data/*.sqlite*, data/*/        Die Datenbank mit allen
+          #   data/*.sqlite*, data/*/, data/*/**
+          #       Die Datenbank mit allen
           #       Kundendaten, samt allem, was daneben entsteht.
           #   uploads/*/                     Alles, was der Betrieb
           #       hochlädt. Bewusst jeder Unterordner und nicht nur
@@ -217,6 +218,7 @@ jobs:
             data/*.sqlite
             data/*.sqlite-shm
             data/*.sqlite-wal
+            data/*/
             data/*/**
             uploads/*/
             uploads/*/**

@@ -108,6 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $bereit) {
             'db'       => $dbCfg,
             'secret'   => bin2hex(random_bytes(32)),
             'base_url' => $basis,
+            /* Der Zugang ohne Passwort bleibt aus. Wer eine öffentliche
+               Vorführung betreibt, setzt ihn von Hand auf true. */
+            'demo_zugang' => false,
             'mail'     => [
                 'from_name'  => $name,
                 'from_email' => $email,
@@ -323,11 +326,12 @@ rahmenAuf('Einrichtung');
         <div class="hinweis">Mindestens zehn Zeichen.</div></div>
     </div>
     <label class="haken">
-      <input type="checkbox" name="demo" value="1" checked>
+      <input type="checkbox" name="demo" value="1">
       <span>Demo-Bereich mitanlegen
         <span class="hinweis">Ein zweiter, vollständig getrennter Workspace mit 40 Kunden,
           Terminen, Rechnungen und einer fertigen Website – gut, um alles auszuprobieren,
-          ohne die eigenen Daten anzufassen. Später löschbar.</span></span>
+          ohne die eigenen Daten anzufassen. Später löschbar. Nicht vorausgewählt:
+          Was nicht da ist, kann auch nicht offen stehen.</span></span>
     </label>
   </div>
 

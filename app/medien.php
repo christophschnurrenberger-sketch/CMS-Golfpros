@@ -44,9 +44,25 @@ if (App::istPost()) {
                 continue;
             }
 
-            $typ = (string) $_FILES['dateien']['type'][$i];
+            /*
+             * Der Typ wird aus dem Inhalt bestimmt, nicht aus dem, was der
+             * Browser behauptet. $_FILES[...]['type'] kommt aus der Anfrage
+             * und lässt sich frei setzen: Wer „image/png" schreibt und eine
+             * PHP-Datei schickt, kam bis hierher durch die Prüfung. Gefährlich
+             * war das nicht – die gespeicherte Endung stammt aus der Weißliste,
+             * und uploads/.htaccess verbietet die Ausführung –, aber geprüft
+             * hat es nichts.
+             */
+            $tmp = (string) $_FILES['dateien']['tmp_name'][$i];
+            $typ = Medientyp::erkennen($tmp);
             if (!isset($erlaubt[$typ])) {
                 $abgelehnt[] = $wie . ' – Dateityp nicht erlaubt (' . ($typ !== '' ? $typ : 'unbekannt') . ')';
+                continue;
+            }
+            /* Bei Bildern zusätzlich: Lässt es sich überhaupt als Bild lesen?
+               Eine Datei, die nur wie ein PNG anfängt, fällt hier durch. */
+            if (str_starts_with($typ, 'image/') && $typ !== 'image/svg+xml' && @getimagesize($tmp) === false) {
+                $abgelehnt[] = $wie . ' – sieht aus wie ein Bild, lässt sich aber nicht öffnen';
                 continue;
             }
             if ((int) $_FILES['dateien']['size'][$i] > 12 * 1024 * 1024) {

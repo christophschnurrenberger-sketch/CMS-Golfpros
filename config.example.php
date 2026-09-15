@@ -21,7 +21,19 @@ return [
     'secret' => '',
 
     // Basisadresse der Installation, ohne Schrägstrich am Ende.
+    // Steht sie hier vollständig (mit https://), dann gilt sie auch als
+    // der zulässige Hostname – Links in E-Mails entstehen daraus und nicht
+    // aus der Host-Kopfzeile der Anfrage, die jeder fälschen kann.
     'base_url' => '',
+
+    // Weitere Hostnamen, unter denen diese Anlage erreichbar sein soll.
+    // Eigene Domains der Workspaces zählen automatisch mit.
+    'erlaubte_hosts' => [],
+
+    // Anmeldung ohne Passwort über /demo.php – nur für öffentliche
+    // Vorführungen. Auf einem Produktivserver bleibt das aus; dort gehört
+    // demo.php ohnehin gelöscht.
+    'demo_zugang' => false,
 
     // Absender für Systemmails.
     'mail' => [

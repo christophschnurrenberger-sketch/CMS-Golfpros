@@ -10,7 +10,11 @@ require __DIR__ . '/lib/bootstrap.php';
 
 $token = App::get('t');
 $kunde = $token !== ''
-    ? DB::one("SELECT * FROM customers WHERE portal_token = :t AND portal_token != ''", ['t' => $token])
+    /* Eigener Schlüssel, nicht der Zugangsschlüssel: Der Abmeldelink soll
+       dauerhaft gelten, aber nur abmelden – nicht ins Portal führen. Ältere
+       Newsletter tragen noch den alten Wert; die Migration hat ihn als
+       Abmeldeschlüssel übernommen, damit sie weiter funktionieren. */
+    ? DB::one("SELECT * FROM customers WHERE abmelde_token = :t AND abmelde_token != ''", ['t' => $token])
     : null;
 
 if ($kunde === null) {

@@ -44,8 +44,10 @@ final class Schema
      *
      *   1  erste Fassung
      *   2  bookings.invoice_id - Termine auf Rechnungen
+     *   3  customers.portal_token_bis und .abmelde_token - befristeter
+     *      Zugangslink, dauerhafter Abmeldelink
      */
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     public static function migrate(): void
     {
@@ -83,6 +85,91 @@ final class Schema
         /* Seit der Terminabrechnung: Auf welcher Rechnung steht dieser
            Termin? 0 heißt „noch auf keiner". */
         self::spalteSicherstellen('bookings', 'invoice_id', '%INT% NOT NULL DEFAULT 0');
+
+        /*
+         * Der Zugangslink bekommt ein Ablaufdatum, der Abmeldelink einen
+         * eigenen, dauerhaften Schlüssel.
+         *
+         * Vorher war beides derselbe Wert, und der galt unbegrenzt: Eine
+         * weitergeleitete Terminbestätigung von vor zwei Jahren meldete
+         * heute noch an. Beides zusammenzulegen ging auch deshalb nicht,
+         * weil der Abmeldelink eines Newsletters funktionieren muss –
+         * dauerhaft, ohne Anmeldung, ohne Ablauf.
+         */
+        self::spalteSicherstellen('customers', 'portal_token_bis', '%DT%');
+        self::spalteSicherstellen('customers', 'abmelde_token', '%STR(64)% NOT NULL DEFAULT ""');
+        self::tokenNachruesten();
+        self::videosWegraeumen();
+    }
+
+    /**
+     * Schwungvideos aus dem offenen uploads/ nach data/privat/ holen.
+     *
+     * Unter uploads/ war jedes Video für jeden abrufbar, der die Adresse
+     * kannte – ohne Anmeldung, ohne Mandantenprüfung. Der Ordner data/
+     * ist über die .htaccess dicht; herausgegeben wird nur noch über
+     * datei.php, das vorher prüft, wer fragt.
+     *
+     * Lässt sich eine Datei nicht verschieben (Rechte, laufender Zugriff),
+     * bleibt der alte Pfad in der Datenbank stehen: Ein Video, das noch
+     * abspielt, ist besser als ein toter Verweis. datei.php liefert beide
+     * Orte aus, prüft aber in jedem Fall die Berechtigung.
+     */
+    private static function videosWegraeumen(): void
+    {
+        if (!DB::tabelleExistiert('videos')) {
+            return;
+        }
+        try {
+            $zeilen = DB::all("SELECT id, workspace_id, datei FROM videos
+                               WHERE datei LIKE 'uploads/%'");
+        } catch (Throwable $e) {
+            return;
+        }
+        foreach ($zeilen as $z) {
+            $alt = GP_ROOT . '/' . (string) $z['datei'];
+            if (!is_file($alt)) {
+                continue;
+            }
+            $ordner = GP_ROOT . '/data/privat/w' . (int) $z['workspace_id'] . '/video';
+            if (!is_dir($ordner) && !@mkdir($ordner, 0750, true) && !is_dir($ordner)) {
+                continue;
+            }
+            $name = basename((string) $z['datei']);
+            if (@rename($alt, $ordner . '/' . $name)) {
+                DB::update('videos',
+                    ['datei' => 'data/privat/w' . (int) $z['workspace_id'] . '/video/' . $name],
+                    'id = :id', ['id' => (int) $z['id']]);
+            }
+        }
+    }
+
+    /**
+     * Bestandskunden mit den beiden neuen Werten versorgen.
+     *
+     * Der Abmeldeschlüssel wird aus dem bisherigen Zugangsschlüssel
+     * übernommen – die Links in bereits versendeten Newslettern tragen
+     * genau diesen Wert und sollen weiter funktionieren.
+     *
+     * Der Zugangsschlüssel bekommt eine Frist von 14 Tagen ab jetzt.
+     * Sofort ungültig zu setzen hieße, allen Kunden gleichzeitig den Weg
+     * ins Portal abzuschneiden; in diesen zwei Wochen erneuert ihn jede
+     * Terminbestätigung von selbst.
+     */
+    private static function tokenNachruesten(): void
+    {
+        if (!DB::tabelleExistiert('customers')) {
+            return;
+        }
+        try {
+            DB::pdo()->exec("UPDATE customers SET abmelde_token = portal_token
+                             WHERE abmelde_token = '' AND portal_token != ''");
+            DB::update('customers',
+                ['portal_token_bis' => date('Y-m-d H:i:s', time() + 14 * 86400)],
+                "portal_token_bis IS NULL AND portal_token != ''");
+        } catch (Throwable $e) {
+            // Beim allerersten Anlegen gibt es noch nichts nachzurüsten.
+        }
     }
 
     /** Ergänzt eine Spalte, wenn sie fehlt. Für Updates bestehender Installationen. */
@@ -256,6 +343,8 @@ final class Schema
                 notiz %TEXT%,
                 health_score %INT% NOT NULL DEFAULT 50,
                 portal_token %STR(64)% NOT NULL DEFAULT "",
+                portal_token_bis %DT%,
+                abmelde_token %STR(64)% NOT NULL DEFAULT "",
                 portal_passwort %STR(255)% NOT NULL DEFAULT "",
                 newsletter %INT% NOT NULL DEFAULT 0,
                 letzte_aktivitaet %DT%,
