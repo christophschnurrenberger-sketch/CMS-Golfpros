@@ -1,9 +1,18 @@
 # ==========================================================================
 # GolfPro CMS – automatischer Upload auf den Webspace
 # --------------------------------------------------------------------------
-# Jeder Push auf den Hauptzweig landet per FTPS auf dem Server. Es wird
-# nichts gebaut: Das System hat weder Composer noch Node, die Dateien im
+# Jeder Push auf den Hauptzweig landet auf dem Server. Es wird nichts
+# gebaut: Das System hat weder Composer noch Node, die Dateien im
 # Repository sind bereits die Dateien, die laufen sollen.
+#
+# Zwei Wege, je nachdem, was der Hoster anbietet – FTP_PROTOKOLL
+# entscheidet:
+#
+#   ftp, ftps, ftps-legacy   die FTP-Familie, per FTP-Deploy-Action
+#   sftp                     Dateiuebertragung durch SSH, per lftp
+#
+# IONOS-Linux-Pakete zum Beispiel koennen nur SFTP; dort scheitert jeder
+# FTPS-Versuch mit "500 'AUTH': command unrecognized".
 #
 # Zwei Dinge sind hier wichtiger als die Bequemlichkeit:
 #
@@ -103,6 +112,7 @@ jobs:
         env:
           SERVER:      ${{ secrets.FTP_SERVER }}
           PROTOKOLL:   ${{ vars.FTP_PROTOKOLL }}
+          PORT:        ${{ vars.FTP_PORT }}
           VERZEICHNIS: ${{ vars.FTP_VERZEICHNIS }}
         run: |
           # Noch nichts hinterlegt: Das ist der Zustand direkt nach dem
@@ -116,21 +126,15 @@ jobs:
           fi
 
           # sftp ist nicht die sichere Fassung von ftp, sondern ein anderes
-          # Protokoll: Dateiuebertragung durch eine SSH-Verbindung. Diese
-          # Action spricht nur die FTP-Familie. Die Verwechslung ist haeufig
-          # genug, um sie eigens zu behandeln.
+          # Protokoll: Dateiuebertragung durch eine SSH-Verbindung. Deshalb
+          # geht es einen anderen Weg als die FTP-Familie - und deshalb ist
+          # auch der uebliche Port ein anderer.
           case "${PROTOKOLL:-ftps}" in
-            ftp|ftps|ftps-legacy)
-              ;;
-            sftp|SFTP)
-              echo "::error::FTP_PROTOKOLL steht auf \"sftp\". Das ist ein anderes Protokoll"
-              echo "::error::als ftps - SSH statt TLS - und diese Action kann es nicht."
-              echo "::error::Gemeint ist meistens \"ftps\". Bietet der Hoster wirklich nur"
-              echo "::error::SFTP an, braucht es einen anderen Weg; siehe docs/DEPLOY.md."
-              exit 1
-              ;;
+            ftp|ftps)     weg=ftp;  standardport=21  ;;
+            ftps-legacy)  weg=ftp;  standardport=990 ;;
+            sftp)         weg=sftp; standardport=22  ;;
             *)
-              echo "::error::FTP_PROTOKOLL kennt nur ftp, ftps und ftps-legacy."
+              echo "::error::FTP_PROTOKOLL kennt nur ftp, ftps, ftps-legacy und sftp."
               echo "::error::Hinterlegt ist \"$PROTOKOLL\"."
               exit 1
               ;;
@@ -147,11 +151,13 @@ jobs:
           esac
 
           echo "bereit=ja" >> "$GITHUB_OUTPUT"
+          echo "weg=$weg" >> "$GITHUB_OUTPUT"
           echo "ziel=$ziel" >> "$GITHUB_OUTPUT"
-          echo "Zielordner: $ziel"
+          echo "port=${PORT:-$standardport}" >> "$GITHUB_OUTPUT"
+          echo "Weg: ${PROTOKOLL:-ftps} ueber Port ${PORT:-$standardport}, Zielordner $ziel"
 
-      - name: Dateien abgleichen
-        if: steps.zugang.outputs.bereit == 'ja'
+      - name: Dateien abgleichen (FTP-Familie)
+        if: steps.zugang.outputs.bereit == 'ja' && steps.zugang.outputs.weg == 'ftp'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server:     ${{ secrets.FTP_SERVER }}
@@ -162,7 +168,7 @@ jobs:
           # Passwort im Klartext über das Netz; das ist nur eine Notlösung
           # für Hoster, die nichts anderes können.
           protocol:   ${{ vars.FTP_PROTOKOLL || 'ftps' }}
-          port:       ${{ vars.FTP_PORT || 21 }}
+          port:       ${{ steps.zugang.outputs.port }}
           security:   ${{ vars.FTP_SICHERHEIT || 'strict' }}
 
           # Zielordner, im Schritt davor um einen fehlenden Schrägstrich
@@ -213,6 +219,117 @@ jobs:
             install.php
             docs/**
             README.md
+
+      # ------------------------------------------------------------------
+      # Der zweite Weg: SFTP.
+      #
+      # Die FTP-Deploy-Action kann kein SFTP, und es gibt keine gepflegte
+      # Action, die Passwort-Anmeldung und einen echten Abgleich verbindet.
+      # lftp kann beides und liegt in den Paketquellen.
+      #
+      # Ein Unterschied zur Action muss man kennen, sonst kostet er Daten:
+      #
+      #   Die Action fuehrt auf dem Server Buch und loescht nur, was sie
+      #   selbst einmal hochgeladen hat. Fremde Dateien sieht sie nicht.
+      #
+      #   lftp vergleicht stattdessen mit dem, was wirklich im Zielordner
+      #   liegt. Mit --delete raeumt es alles weg, was hier nicht mehr
+      #   existiert - und wenn der Zielordner zu weit gefasst ist, eben
+      #   auch die zweite Website daneben. Beim Standardziel ./ ist das
+      #   das ganze Login-Verzeichnis.
+      #
+      # Deshalb wird hier nicht geloescht, ausser jemand schaltet es
+      # ausdruecklich ein (FTP_LOESCHEN) und hat vorher im Protokoll
+      # gesehen, was der Trockenlauf entfernen wuerde. Der Preis: Eine aus
+      # dem Repository entfernte Datei bleibt oben liegen.
+      # ------------------------------------------------------------------
+      - name: lftp bereitstellen
+        if: steps.zugang.outputs.bereit == 'ja' && steps.zugang.outputs.weg == 'sftp'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Dateien abgleichen (SFTP)
+        if: steps.zugang.outputs.bereit == 'ja' && steps.zugang.outputs.weg == 'sftp'
+        env:
+          SERVER:   ${{ secrets.FTP_SERVER }}
+          BENUTZER: ${{ secrets.FTP_BENUTZER }}
+          PASSWORT: ${{ secrets.FTP_PASSWORT }}
+          PORT:     ${{ steps.zugang.outputs.port }}
+          ZIEL:     ${{ steps.zugang.outputs.ziel }}
+          LOESCHEN: ${{ vars.FTP_LOESCHEN }}
+        run: |
+          set -u
+
+          # Das Passwort geht ueber eine .netrc, nicht ueber die
+          # Befehlszeile. Sonst stuende es in der Prozessliste, und ein
+          # Anfuehrungszeichen oder Semikolon darin wuerde das lftp-Skript
+          # zerlegen - im schlimmsten Fall mit einem fremden Befehl darin.
+          heim=$(mktemp -d)
+          trap 'rm -rf "$heim"' EXIT
+          printf 'machine %s\nlogin %s\npassword %s\n' \
+            "$SERVER" "$BENUTZER" "$PASSWORT" > "$heim/.netrc"
+          chmod 600 "$heim/.netrc"
+
+          # Dieselben Regeln wie in der exclude-Liste der Action, nur in
+          # lftps Schreibweise: regulaere Ausdruecke auf den Pfad, nicht
+          # Glob-Muster. WER HIER ETWAS AENDERT, AENDERT ES AUCH OBEN.
+          #
+          #   ^\.git        .gitignore und das Verzeichnis selbst
+          #   ^config\.php  Zugangsdaten des Betriebs
+          #   ^data/.*sqlite, ^data/cache/   die Datenbank
+          #   ^uploads/w    Logos, Videos, Unterlagen der Kunden
+          #   ^install\.php der Installer
+          #   ^docs/, ^README\.md            interne Unterlagen
+          aus="--exclude ^\.git"
+          aus="$aus --exclude ^\.github/"
+          aus="$aus --exclude ^config\.php$"
+          aus="$aus --exclude ^data/.*\.sqlite"
+          aus="$aus --exclude ^data/cache/"
+          aus="$aus --exclude ^uploads/w"
+          aus="$aus --exclude ^install\.php$"
+          aus="$aus --exclude ^docs/"
+          aus="$aus --exclude ^README\.md$"
+
+          # Aufraeumen ist Absicht, nicht Voreinstellung.
+          loeschen=""
+          if [ "${LOESCHEN:-}" = "ja" ]; then
+            if [ "$ZIEL" = "./" ]; then
+              echo "::error::FTP_LOESCHEN=ja zusammen mit dem Standardziel ./ ist zu"
+              echo "::error::gefaehrlich: ./ ist das ganze Login-Verzeichnis, und dort"
+              echo "::error::liegt bei vielen Hostern mehr als diese eine Website."
+              echo "::error::Erst FTP_VERZEICHNIS auf den Ordner der Anlage setzen."
+              exit 1
+            fi
+            loeschen="--delete"
+            echo "::warning::FTP_LOESCHEN ist eingeschaltet. Alles im Zielordner, was"
+            echo "::warning::nicht im Repository steht, wird entfernt - ausgenommen ist"
+            echo "::warning::nur, was in der Liste unten steht."
+          else
+            echo "::notice::Es wird nichts geloescht. Eine aus dem Repository entfernte"
+            echo "::notice::Datei bleibt auf dem Server liegen. Zum Aufraeumen die"
+            echo "::notice::Variable FTP_LOESCHEN auf ja setzen - vorher aber den"
+            echo "::notice::Trockenlauf unten lesen."
+          fi
+
+          # Dieselben Einstellungen fuer beide Laeufe, damit der Trockenlauf
+          # nicht etwas anderes zeigt, als danach geschieht.
+          opt="--reverse --only-newer --no-perms $loeschen $aus"
+
+          verbindung="
+            set sftp:auto-confirm yes;
+            set cmd:interactive false;
+            set net:max-retries 3;
+            set net:timeout 20;
+            open -u \"$BENUTZER\" sftp://$SERVER:$PORT;
+          "
+
+          # Erst ein Trockenlauf ins Protokoll. Wer spaeter wissen will, was
+          # ein Lauf angefasst hat, findet es hier - und zwar bevor es
+          # geschehen ist.
+          echo "── Was sich aendern wird ──────────────────────────────"
+          HOME="$heim" lftp -c "$verbindung mirror $opt --dry-run --verbose=2 ./ \"$ZIEL\";"
+
+          echo "── Uebertragung ───────────────────────────────────────"
+          HOME="$heim" lftp -c "$verbindung mirror $opt --parallel=2 --verbose=1 ./ \"$ZIEL\";"
 
       # Ein erfolgreicher Upload heißt noch nicht, dass die Seite läuft.
       # Diese Prüfung ist absichtlich einfach: Sie ruft die Startseite auf

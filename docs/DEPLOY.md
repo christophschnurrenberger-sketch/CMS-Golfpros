@@ -29,8 +29,9 @@ dass sonst etwas stehen bleibt.
 | Name              | Voreinstellung | Wofür                                              |
 |-------------------|----------------|----------------------------------------------------|
 | `FTP_VERZEICHNIS` | `./`           | Zielordner, **mit Schrägstrich am Ende**           |
-| `FTP_PROTOKOLL`   | `ftps`         | `ftps`, `ftps-legacy` oder `ftp` – **nicht** `sftp`, siehe unten |
-| `FTP_PORT`        | `21`           | nur wenn der Hoster einen anderen nennt            |
+| `FTP_PROTOKOLL`   | `ftps`         | `ftps`, `ftps-legacy`, `ftp` oder `sftp` – siehe unten |
+| `FTP_PORT`        | je nach Protokoll | 21 bei ftp/ftps, 990 bei ftps-legacy, 22 bei sftp |
+| `FTP_LOESCHEN`    | aus            | `ja` räumt Dateien weg, die es hier nicht mehr gibt – **nur bei SFTP, vorher unten lesen** |
 | `FTP_SICHERHEIT`  | `strict`       | `loose` bei einem Zertifikat, das nicht passt      |
 | `SEITEN_URL`      | –              | z. B. `https://golfschule.de` – dann wird nach dem Upload nachgesehen, ob die Seite antwortet |
 
@@ -51,14 +52,37 @@ Protokolle:
 * **SFTP** ist Dateiübertragung durch eine SSH-Verbindung, Port 22. Mit FTP
   hat es außer den drei Buchstaben nichts gemeinsam.
 
-Diese Action spricht nur die FTP-Familie. Steht `FTP_PROTOKOLL` auf
-`sftp`, bricht der Lauf mit einem Hinweis darauf ab, statt in einer
-unverständlichen Meldung zu enden.
+Der Workflow kann beides, geht dafür aber zwei verschiedene Wege:
 
-Meist ist `ftps` gemeint. Bietet der Hoster tatsächlich nur SFTP an – das
-kommt vor, vor allem bei Servern mit SSH-Zugang –, dann braucht es einen
-anderen Upload-Weg; sag Bescheid, dann wird der Workflow entsprechend
-umgebaut.
+| `FTP_PROTOKOLL` | Weg | Womit |
+|---|---|---|
+| `ftp`, `ftps`, `ftps-legacy` | FTP-Familie | FTP-Deploy-Action |
+| `sftp` | SSH | `lftp` |
+
+**Bei IONOS entscheidet das Hosting-Paket:** Die Linux-Pakete bieten
+ausschließlich SFTP auf Port 22 an, die Windows-Pakete FTPS auf Port 21
+(explizit) oder 990 (implizit). Wer auf Linux sitzt und FTPS versucht,
+bekommt `500 'AUTH': command unrecognized` – der FTP-Dienst dort kennt
+den Befehl zum Einschalten der Verschlüsselung schlicht nicht.
+
+### Aufräumen: warum es bei SFTP standardmäßig aus ist
+
+Die beiden Wege löschen unterschiedlich, und der Unterschied kostet im
+Zweifel Daten:
+
+* Die **FTP-Action** führt auf dem Server Buch (`.ftp-deploy-sync-state.json`)
+  und entfernt nur, was sie selbst einmal hochgeladen hat. Alles andere im
+  Zielordner ist für sie unsichtbar.
+* **lftp** vergleicht mit dem, was wirklich im Zielordner liegt. Mit
+  `--delete` räumt es alles weg, was im Repository fehlt – und wenn der
+  Zielordner zu weit gefasst ist, eben auch die zweite Website daneben.
+
+Deshalb löscht der SFTP-Weg nichts, solange `FTP_LOESCHEN` nicht auf `ja`
+steht. Der Preis: Eine aus dem Repository entfernte Datei bleibt oben
+liegen. Wer aufräumen will, liest zuerst den Trockenlauf im Protokoll –
+jeder Lauf schreibt vorher hin, was er anfassen würde – und schaltet es
+dann ein. In Verbindung mit dem Standardziel `./` verweigert der Workflow
+den Dienst: `./` ist das ganze Login-Verzeichnis.
 
 Der Zielordner heißt je nach Hoster anders. Üblich sind `./`, `/httpdocs/`,
 `/html/`, `/public_html/` oder `/www/`. Einmal mit einem FTP-Programm
@@ -199,13 +223,16 @@ der kein TLS anbietet. `AUTH` ist der Befehl, mit dem die Verschlüsselung
 eingeschaltet wird; kennt der Server ihn nicht, gibt es dort kein
 explizites FTPS. Der Reihe nach probieren:
 
-1. `FTP_PROTOKOLL` auf `ftps-legacy` und `FTP_PORT` auf `990`. Das ist
-   implizites FTPS: Die Verschlüsselung steht von der ersten Sekunde an,
-   ohne `AUTH`. Viele Hoster bieten es auf diesem Port an, ohne es
-   groß zu erwähnen.
-2. Hilft das nicht, kann der Hoster kein FTPS. Dann bleibt `ftp` – mit
-   Passwort im Klartext über das Netz – oder, besser, SFTP über den
-   SSH-Zugang. Letzteres kann diese Action nicht; siehe oben.
+1. **`FTP_PROTOKOLL` auf `sftp`.** Bei IONOS-Linux-Paketen ist das die
+   Antwort; Port 22 wird dann von allein genommen. Auch sonst ist SFTP
+   der bessere Weg, wo es ihn gibt: verschlüsselt, ohne
+   Zertifikatsfragen und ohne die Passiv-Port-Themen von FTP.
+2. `FTP_PROTOKOLL` auf `ftps-legacy` und `FTP_PORT` auf `990` – implizites
+   FTPS, die Verschlüsselung steht von der ersten Sekunde an. Bei IONOS
+   gibt es das nur in den Windows-Paketen.
+3. Bleibt nur `ftp`, geht das Passwort im Klartext über das Netz. Dann
+   wenigstens einen eigenen, auf das Webverzeichnis beschränkten Zugang
+   dafür anlegen.
 
 **`protocol: invalid parameter`** – in `FTP_PROTOKOLL` steht etwas, das
 die Action nicht kennt. Erlaubt sind nur `ftp`, `ftps` und `ftps-legacy`;
