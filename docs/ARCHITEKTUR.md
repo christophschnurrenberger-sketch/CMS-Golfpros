@@ -36,6 +36,8 @@ des Entwurfs:
      ├── portal/                                          Kunde
      └── app/                                             Anwendung
               │
+        lib/Kundenlogin.php  eine Kundensitzung für Portal und Buchung
+              │
         lib/vorlage.php      Ausgabebausteine (kennzahl, pille, person …)
               │
         lib/*.php            Fachlogik: Customers, Bookings, Commerce,
@@ -264,6 +266,49 @@ wären nach dem ersten Sonderfall falsch. Gerechnet ist immer richtig.
 Die Online-Buchung prüft die gewählte Zeit vor dem Schreiben noch einmal
 gegen `freieZeiten()` – der Browser des Besuchers könnte seit zwanzig
 Minuten offen liegen.
+
+## Der Kunde meldet sich einmal an, nicht zweimal
+
+`lib/Kundenlogin.php` ist die einzige Stelle, die die Kundensitzung setzt
+und liest – für das Portal (`portal/`) und für die Buchung
+(`buchen.php`) dieselbe. Wer sich im Portal angemeldet hat, ist beim
+Buchen angemeldet und umgekehrt.
+
+Vorher hatte das Portal eine eigene Sitzung namens `gp_portal`. Der Grund
+war richtig: Ein abmeldender Kunde soll nicht den Trainer mit abmelden,
+der denselben Browser benutzt. Das Mittel war es nicht – PHP hält je
+Aufruf nur **eine** Sitzung offen, also war ein im Portal angemeldeter
+Kunde beim Buchen wieder ein Fremder. Heute ist es eine Sitzung mit
+getrennten Schlüsseln; `Kundenlogin::abmelden()` räumt nur die des Kunden
+weg, die Anmeldung im Backend bleibt stehen.
+
+**Die Kundensitzung verschiebt die Mandantengrenze nicht.** Steht der
+Workspace schon fest – auf den öffentlichen Seiten aus Domain oder `?w=`
+–, dann gilt er; ein Kunde aus einem anderen Betrieb ist dort schlicht
+nicht angemeldet (`passtZumMandanten()`). Ohne diese Prüfung hätte seine
+Sitzung die Seite unbemerkt umgeschaltet: Der Besucher sieht die
+Leistungen der einen Golfschule und bucht in der anderen. Nur wo gar kein
+Mandant feststeht – im Portal, das weder Domain noch `?w=` kennt –,
+bestimmt ihn der Kunde.
+
+Zwei Wege führen hinein: der Schlüssel aus der Terminbestätigung
+(`mitToken()`, kein Passwort nötig) und E-Mail mit Passwort
+(`mitPasswort()`). Beide antworten nur mit wahr oder falsch. Wer aus
+„Passwort falsch" gegen „Adresse unbekannt" unterscheiden kann, hat ein
+Kundenverzeichnis – deshalb prüft `mitPasswort()` auch ohne Treffer gegen
+einen Wegwerf-Hash, damit die Antwort gleich lange dauert.
+
+**Die Anmeldung bleibt freiwillig.** Auf `buchen.php` steht sie als
+zugeklappter Kasten über dem Formular; daneben führt „Für jemand anderen
+buchen" jederzeit zur Gastbuchung zurück. Eine Buchung, die eine
+Registrierung verlangt, verliert genau die Kundschaft, die man gewinnen
+wollte.
+
+Beim Angemeldeten gelten seine hinterlegten Daten, nicht die aus dem
+Formular – sonst könnte ein manipuliertes Formular auf fremde Namen
+buchen. Und weil er den Einwilligungshaken gar nicht sieht, wird für ihn
+auch keine Einwilligung protokolliert: Ein Eintrag über eine Erklärung,
+die niemand abgegeben hat, ist als Nachweis wertlos.
 
 ## Segmente speichern Regeln
 

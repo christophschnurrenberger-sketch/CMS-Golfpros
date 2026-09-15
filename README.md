@@ -50,11 +50,11 @@ regelbasierten Generator weiter, ohne Cronjob läuft die Wartung beim
 ## Aufbau
 
 ```
-lib/          44 Klassen – je Datei eine, Autoloader ohne Composer
+lib/          45 Klassen – je Datei eine, Autoloader ohne Composer
 app/          Die Anwendung: 54 Seiten, eine je Bereich
 portal/       Kundenportal, mobil zuerst gedacht
 site.php      Die öffentliche Website aller Mandanten
-buchen.php    Online-Buchung ohne Konto
+buchen.php    Online-Buchung – angemeldet oder als Gast, nie mit Zwang
 kaufen.php    Kauf mit Stripe oder auf Rechnung
 anfrage.php   Formulareingang → Lead
 cron.php      Wartung für alle, die einen Cronjob haben

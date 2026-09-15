@@ -27,16 +27,66 @@ $schritte = ['Zeit wählen', 'Deine Angaben', 'Bestätigung'];
 
 /* ------------------------------------------------------------ Buchen --- */
 
+/*
+ * Anmelden, bevor gebucht wird – freiwillig.
+ *
+ * Wer schon Kunde ist, soll seinen Namen nicht zum dritten Mal tippen und
+ * den Termin danach in seinem Bereich wiederfinden. Wer zum ersten Mal
+ * kommt oder mit Konten nichts anfangen kann, bucht als Gast weiter; das
+ * bleibt der Weg, der ohne jede Hürde funktioniert. Eine Buchung, die
+ * eine Registrierung verlangt, verliert genau die Kundschaft, die man
+ * gewinnen wollte.
+ */
+$anmeldefehler = '';
+if (App::istPost() && App::aktion() === 'kunde_anmelden') {
+    if (Kundenlogin::mitPasswort(App::post('email'), App::postRoh('passwort'))) {
+        /* Zurück auf dieselbe Zeit, die schon gewählt war. */
+        App::weiter('/buchen.php?' . http_build_query(array_filter([
+            'w'          => App::post('w'),
+            'service_id' => App::postInt('service_id') ?: null,
+            'start'      => App::post('start'),
+            'trainer_id' => App::postInt('trainer_id') ?: null,
+        ])));
+    }
+    $anmeldefehler = 'E-Mail oder Passwort stimmt nicht.';
+}
+
+if (App::get('gast') !== '') {
+    /* „Doch als Gast“ – die Anmeldung fällt, die gewählte Zeit bleibt. */
+    Kundenlogin::abmelden(false);
+    App::weiter('/buchen.php?' . http_build_query(array_filter([
+        'w'          => App::get('w'),
+        'service_id' => App::getInt('service_id') ?: null,
+        'start'      => App::get('start'),
+        'trainer_id' => App::getInt('trainer_id') ?: null,
+    ])));
+}
+
+$angemeldet = Kundenlogin::kunde();
+
 if (App::istPost() && App::aktion() === 'buchen') {
     $serviceId = App::postInt('service_id');
     $start     = App::post('start');
     $trainerId = App::postInt('trainer_id');
     $service   = Tenant::find('services', $serviceId);
 
-    $vorname  = trim(App::post('vorname'));
-    $nachname = trim(App::post('nachname'));
-    $email    = strtolower(trim(App::post('email')));
-    $telefon  = trim(App::post('telefon'));
+    /*
+     * Ist jemand angemeldet, zählen seine hinterlegten Daten – nicht das,
+     * was im Formular steht. Sonst könnte ein manipuliertes Formular auf
+     * fremde Namen buchen, und das Feld ist beim Angemeldeten ohnehin
+     * nicht sichtbar.
+     */
+    if ($angemeldet !== null) {
+        $vorname  = (string) $angemeldet['vorname'];
+        $nachname = (string) $angemeldet['nachname'];
+        $email    = strtolower((string) $angemeldet['email']);
+        $telefon  = (string) $angemeldet['telefon'];
+    } else {
+        $vorname  = trim(App::post('vorname'));
+        $nachname = trim(App::post('nachname'));
+        $email    = strtolower(trim(App::post('email')));
+        $telefon  = trim(App::post('telefon'));
+    }
     $notiz    = trim(App::post('notiz'));
 
     $fehler = '';
@@ -46,7 +96,7 @@ if (App::istPost() && App::aktion() === 'buchen') {
         $fehler = 'Diese Leistung ist nicht mehr buchbar.';
     } elseif ($vorname === '' || $nachname === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $fehler = 'Bitte Vorname, Nachname und eine gültige E-Mail-Adresse angeben.';
-    } elseif (!App::postBool('einwilligung')) {
+    } elseif ($angemeldet === null && !App::postBool('einwilligung')) {
         $fehler = 'Ohne die Einwilligung zur Verarbeitung der Angaben geht es leider nicht.';
     } else {
         /* Gegen die echte Verfügbarkeit prüfen – der Browser könnte alt sein. */
@@ -67,7 +117,9 @@ if (App::istPost() && App::aktion() === 'buchen') {
     }
 
     if ($fehler === '') {
-        $kundeId = Oeffentlich::kundeFinden($email, $vorname, $nachname, $telefon);
+        $kundeId = $angemeldet !== null
+            ? (int) $angemeldet['id']
+            : Oeffentlich::kundeFinden($email, $vorname, $nachname, $telefon);
 
         /* Ein offenes Paket wird zuerst verbraucht – der Kunde hat es bezahlt. */
         $paketId = 0;
@@ -92,8 +144,21 @@ if (App::istPost() && App::aktion() === 'buchen') {
         if ($id === 0) {
             $fehler = $meldung;
         } else {
-            Oeffentlich::einwilligung($kundeId, 0, 'buchung',
-                'Einwilligung zur Verarbeitung der Angaben für die Terminbuchung.', 'buchen.php');
+            /*
+             * Protokolliert wird nur, was auch wirklich angekreuzt wurde.
+             *
+             * Der Angemeldete sieht das Häkchen nicht; seine Angaben liegen
+             * längst vor, samt der Grundlage, auf der sie aufgenommen
+             * wurden. Ihm hier trotzdem eine Einwilligung anzuschreiben
+             * hieße, eine Erklärung zu protokollieren, die er in diesem
+             * Moment nicht abgegeben hat – als Nachweis wertlos und
+             * irreführend, wenn später jemand fragt, worauf sich der
+             * Eintrag stützt.
+             */
+            if ($angemeldet === null) {
+                Oeffentlich::einwilligung($kundeId, 0, 'buchung',
+                    'Einwilligung zur Verarbeitung der Angaben für die Terminbuchung.', 'buchen.php');
+            }
 
             $kunde = Tenant::find('customers', $kundeId);
             $ort   = Tenant::find('locations', (int) $service['location_id']);
@@ -135,7 +200,14 @@ if (App::istPost() && App::aktion() === 'buchen') {
 
 /* ----------------------------------------------- Zeiten und Formular --- */
 
-$serviceId = App::postInt('service_id') ?: App::getInt('leistung');
+/*
+ * Leistung, Tag, Zeit und Trainer kommen normalerweise aus dem Formular
+ * des vorigen Schrittes. Sie dürfen aber auch in der Adresse stehen:
+ * Nach dem Anmelden leitet die Seite auf sich selbst zurück, und dabei
+ * überlebt kein POST. Nebenbei wird die gewählte Zeit damit verlinkbar –
+ * man kann jemandem einen bestimmten Termin schicken.
+ */
+$serviceId = App::postInt('service_id') ?: App::getInt('service_id') ?: App::getInt('leistung');
 if ($serviceId === 0 || Tenant::find('services', $serviceId) === null) {
     $serviceId = (int) $leistungen[0]['id'];
 }
@@ -145,7 +217,14 @@ $datum = App::post('datum') !== '' ? App::post('datum') : App::get('datum', Util
 if (strtotime($datum) === false || $datum < Util::heute()) {
     $datum = Util::heute();
 }
-$gewaehlt = App::post('start');
+$gewaehlt = App::post('start') !== '' ? App::post('start') : App::get('start');
+if ($gewaehlt !== '' && strtotime($gewaehlt) === false) {
+    $gewaehlt = '';
+}
+if ($gewaehlt !== '' && App::post('datum') === '' && App::get('datum') === '') {
+    /* Der Tag ergibt sich aus der Zeit, wenn er nicht eigens dasteht. */
+    $datum = substr($gewaehlt, 0, 10);
+}
 
 /*
  * Das Raster der angebotenen Startzeiten.
@@ -246,13 +325,16 @@ if ($tage === []) {
 
 /* Schritt 2: Angaben – erst wenn eine Zeit gewählt ist */
 if ($gewaehlt !== '') {
-    $trainerId = App::postInt('trainer_id');
+    $trainerId = App::postInt('trainer_id') ?: App::getInt('trainer_id');
     $inhalt .= '<div class="vorgang__gewaehlt">'
              . '<strong>' . Util::h(Util::datumLang($gewaehlt)) . ', '
              . Util::h(Util::uhrzeit($gewaehlt)) . ' Uhr</strong> · '
              . Util::h((string) $service['name'])
              . ($trainerId > 0 ? ' · mit ' . Util::h(Auth::trainerName($trainerId)) : '')
              . '</div>'
+             . ($angemeldet === null ? Oeffentlich::anmeldekasten(
+                    (string) (Tenant::workspace()['slug'] ?? ''),
+                    $serviceId, $gewaehlt, $trainerId, $anmeldefehler) : '')
              . '<form method="post" class="vorgang__form">'
              . '<input type="hidden" name="aktion" value="buchen">'
              . '<input type="hidden" name="w" value="' . Util::attr((string) (Tenant::workspace()['slug'] ?? '')) . '">'
@@ -261,23 +343,41 @@ if ($gewaehlt !== '') {
              . '<input type="hidden" name="trainer_id" value="' . $trainerId . '">'
              . '<input type="hidden" name="begonnen" value="' . time() . '">'
              . '<input type="text" name="website" class="honigtopf" tabindex="-1" autocomplete="off" aria-hidden="true">'
-             . '<div class="feld-paar">'
-             . '<div class="feld"><label for="vorname">Vorname</label>'
-             . '<input id="vorname" name="vorname" required value="' . Util::attr(App::post('vorname')) . '"></div>'
-             . '<div class="feld"><label for="nachname">Nachname</label>'
-             . '<input id="nachname" name="nachname" required value="' . Util::attr(App::post('nachname')) . '"></div>'
-             . '</div>'
-             . '<div class="feld-paar">'
-             . '<div class="feld"><label for="email">E-Mail</label>'
-             . '<input id="email" type="email" name="email" required value="' . Util::attr(App::post('email')) . '"></div>'
-             . '<div class="feld"><label for="telefon">Telefon</label>'
-             . '<input id="telefon" type="tel" name="telefon" value="' . Util::attr(App::post('telefon')) . '"></div>'
-             . '</div>'
+             . ($angemeldet !== null
+                /*
+                 * Angemeldet: nichts mehr abfragen, was schon bekannt ist.
+                 * Der Weg zurück zur Gastbuchung steht daneben – jemand
+                 * bucht auch mal für den Partner.
+                 */
+                ? '<div class="alsgast">'
+                  . '<div class="alsgast__wer">'
+                  . '<strong>' . Util::h(Customers::name($angemeldet)) . '</strong>'
+                  . '<span class="alsgast__mail">' . Util::h((string) $angemeldet['email']) . '</span>'
+                  . '</div>'
+                  . '<a class="alsgast__wechsel" href="' . Util::attr(App::url('/buchen.php?gast=1&'
+                        . http_build_query(array_filter([
+                            'w' => (string) (Tenant::workspace()['slug'] ?? ''),
+                            'service_id' => $serviceId, 'start' => $gewaehlt, 'trainer_id' => $trainerId,
+                          ])))) . '">Für jemand anderen buchen</a>'
+                  . '</div>'
+                : '<div class="feld-paar">'
+                  . '<div class="feld"><label for="vorname">Vorname</label>'
+                  . '<input id="vorname" name="vorname" required value="' . Util::attr(App::post('vorname')) . '"></div>'
+                  . '<div class="feld"><label for="nachname">Nachname</label>'
+                  . '<input id="nachname" name="nachname" required value="' . Util::attr(App::post('nachname')) . '"></div>'
+                  . '</div>'
+                  . '<div class="feld-paar">'
+                  . '<div class="feld"><label for="email">E-Mail</label>'
+                  . '<input id="email" type="email" name="email" required value="' . Util::attr(App::post('email')) . '"></div>'
+                  . '<div class="feld"><label for="telefon">Telefon</label>'
+                  . '<input id="telefon" type="tel" name="telefon" value="' . Util::attr(App::post('telefon')) . '"></div>'
+                  . '</div>')
              . '<div class="feld"><label for="notiz">Möchtest du noch etwas dazusagen?</label>'
              . '<textarea id="notiz" name="notiz" rows="2">' . Util::h(App::post('notiz')) . '</textarea></div>'
-             . '<label class="einwilligung"><input type="checkbox" name="einwilligung" value="1" required>'
-             . '<span>Ich bin mit der Verarbeitung meiner Angaben zur Durchführung des Termins '
-             . 'einverstanden. Die Einwilligung kann ich jederzeit widerrufen.</span></label>'
+             . ($angemeldet !== null ? ''
+                : '<label class="einwilligung"><input type="checkbox" name="einwilligung" value="1" required>'
+                  . '<span>Ich bin mit der Verarbeitung meiner Angaben zur Durchführung des Termins '
+                  . 'einverstanden. Die Einwilligung kann ich jederzeit widerrufen.</span></label>')
              . '<button class="knopf knopf--primaer" type="submit">Termin verbindlich buchen</button>'
              . '<p class="vorgang__klein">Absage bis '
              . (int) Tenant::einstellung('stornofrist_stunden', 24) . ' Stunden vorher kostenfrei. '

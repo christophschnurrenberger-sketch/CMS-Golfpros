@@ -17,68 +17,34 @@ require __DIR__ . '/../lib/bootstrap.php';
 /* --------------------------------------------------------- Anmeldung --- */
 
 /*
- * Eigene Sitzung, getrennt von der des Trainers: bootstrap.php hat über
- * Auth::start() bereits „gpsid" geöffnet. Die wird hier geschlossen – ihr
- * Inhalt bleibt gespeichert – und durch die Portalsitzung ersetzt. So
- * meldet ein Kunde, der sich abmeldet, nicht nebenbei den Trainer ab, der
- * denselben Browser benutzt.
+ * Angemeldet wird über Kundenlogin – dieselbe Klasse, die auch die
+ * öffentliche Buchung benutzt.
+ *
+ * Früher lief das Portal in einer eigenen Sitzung namens „gp_portal",
+ * damit ein abmeldender Kunde nicht den Trainer mit abmeldet, der
+ * denselben Browser benutzt. Dieses Ziel bleibt, nur mit einem
+ * einfacheren Mittel: eine Sitzung, getrennte Schlüssel, und das
+ * Abmelden räumt nur die des Kunden weg.
+ *
+ * Nötig wurde die Umstellung, weil PHP je Aufruf nur eine Sitzung offen
+ * hält. Mit zwei Namen wäre ein im Portal angemeldeter Kunde beim Buchen
+ * wieder ein Fremder gewesen – und genau das soll er nicht sein.
  */
-if (session_status() === PHP_SESSION_ACTIVE) {
-    session_write_close();
-}
-session_name('gp_portal');
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path'     => '/',
-    'secure'   => !empty($_SERVER['HTTPS']),
-    'httponly' => true,
-    'samesite' => 'Lax',
-]);
-@session_start();
 
-function portalAbmelden(): never
-{
-    $_SESSION = [];
-    session_destroy();
+if (App::get('abmelden') !== '') {
+    Kundenlogin::abmelden();
+}
+
+/* 1. Schlüssel aus dem Link – danach aus der Adresszeile nehmen. */
+$token = App::get('t');
+if ($token !== '' && Kundenlogin::mitToken($token)) {
     App::weiter('/portal/');
 }
 
-if (App::get('abmelden') !== '') {
-    portalAbmelden();
-}
-
-$kunde = null;
-
-/* 1. Schlüssel aus dem Link */
-$token = App::get('t');
-if ($token !== '') {
-    $treffer = DB::one("SELECT * FROM customers WHERE portal_token = :t AND portal_token != ''",
-        ['t' => $token]);
-    if ($treffer !== null) {
-        Tenant::setzen((int) $treffer['workspace_id']);
-        $_SESSION['portal_kunde'] = (int) $treffer['id'];
-        $_SESSION['portal_workspace'] = (int) $treffer['workspace_id'];
-        App::weiter('/portal/');      // Schlüssel aus der Adresszeile nehmen
-    }
-}
-
-/* 2. Bestehende Sitzung */
-if (isset($_SESSION['portal_kunde'], $_SESSION['portal_workspace'])) {
-    Tenant::setzen((int) $_SESSION['portal_workspace']);
-    $kunde = Tenant::find('customers', (int) $_SESSION['portal_kunde']);
-    if ($kunde === null) {
-        portalAbmelden();
-    }
-}
-
-/* 3. Anmeldung mit E-Mail und Passwort */
-if ($kunde === null && App::istPost() && App::aktion() === 'anmelden') {
-    $email = strtolower(trim(App::post('email')));
-    $treffer = DB::one("SELECT * FROM customers WHERE email = :e AND portal_passwort != ''", ['e' => $email]);
-    if ($treffer !== null && password_verify(App::postRoh('passwort'), (string) $treffer['portal_passwort'])) {
-        Tenant::setzen((int) $treffer['workspace_id']);
-        $_SESSION['portal_kunde'] = (int) $treffer['id'];
-        $_SESSION['portal_workspace'] = (int) $treffer['workspace_id'];
+/* 2. Anmeldung mit E-Mail und Passwort */
+$fehler = '';
+if (!Kundenlogin::angemeldet() && App::istPost() && App::aktion() === 'anmelden') {
+    if (Kundenlogin::mitPasswort(App::post('email'), App::postRoh('passwort'))) {
         App::weiter('/portal/');
     }
     /*
@@ -87,6 +53,9 @@ if ($kunde === null && App::istPost() && App::aktion() === 'anmelden') {
      */
     $fehler = 'E-Mail oder Passwort stimmt nicht.';
 }
+
+/* 3. Bestehende Sitzung */
+$kunde = Kundenlogin::kunde();
 
 /* ------------------------------------------------- Anmeldeformular ----- */
 
@@ -105,7 +74,12 @@ if ($kunde === null) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>Anmelden · <?= Util::h(Tenant::gesetzt() ? Tenant::name() : 'Kundenportal') ?></title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <?php /* Schriften vom eigenen Server – wie im übrigen Portal.
+             Hier stand bis zuletzt ein Link zu Google Fonts: Der hätte die
+             IP-Adresse jedes Besuchers nach Kalifornien geschickt, bevor er
+             auch nur „Anmelden" angeklickt hat – und dazu eine Schrift
+             geladen, die app.css gar nicht verwendet. */ ?>
+    <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/schriften.css')) ?>">
     <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/app.css')) ?>">
     <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/portal.css')) ?>">
     <style>:root{--marke:<?= Util::attr((string) $branding['primaer']) ?>;
@@ -119,7 +93,9 @@ if ($kunde === null) {
         <h1 style="font-size:21px;font-weight:680">Dein Bereich</h1>
         <p class="gedimmt klein mt-2">Termine, Trainingsplan und Unterlagen an einem Ort.</p>
       </div>
-      <?php if (isset($fehler)): ?>
+      <?php /* Auf den Inhalt prüfen, nicht auf isset: $fehler ist immer
+               gesetzt, nur meistens leer. */ ?>
+      <?php if ($fehler !== ''): ?>
         <div class="hinweis hinweis--gefahr mb-4">
           <?= Icon::svg('alert', 17) ?><div class="hinweis__text"><?= Util::h($fehler) ?></div></div>
       <?php endif; ?>

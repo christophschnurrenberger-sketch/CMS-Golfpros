@@ -504,6 +504,15 @@
   display: block; font-size: 14.5px; color: var(--text-3);
   margin-bottom: 8px; font-weight: 400;
 }
+/*
+ * `input:not([type])` steht bewusst mit in der Liste.
+ *
+ * Ein <input> ohne type ist ein Textfeld – aber der Wähler
+ * input[type="text"] greift nur, wenn das Attribut auch dasteht. Ohne
+ * diese Zeile standen Vorname und Nachname im Buchungsformular als graue
+ * Browserkästchen zwischen lauter gestalteten Feldern.
+ */
+.seite .feld input:not([type]),
 .seite .feld input[type="text"], .seite .feld input[type="email"],
 .seite .feld input[type="tel"], .seite .feld input[type="date"],
 .seite .feld input[type="number"], .seite .feld input[type="password"],
@@ -545,6 +554,72 @@
 .seite .vorgang__zurueck { margin-top: 30px; }
 .seite .vorgang__zurueck a { border-bottom: 1.5px solid var(--marke); padding-bottom: 2px; font-weight: 500; }
 .seite .vorgang__form { margin: 0 0 26px; }
+
+/* -------------------------------------- Anmelden oder als Gast ------- */
+
+/*
+ * Der Anmeldekasten steht über dem Formular und ist zugeklappt. Die
+ * große Mehrheit bucht als Gast; ein Anmeldeformular, das ihnen zuerst
+ * ins Auge springt, wirkt wie eine Pflicht – und eine Buchung mit
+ * Registrierungspflicht verliert genau die Kundschaft, die man gewinnen
+ * wollte. Wer ein Konto hat, sucht den Hinweis von selbst.
+ */
+.seite .anmeldekasten {
+  border: 1px solid var(--rand);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+  background: var(--flaeche-2);
+  margin: 0 0 26px;
+  overflow: hidden;
+}
+.seite .anmeldekasten__kopf {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 15px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  list-style: none;
+}
+.seite .anmeldekasten__kopf::-webkit-details-marker { display: none; }
+.seite .anmeldekasten__kopf::after {
+  content: '';
+  margin-left: auto;
+  width: 8px; height: 8px;
+  border-right: 2px solid var(--text-3);
+  border-bottom: 2px solid var(--text-3);
+  transform: rotate(45deg);
+  transition: transform .18s;
+}
+.seite .anmeldekasten[open] .anmeldekasten__kopf::after { transform: rotate(-135deg); }
+.seite .anmeldekasten__hinweis { font-size: 14px; color: var(--text-3); }
+.seite .anmeldekasten__koerper { padding: 0 20px 20px; }
+.seite .anmeldekasten__form { margin: 0 0 12px; }
+.seite .anmeldekasten__fehler {
+  color: var(--marke-dunkel);
+  background: var(--akzent);
+  border-radius: 10px;
+  padding: 9px 13px;
+  margin: 0 0 14px;
+  font-size: 15px;
+}
+.seite .anmeldekasten__klein { font-size: 14px; color: var(--text-3); margin: 0; }
+
+/* Wer angemeldet bucht, sieht statt der Felder nur, als wer. */
+.seite .alsgast {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 15px 20px;
+  margin: 0 0 22px;
+  border: 1px solid var(--rand);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+  background: var(--marke-hell);
+}
+.seite .alsgast__wer { display: flex; flex-direction: column; min-width: 0; }
+.seite .alsgast__mail { font-size: 14px; color: var(--text-3); }
+.seite .alsgast__wechsel {
+  margin-left: auto;
+  font-size: 14.5px;
+  color: var(--marke);
+  border-bottom: 1.5px solid currentColor;
+  padding-bottom: 1px;
+}
 
 /* Schrittanzeige */
 .seite .ablauf {

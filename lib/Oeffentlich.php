@@ -91,6 +91,53 @@ final class Oeffentlich
     }
 
     /**
+     * Der Anmeldekasten über dem Buchungsformular.
+     *
+     * Bewusst zugeklappt: Die große Mehrheit bucht als Gast, und ein
+     * Anmeldeformular, das ihnen zuerst ins Auge springt, wirkt wie eine
+     * Pflicht. Wer ein Konto hat, sucht den Hinweis von selbst.
+     *
+     * Ohne JavaScript steht er offen da – ein `details`-Element braucht
+     * keines. Das ist keine Notlösung, sondern hier sogar die robustere
+     * Fassung.
+     */
+    public static function anmeldekasten(
+        string $slug,
+        int $serviceId,
+        string $start,
+        int $trainerId,
+        string $fehler = ''
+    ): string {
+        $verstecktes = '<input type="hidden" name="aktion" value="kunde_anmelden">'
+                     . '<input type="hidden" name="w" value="' . Util::attr($slug) . '">'
+                     . '<input type="hidden" name="service_id" value="' . $serviceId . '">'
+                     . '<input type="hidden" name="start" value="' . Util::attr($start) . '">'
+                     . '<input type="hidden" name="trainer_id" value="' . $trainerId . '">';
+
+        return '<details class="anmeldekasten"' . ($fehler !== '' ? ' open' : '') . '>'
+             . '<summary class="anmeldekasten__kopf">'
+             . '<span>Schon Kunde? <strong>Anmelden</strong></span>'
+             . '<span class="anmeldekasten__hinweis">spart das Ausfüllen</span>'
+             . '</summary>'
+             . '<div class="anmeldekasten__koerper">'
+             . ($fehler !== '' ? '<p class="anmeldekasten__fehler">' . Util::h($fehler) . '</p>' : '')
+             . '<form method="post" class="anmeldekasten__form">'
+             . $verstecktes
+             . '<div class="feld-paar">'
+             . '<div class="feld"><label for="a-email">E-Mail</label>'
+             . '<input id="a-email" type="email" name="email" autocomplete="email" required></div>'
+             . '<div class="feld"><label for="a-passwort">Passwort</label>'
+             . '<input id="a-passwort" type="password" name="passwort" autocomplete="current-password" required></div>'
+             . '</div>'
+             . '<button class="knopf" type="submit">Anmelden</button>'
+             . '</form>'
+             . '<p class="anmeldekasten__klein">Kein Passwort gesetzt? Der Link aus deiner '
+             . 'letzten Terminbestätigung meldet dich ohne Passwort an. '
+             . 'Sonst einfach unten als Gast buchen – das geht genauso.</p>'
+             . '</div></details>';
+    }
+
+    /**
      * Findet einen Kunden zur E-Mail-Adresse oder legt ihn an.
      *
      * Eine Online-Buchung darf keinen zweiten Datensatz zu einer Person
