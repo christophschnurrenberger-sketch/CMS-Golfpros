@@ -95,22 +95,60 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # Solange die Zugangsdaten fehlen, soll der Lauf nicht mit einer
-      # kryptischen FTP-Meldung scheitern, sondern sagen, was zu tun ist.
-      # Das ist der Zustand direkt nach dem Anlegen des Workflows.
-      - name: Sind die Zugangsdaten hinterlegt?
+      # Die Einstellungen werden hier geprueft und nicht erst von der Action.
+      # Deren Meldungen sind knapp und englisch; wer zum ersten Mal einen
+      # Webspace anbindet, soll lesen koennen, was gemeint ist.
+      - name: Zugangsdaten und Einstellungen pruefen
         id: zugang
         env:
-          SERVER: ${{ secrets.FTP_SERVER }}
+          SERVER:      ${{ secrets.FTP_SERVER }}
+          PROTOKOLL:   ${{ vars.FTP_PROTOKOLL }}
+          VERZEICHNIS: ${{ vars.FTP_VERZEICHNIS }}
         run: |
+          # Noch nichts hinterlegt: Das ist der Zustand direkt nach dem
+          # Anlegen des Workflows und kein Fehler.
           if [ -z "$SERVER" ]; then
             echo "bereit=nein" >> "$GITHUB_OUTPUT"
             echo "::warning::Es ist kein FTP_SERVER hinterlegt, also wird nichts hochgeladen."
             echo "::warning::Einzurichten unter Settings -> Secrets and variables -> Actions."
             echo "::warning::Welche Werte gebraucht werden, steht in docs/DEPLOY.md."
-          else
-            echo "bereit=ja" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          # sftp ist nicht die sichere Fassung von ftp, sondern ein anderes
+          # Protokoll: Dateiuebertragung durch eine SSH-Verbindung. Diese
+          # Action spricht nur die FTP-Familie. Die Verwechslung ist haeufig
+          # genug, um sie eigens zu behandeln.
+          case "${PROTOKOLL:-ftps}" in
+            ftp|ftps|ftps-legacy)
+              ;;
+            sftp|SFTP)
+              echo "::error::FTP_PROTOKOLL steht auf \"sftp\". Das ist ein anderes Protokoll"
+              echo "::error::als ftps - SSH statt TLS - und diese Action kann es nicht."
+              echo "::error::Gemeint ist meistens \"ftps\". Bietet der Hoster wirklich nur"
+              echo "::error::SFTP an, braucht es einen anderen Weg; siehe docs/DEPLOY.md."
+              exit 1
+              ;;
+            *)
+              echo "::error::FTP_PROTOKOLL kennt nur ftp, ftps und ftps-legacy."
+              echo "::error::Hinterlegt ist \"$PROTOKOLL\"."
+              exit 1
+              ;;
+          esac
+
+          # Die Action besteht auf einem Schraegstrich am Ende und bricht
+          # sonst ab. Den haengen wir lieber an, als den Lauf daran
+          # scheitern zu lassen.
+          ziel="${VERZEICHNIS:-./}"
+          case "$ziel" in
+            */) ;;
+            *)  ziel="$ziel/"
+                echo "::notice::FTP_VERZEICHNIS hatte keinen Schraegstrich am Ende; ergaenzt zu $ziel" ;;
+          esac
+
+          echo "bereit=ja" >> "$GITHUB_OUTPUT"
+          echo "ziel=$ziel" >> "$GITHUB_OUTPUT"
+          echo "Zielordner: $ziel"
 
       - name: Dateien abgleichen
         if: steps.zugang.outputs.bereit == 'ja'
@@ -127,9 +165,9 @@ jobs:
           port:       ${{ vars.FTP_PORT || 21 }}
           security:   ${{ vars.FTP_SICHERHEIT || 'strict' }}
 
-          # Zielordner auf dem Server, mit Schrägstrich am Ende.
-          # Häufig: ./  oder  /httpdocs/  oder  /html/
-          server-dir: ${{ vars.FTP_VERZEICHNIS || './' }}
+          # Zielordner, im Schritt davor um einen fehlenden Schrägstrich
+          # ergänzt. Häufig: ./  oder  /httpdocs/  oder  /html/
+          server-dir: ${{ steps.zugang.outputs.ziel }}
 
           # NIEMALS dangerous-clean-slate einschalten. Das löscht vor dem
           # Upload alles im Zielordner – also auch Datenbank und Uploads.

@@ -29,7 +29,7 @@ dass sonst etwas stehen bleibt.
 | Name              | Voreinstellung | Wofür                                              |
 |-------------------|----------------|----------------------------------------------------|
 | `FTP_VERZEICHNIS` | `./`           | Zielordner, **mit Schrägstrich am Ende**           |
-| `FTP_PROTOKOLL`   | `ftps`         | `ftps`, `ftps-legacy` oder `ftp`                   |
+| `FTP_PROTOKOLL`   | `ftps`         | `ftps`, `ftps-legacy` oder `ftp` – **nicht** `sftp`, siehe unten |
 | `FTP_PORT`        | `21`           | nur wenn der Hoster einen anderen nennt            |
 | `FTP_SICHERHEIT`  | `strict`       | `loose` bei einem Zertifikat, das nicht passt      |
 | `SEITEN_URL`      | –              | z. B. `https://golfschule.de` – dann wird nach dem Upload nachgesehen, ob die Seite antwortet |
@@ -40,6 +40,25 @@ FTPS über Port 21.
 Solange `FTP_SERVER` fehlt, läuft der Workflow zwar durch, lädt aber
 nichts hoch und sagt das als Warnung. Der erste Lauf nach dem Anlegen ist
 also grün und nicht rot – er wartet nur auf die Zugangsdaten.
+
+### SFTP ist nicht FTPS
+
+Die beiden Namen sehen aus wie Varianten desselben, sind aber verschiedene
+Protokolle:
+
+* **FTPS** ist FTP mit TLS obendrauf – dieselben Befehle wie immer, nur
+  verschlüsselt. Läuft über Port 21 (oder 990).
+* **SFTP** ist Dateiübertragung durch eine SSH-Verbindung, Port 22. Mit FTP
+  hat es außer den drei Buchstaben nichts gemeinsam.
+
+Diese Action spricht nur die FTP-Familie. Steht `FTP_PROTOKOLL` auf
+`sftp`, bricht der Lauf mit einem Hinweis darauf ab, statt in einer
+unverständlichen Meldung zu enden.
+
+Meist ist `ftps` gemeint. Bietet der Hoster tatsächlich nur SFTP an – das
+kommt vor, vor allem bei Servern mit SSH-Zugang –, dann braucht es einen
+anderen Upload-Weg; sag Bescheid, dann wird der Workflow entsprechend
+umgebaut.
 
 Der Zielordner heißt je nach Hoster anders. Üblich sind `./`, `/httpdocs/`,
 `/html/`, `/public_html/` oder `/www/`. Einmal mit einem FTP-Programm
@@ -171,8 +190,13 @@ sich hier beheben lässt. Die FTP-Action gibt in ihrer Beschreibung noch
 Node 20 an; GitHub führt sie trotzdem auf Node 24 aus. Verschwindet, sobald
 der Autor der Action nachzieht.
 
-**Die Dateien landen im falschen Ordner** – `FTP_VERZEICHNIS` prüfen. Der
-Wert muss auf einen Schrägstrich enden.
+**Die Dateien landen im falschen Ordner** – `FTP_VERZEICHNIS` prüfen.
+Fehlt der Schrägstrich am Ende, ergänzt der Workflow ihn und sagt es als
+Hinweis; die Action selbst würde daran abbrechen.
+
+**`protocol: invalid parameter`** – in `FTP_PROTOKOLL` steht etwas, das
+die Action nicht kennt. Erlaubt sind nur `ftp`, `ftps` und `ftps-legacy`;
+zu `sftp` siehe oben.
 
 **Alles grün, aber die Seite ändert sich nicht** – am Browser liegt es
 meistens nicht: `App::asset()` hängt an jede CSS- und JS-Adresse eine
