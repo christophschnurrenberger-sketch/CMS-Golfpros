@@ -321,7 +321,15 @@ jobs:
 
           # Dieselben Einstellungen fuer beide Laeufe, damit der Trockenlauf
           # nicht etwas anderes zeigt, als danach geschieht.
-          opt="--reverse --only-newer --no-perms $loeschen $aus"
+          #
+          # Ohne --no-perms uebertraegt lftp die Rechte der lokalen Datei:
+          # 644 fuer Dateien, 755 fuer Ordner - genau das, was ein
+          # Webserver braucht. Mit --no-perms bekamen sie, was die
+          # Gegenstelle vorgab, und das war bei IONOS 600 beziehungsweise
+          # 700. Apache konnte die .htaccess dann nicht mehr lesen und
+          # antwortete mit "Server unable to read htaccess file, denying
+          # access to be safe".
+          opt="--reverse --only-newer $loeschen $aus"
 
           verbindung="
             set sftp:auto-confirm yes;
@@ -339,6 +347,38 @@ jobs:
 
           echo "── Uebertragung ───────────────────────────────────────"
           HOME="$heim" lftp -c "$verbindung mirror $opt --parallel=2 --verbose=1 ./ \"$ZIEL\";"
+
+          # Rechte geradeziehen.
+          #
+          # Der Abgleich oben fasst nur an, was sich geaendert hat - eine
+          # Datei, die schon mit 600 oben liegt, bleibt sonst unlesbar.
+          # Deshalb einmal je Lauf ueber die Baeume, die der Webserver
+          # lesen koennen muss.
+          #
+          # a+rX statt 644: Das grosse X setzt das Ausfuehrungsrecht nur
+          # dort, wo es schon steht - also bei Ordnern, nicht bei Dateien.
+          # Ein Skript im uploads-Ordner wird dadurch nicht ausfuehrbar.
+          #
+          # Die PHP-Dateien im Wurzelordner brauchen einen Platzhalter, weil
+          # sie einzeln aufzuzaehlen bedeutet, die Liste beim naechsten
+          # neuen Einstiegspunkt zu vergessen. Der Platzhalter erwischt
+          # allerdings auch config.php - deshalb werden sie und die
+          # Datenbank direkt danach wieder zugezogen. Beides geschieht in
+          # derselben Verbindung, Befehl auf Befehl.
+          #
+          # Warum ueberhaupt: Der Webserver geht die Zugangsdaten und die
+          # Kundendatenbank nichts an. Dass die .htaccess sie ohnehin
+          # sperrt, ist die zweite Sicherung, nicht die erste.
+          echo "── Rechte ─────────────────────────────────────────────"
+          HOME="$heim" lftp -c "$verbindung
+            chmod -R a+rX \"$ZIEL\"app \"$ZIEL\"lib \"$ZIEL\"assets \"$ZIEL\"portal \"$ZIEL\"uploads;
+            chmod a+rX \"$ZIEL\" \"$ZIEL\"data;
+            chmod a+r \"$ZIEL\".htaccess \"$ZIEL\".user.ini \"$ZIEL\"data/.htaccess \"$ZIEL\"data/index.html;
+            glob chmod a+r \"$ZIEL\"*.php;
+            chmod go-rwx \"$ZIEL\"config.php;
+            glob chmod go-rwx \"$ZIEL\"data/*.sqlite*;
+          " 2>&1 | grep -v '^$' || true
+          echo "Rechte gesetzt: Dateien lesbar, Ordner begehbar, config.php und Datenbank zu."
 
       # Ein erfolgreicher Upload heißt noch nicht, dass die Seite läuft.
       # Diese Prüfung ist absichtlich einfach: Sie ruft die Startseite auf

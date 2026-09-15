@@ -176,6 +176,33 @@ und merkt sich darin, welche Datei in welcher Fassung oben liegt. Beim
 nächsten Lauf werden nur die Unterschiede übertragen – nach der ersten
 vollständigen Übertragung dauert ein Upload meist wenige Sekunden.
 
+### Warum der Upload die Rechte setzt
+
+Nach jedem Abgleich zieht der Workflow die Dateirechte gerade: 644 für
+Dateien, 755 für Ordner.
+
+Das ist nicht Kosmetik. Überträgt man ohne Rechteangabe, bekommen die
+Dateien, was die Gegenstelle vorgibt – bei IONOS 600 beziehungsweise 700,
+also nur für den Eigentümer lesbar. Apache kann dann nicht einmal die
+`.htaccess` lesen und antwortet mit:
+
+```
+Forbidden
+Server unable to read htaccess file, denying access to be safe
+```
+
+Gesetzt wird `a+rX`: Das große `X` vergibt das Ausführungsrecht nur dort,
+wo es schon steht – also bei Ordnern, nicht bei Dateien. Ein Skript, das
+jemand als Bild in `uploads/` lädt, wird dadurch nicht ausführbar.
+
+**`config.php` und die Datenbank bleiben ausgenommen.** Sie gehen den
+Webserver nichts an; dass die `.htaccess` sie ohnehin sperrt, ist die
+zweite Sicherung, nicht die erste.
+
+Der Lauf ist nicht nur für die erste Übertragung da: Der Abgleich fasst
+nur an, was sich geändert hat, und eine Datei, die einmal mit 600 oben
+liegt, bliebe sonst für immer unlesbar.
+
 ### Warum die Änderungszeiten zurückgesetzt werden
 
 Ein frischer Checkout stempelt jede Datei auf „jetzt". Für den SFTP-Weg,
