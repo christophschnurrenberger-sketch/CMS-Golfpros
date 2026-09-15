@@ -203,23 +203,33 @@ require __DIR__ . '/partials/kopf.php';
           <?php for ($h = $vonStunde; $h < $bisStunde; $h++): ?>
             <div class="kalender__zelle"></div>
           <?php endfor; ?>
-          <?php foreach ($nachTag[$tag] ?? [] as $t):
+          <?php
+          /*
+           * Gleichzeitige Termine nebeneinander statt uebereinander. Ohne
+           * das verdeckt der obere den unteren - und ausgerechnet eine
+           * Doppelbuchung, die man sehen muss, waere unsichtbar.
+           */
+          $desTages = array_values($nachTag[$tag] ?? []);
+          $spalten  = Bookings::spalten($desTages);
+          foreach ($desTages as $nr => $t):
             $startMin = (int) date('G', strtotime((string) $t['start'])) * 60
                       + (int) date('i', strtotime((string) $t['start']));
             $dauer = max(20, (strtotime((string) $t['ende']) - strtotime((string) $t['start'])) / 60);
             $oben  = ($startMin - $vonStunde * 60) / 60 * 52;
             $hoehe = $dauer / 60 * 52 - 3;
+            [$spur, $spurenGesamt] = $spalten[$nr] ?? [0, 1];
+            $breite = 100 / $spurenGesamt;
             $service = $leistungen[(int) $t['service_id']] ?? null;
             $farbe = $farben[(string) ($service['art'] ?? 'einzel')] ?? '';
             $kunde = (int) $t['customer_id'] > 0 ? Customers::nameVonId((int) $t['customer_id']) : ''; ?>
             <a class="termin<?= $farbe !== '' ? ' termin--' . $farbe : '' ?><?= (string) $t['status'] === 'abgesagt' ? ' termin--abgesagt' : '' ?>"
-               style="top:<?= round($oben, 1) ?>px;height:<?= round($hoehe, 1) ?>px"
+               style="top:<?= round($oben, 1) ?>px;height:<?= round($hoehe, 1) ?>px;left:calc(<?= round($spur * $breite, 4) ?>% + 3px);width:calc(<?= round($breite, 4) ?>% - 6px);right:auto"
                href="<?= Util::attr(App::url('/app/buchung.php?id=' . (int) $t['id'])) ?>"
                title="<?= Util::attr(Util::uhrzeit((string) $t['start']) . '–' . Util::uhrzeit((string) $t['ende'])
                        . ' · ' . $t['titel'] . ($kunde !== '' ? ' · ' . $kunde : '')) ?>">
               <span class="termin__zeit"><?= Util::h(Util::uhrzeit((string) $t['start'])) ?></span>
               <span class="termin__titel"><?= Util::h($kunde !== '' ? $kunde : (string) $t['titel']) ?></span>
-              <?php if ($hoehe > 44): ?>
+              <?php if ($hoehe > 44 && $spurenGesamt < 3): ?>
                 <span class="termin__zeit"><?= Util::h(Util::kuerzen((string) $t['titel'], 28)) ?></span>
               <?php endif; ?>
             </a>

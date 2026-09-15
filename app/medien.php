@@ -17,18 +17,46 @@ if (App::istPost()) {
             @mkdir($ordner, 0750, true);
         }
         $anzahl = 0;
+        $abgelehnt = [];
+        $grenze = App::uploadGrenze();
         $namen = (array) ($_FILES['dateien']['name'] ?? []);
         foreach (array_keys($namen) as $i) {
-            if ((int) $_FILES['dateien']['error'][$i] !== UPLOAD_ERR_OK) {
+            $wie = (string) $namen[$i];
+
+            /*
+             * Jeder abgewiesene Upload bekommt einen Grund. Vorher wurden
+             * sie stillschweigend uebersprungen, und am Ende stand nur
+             * „Nichts hochgeladen" - womit niemand etwas anfangen kann.
+             */
+            $fehlercode = (int) $_FILES['dateien']['error'][$i];
+            if ($fehlercode !== UPLOAD_ERR_OK) {
+                $abgelehnt[] = $wie . ' – ' . match ($fehlercode) {
+                    UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE =>
+                        'zu gross für diesen Server'
+                        . ($grenze > 0 ? ' (Grenze: ' . Util::bytes($grenze) . ')' : ''),
+                    UPLOAD_ERR_PARTIAL   => 'nur halb angekommen, bitte noch einmal',
+                    UPLOAD_ERR_NO_FILE   => 'keine Datei ausgewählt',
+                    UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE =>
+                        'der Server konnte nicht schreiben – das muss der Hoster beheben',
+                    UPLOAD_ERR_EXTENSION => 'vom Server abgelehnt',
+                    default              => 'unbekannter Fehler ' . $fehlercode,
+                };
                 continue;
             }
+
             $typ = (string) $_FILES['dateien']['type'][$i];
-            if (!isset($erlaubt[$typ]) || (int) $_FILES['dateien']['size'][$i] > 12 * 1024 * 1024) {
+            if (!isset($erlaubt[$typ])) {
+                $abgelehnt[] = $wie . ' – Dateityp nicht erlaubt (' . ($typ !== '' ? $typ : 'unbekannt') . ')';
+                continue;
+            }
+            if ((int) $_FILES['dateien']['size'][$i] > 12 * 1024 * 1024) {
+                $abgelehnt[] = $wie . ' – über 12 MB';
                 continue;
             }
             $name = Util::slug(pathinfo((string) $namen[$i], PATHINFO_FILENAME), 40)
                   . '-' . substr(Util::token(3), 0, 5) . '.' . $erlaubt[$typ];
             if (!move_uploaded_file((string) $_FILES['dateien']['tmp_name'][$i], $ordner . '/' . $name)) {
+                $abgelehnt[] = $wie . ' – konnte nicht gespeichert werden. Ist uploads/ beschreibbar?';
                 continue;
             }
             $pfad = 'uploads/w' . Tenant::id() . '/medien/' . $name;
@@ -41,9 +69,15 @@ if (App::istPost()) {
             ]);
             $anzahl++;
         }
-        App::melden($anzahl > 0 ? $anzahl . ' Datei(en) hochgeladen.'
-            : 'Nichts hochgeladen. Erlaubt sind JPG, PNG, WebP, SVG, GIF und PDF bis 12 MB.',
-            $anzahl > 0 ? 'erfolg' : 'fehler');
+        if ($anzahl > 0) {
+            App::melden($anzahl === 1 ? 'Eine Datei hochgeladen.' : $anzahl . ' Dateien hochgeladen.', 'erfolg');
+        }
+        if ($abgelehnt !== []) {
+            App::melden('Nicht übernommen: ' . implode(' · ', $abgelehnt), 'fehler');
+        }
+        if ($anzahl === 0 && $abgelehnt === []) {
+            App::melden('Es kam nichts an. Erlaubt sind JPG, PNG, WebP, SVG, GIF und PDF.', 'fehler');
+        }
     }
 
     if (App::aktion() === 'loeschen') {
@@ -63,7 +97,8 @@ $medien = Tenant::all('media', '', [], 'id DESC', 200);
 $belegt = Tenant::sum('media', 'groesse');
 
 $titel = 'Mediathek';
-$unter = count($medien) . ' Dateien · ' . Util::bytes($belegt) . ' belegt';
+$unter = (count($medien) === 1 ? 'Eine Datei' : count($medien) . ' Dateien')
+       . ' · ' . Util::bytes($belegt) . ' belegt';
 $brotkrumen = [['Inhalte', '/app/inhalte.php'], ['Mediathek', null]];
 require __DIR__ . '/partials/kopf.php';
 ?>
@@ -75,7 +110,10 @@ require __DIR__ . '/partials/kopf.php';
   <label class="ablage" for="dateien">
     <div class="ablage__symbol"><?= Icon::svg('upload', 24) ?></div>
     <div class="halbfett">Dateien auswählen oder hierher ziehen</div>
-    <div class="klein gedimmt">JPG, PNG, WebP, SVG, GIF und PDF · bis 12 MB je Datei</div>
+    <?php /* Nicht „12 MB" behaupten, wenn der Server bei 2 MB dichtmacht. */
+      $grenze = App::uploadGrenze();
+      $zeigen = $grenze > 0 ? min($grenze, 12 * 1024 * 1024) : 12 * 1024 * 1024; ?>
+    <div class="klein gedimmt">JPG, PNG, WebP, SVG, GIF und PDF · bis <?= Util::h(Util::bytes($zeigen)) ?> je Datei</div>
     <input id="dateien" type="file" name="dateien[]" multiple
            accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif,application/pdf"
            style="position:absolute;opacity:0;width:1px;height:1px" onchange="this.form.submit()">

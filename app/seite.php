@@ -77,6 +77,10 @@ if (App::istPost()) {
         $position = App::post('nach');
         if ($position === '') {
             $bloecke[] = $neuerBlock;
+        } elseif ($position === 'anfang') {
+            /* Beim Ziehen an den oberen Rand gibt es keinen Baustein,
+               hinter den man einfuegen koennte. */
+            array_unshift($bloecke, $neuerBlock);
         } else {
             $eingefuegt = [];
             foreach ($bloecke as $b) {
@@ -239,7 +243,8 @@ require __DIR__ . '/partials/kopf.php';
     </div>
 
     <div data-reiter-feld="aufbau" data-reiter-gruppe="bau" style="flex:1;overflow-y:auto">
-      <div class="bau-liste" data-sortierbar="<?= Util::attr(App::url('/app/seite.php?id=' . $id)) ?>">
+      <div class="bau-liste" data-bau-ziel
+           data-sortierbar="<?= Util::attr(App::url('/app/seite.php?id=' . $id)) ?>">
         <?php foreach ($bloecke as $b): ?>
           <a class="bau-liste__teil<?= (string) $b['id'] === $gewaehlt ? ' ist-gewaehlt' : '' ?>"
              href="<?= Util::attr(App::url('/app/seite.php?id=' . $id . '&block=' . $b['id'])) ?>"
@@ -262,12 +267,20 @@ require __DIR__ . '/partials/kopf.php';
         <div class="bau-vorrat__gruppe"><?= Util::h($gruppe) ?></div>
         <div class="bau-vorrat">
           <?php foreach ($typen as $typ): ?>
+            <?php /*
+             * Zwei Wege zum selben Ziel: Klicken haengt den Baustein hinter
+             * den gerade gewaehlten, Ziehen setzt ihn dorthin, wo man ihn
+             * fallen laesst. Der Knopf bleibt ein echter Submit-Knopf -
+             * ohne JavaScript funktioniert der Baukasten weiter.
+             */ ?>
             <form method="post">
               <?= Auth::csrfFeld() ?>
               <input type="hidden" name="aktion" value="block_hinzu">
               <input type="hidden" name="typ" value="<?= Util::attr($typ) ?>">
               <input type="hidden" name="nach" value="<?= Util::attr($gewaehlt) ?>">
-              <button class="bau-vorrat__teil" type="submit">
+              <button class="bau-vorrat__teil" type="submit"
+                      draggable="true" data-neuer-typ="<?= Util::attr($typ) ?>"
+                      title="Klicken oder in die Seite ziehen">
                 <?= Icon::svg(Bloecke::icon($typ), 16) ?>
                 <span><?= Util::h(Bloecke::name($typ)) ?></span>
                 <span class="fueller"></span>
@@ -314,7 +327,7 @@ require __DIR__ . '/partials/kopf.php';
         <?php endif; ?>
       </div>
 
-      <div class="bau__leinwand" id="leinwand" data-geraet="desktop">
+      <div class="bau__leinwand" id="leinwand" data-geraet="desktop" data-bau-ziel>
         <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/site.css')) ?>">
         <div class="seite" style="<?= Util::attr(Website::stilVariablen()) ?>">
           <?php if ($bloecke === []): ?>
@@ -322,13 +335,14 @@ require __DIR__ . '/partials/kopf.php';
               <div style="margin-bottom:16px"><?= Icon::svg('layers', 30) ?></div>
               <h3 style="margin-bottom:8px">Noch nichts auf dieser Seite</h3>
               <p style="max-width:32em;margin:0 auto">Wähle links unter <strong>Hinzufügen</strong>
-                einen Baustein. Beginn mit einem Titelbereich – er entscheidet, ob jemand
-                weiterliest.</p>
+                einen Baustein – anklicken oder hierher ziehen. Beginn mit einem
+                Titelbereich; er entscheidet, ob jemand weiterliest.</p>
             </div>
           <?php else: ?>
             <?php foreach ($bloecke as $i => $b): ?>
               <div class="bau-block<?= (string) $b['id'] === $gewaehlt ? ' ist-gewaehlt' : '' ?>"
                    id="block-<?= Util::attr((string) $b['id']) ?>"
+                   data-block-id="<?= Util::attr((string) $b['id']) ?>"
                    onclick="location.href='<?= Util::attr(App::url('/app/seite.php?id=' . $id . '&block=' . $b['id'])) ?>'">
                 <span class="bau-block__marke"><?= Util::h(Bloecke::name((string) $b['typ'])) ?></span>
                 <?php if (Auth::darf('website.write')): ?>

@@ -408,6 +408,80 @@ final class Bookings
         return $raster;
     }
 
+    /**
+     * Verteilt gleichzeitige Termine auf nebeneinanderliegende Spalten.
+     *
+     * Ein Kalender, der nur `top` und `height` setzt, zeichnet zwei Termine
+     * zur selben Stunde uebereinander: Der obere verdeckt den unteren, und
+     * genau die Doppelbuchung, die man sehen muesste, ist unsichtbar.
+     *
+     * Deshalb dasselbe Verfahren, das jeder Kalender benutzt:
+     *
+     *   1. Termine nach Beginn sortieren.
+     *   2. Alles, was sich zeitlich beruehrt, zu einer Gruppe zusammenfassen.
+     *      Beruehren ist ansteckend - A und C gehoeren zusammen, wenn beide
+     *      B ueberlappen, auch wenn sie sich selbst nicht begegnen.
+     *   3. Innerhalb der Gruppe bekommt jeder Termin die erste Spur, die zu
+     *      seiner Startzeit frei ist.
+     *   4. Alle Termine der Gruppe teilen sich die Breite durch die Zahl der
+     *      benutzten Spuren - sonst waeren die Kaesten unterschiedlich
+     *      breit, je nachdem, wen man gerade ansieht.
+     *
+     * @param  list<array{start:string,ende:string}> $termine
+     * @return list<array{0:int,1:int}> je Termin [Spur, Spuren insgesamt],
+     *         in der Reihenfolge der Eingabe
+     */
+    public static function spalten(array $termine): array
+    {
+        $zeiten = [];
+        foreach ($termine as $i => $t) {
+            $a = strtotime((string) $t['start']) ?: 0;
+            $e = strtotime((string) $t['ende']) ?: $a;
+            $zeiten[] = ['i' => $i, 'a' => $a, 'e' => max($e, $a + 60)];
+        }
+        usort($zeiten, static fn ($x, $y) => [$x['a'], $x['e']] <=> [$y['a'], $y['e']]);
+
+        $ergebnis = array_fill(0, count($termine), [0, 1]);
+        $gruppe   = [];   // Termine der laufenden Gruppe
+        $spuren   = [];   // Spur => Ende des letzten Termins darin
+        $endeMax  = null; // spaetestes Ende der Gruppe
+
+        $gruppeAbschliessen = static function () use (&$gruppe, &$spuren, &$ergebnis): void {
+            $breite = max(1, count($spuren));
+            foreach ($gruppe as [$index, $spur]) {
+                $ergebnis[$index] = [$spur, $breite];
+            }
+            $gruppe = [];
+            $spuren = [];
+        };
+
+        foreach ($zeiten as $z) {
+            // Beginnt der Termin erst, wenn die ganze Gruppe vorbei ist,
+            // faengt eine neue an.
+            if ($endeMax !== null && $z['a'] >= $endeMax) {
+                $gruppeAbschliessen();
+                $endeMax = null;
+            }
+
+            $spur = null;
+            foreach ($spuren as $nr => $frei) {
+                if ($frei <= $z['a']) {
+                    $spur = $nr;
+                    break;
+                }
+            }
+            if ($spur === null) {
+                $spur = count($spuren);
+            }
+            $spuren[$spur] = $z['e'];
+            $gruppe[] = [$z['i'], $spur];
+            $endeMax = $endeMax === null ? $z['e'] : max($endeMax, $z['e']);
+        }
+        $gruppeAbschliessen();
+
+        return $ergebnis;
+    }
+
     public static function block(int $stunde): string
     {
         if ($stunde < 11) {

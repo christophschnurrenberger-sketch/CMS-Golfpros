@@ -118,6 +118,49 @@ final class App
         return ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
     }
 
+    /**
+     * Wurde der POST verworfen, weil er groesser war als post_max_size?
+     *
+     * PHP wirft in diesem Fall den ganzen Inhalt weg: $_POST und $_FILES
+     * sind leer, obwohl der Browser etwas geschickt hat. Ohne diese Abfrage
+     * laeuft die Anwendung in die CSRF-Pruefung und meldet
+     * „Sicherheitspruefung fehlgeschlagen" - eine Auskunft, die in die
+     * falsche Richtung schickt. Der Fehler ist immer derselbe: ein zu
+     * grosses Foto.
+     */
+    public static function postVerworfen(): bool
+    {
+        return self::istPost()
+            && $_POST === [] && $_FILES === []
+            && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0;
+    }
+
+    /** Die Obergrenze fuer einen Upload, wie PHP sie tatsaechlich sieht. */
+    public static function uploadGrenze(): int
+    {
+        $werte = array_filter([
+            self::iniBytes('post_max_size'),
+            self::iniBytes('upload_max_filesize'),
+        ]);
+        return $werte === [] ? 0 : (int) min($werte);
+    }
+
+    /** „12M" und „1G" sind fuer PHP Zahlen, fuer PHP-Code aber nicht. */
+    private static function iniBytes(string $name): int
+    {
+        $roh = trim((string) ini_get($name));
+        if ($roh === '') {
+            return 0;
+        }
+        $zahl = (int) $roh;
+        return match (strtolower(substr($roh, -1))) {
+            'g' => $zahl * 1024 * 1024 * 1024,
+            'm' => $zahl * 1024 * 1024,
+            'k' => $zahl * 1024,
+            default => $zahl,
+        };
+    }
+
     public static function aktion(): string
     {
         return self::post('aktion', self::get('aktion'));

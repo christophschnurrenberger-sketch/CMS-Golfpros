@@ -176,4 +176,20 @@ final class Leads
             "stufe = 'neu' AND letzter_kontakt IS NULL AND erstellt < :grenze",
             ['grenze' => date('Y-m-d H:i:s', time() - $stundenGrenze * 3600)], 'erstellt');
     }
+
+    /**
+     * Alle Anfragen, die noch niemand angefasst hat - auch die von vor
+     * fuenf Minuten.
+     *
+     * `unbeantwortet()` laesst eine Anfrage bewusst erst nach einer Frist
+     * auffaellig werden. Fuer das Dashboard ist das die falsche Frage: Wer
+     * heute Morgen angefragt hat, wartet jetzt, und nicht erst morgen. Die
+     * aelteste steht vorn.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function offene(): array
+    {
+        return Tenant::all('leads', "stufe = 'neu' AND letzter_kontakt IS NULL", [], 'erstellt');
+    }
 }

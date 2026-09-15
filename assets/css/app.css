@@ -628,6 +628,18 @@ select {
 
 /* Dateiablage */
 .ablage {
+  /*
+   * Die Ablage ist ein <label>, damit ein Klick irgendwo auf der Flaeche
+   * das Dateifeld oeffnet. Ein label ist aber von Haus aus inline, und ein
+   * inline-Kasten mit Block-Kindern zerfaellt in Fragmente: Rahmen links,
+   * Text woanders. display: block ist hier also keine Kosmetik.
+   *
+   * position: relative haelt ausserdem das unsichtbar gestellte
+   * Dateifeld in der Flaeche, statt es an den naechsten positionierten
+   * Vorfahren rutschen zu lassen.
+   */
+  display: block;
+  position: relative;
   border: 1.5px dashed var(--rand-stark);
   border-radius: var(--radius-m);
   padding: var(--r6);
@@ -1535,6 +1547,41 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
 .bau-liste__teil:hover { background: var(--flaeche-3); }
 .bau-liste__teil.ist-gewaehlt { background: var(--marke-hell); color: var(--marke); border-color: var(--marke-rand); }
 .bau-liste__griff { color: var(--text-4); cursor: grab; }
+
+/* ---------------------------------- Baustein aus dem Vorrat ziehen ---- */
+
+/*
+ * Die Vorratsknoepfe sind zugleich Knoepfe und Ziehgut. grab zeigt das an,
+ * ohne dass man es erklaeren muss.
+ */
+.bau-vorrat__teil { cursor: grab; }
+.bau-vorrat__teil:active { cursor: grabbing; }
+.bau-vorrat__teil.wird-gezogen { opacity: .45; }
+
+/* Die Flaeche, die den Baustein gerade annehmen wuerde. */
+.ist-bau-ziel { outline: 2px dashed var(--marke); outline-offset: -4px; }
+
+/*
+ * Die Linie zeigt, wo der Baustein landet. Ohne sie laesst man ihn
+ * irgendwo fallen und sieht erst nach dem Neuladen, wo er hingerutscht
+ * ist. Sie liegt im Fluss zwischen den Bausteinen, nicht darueber -
+ * deshalb schiebt sie die Nachbarn ein wenig auseinander, was genau der
+ * Eindruck ist, den man haben soll.
+ */
+.einfuege-marke {
+  position: relative;
+  height: 3px;
+  margin: 3px 0;
+  border-radius: 999px;
+  background: var(--marke);
+  pointer-events: none;
+}
+.einfuege-marke::before {
+  content: '';
+  position: absolute; left: -4px; top: -3px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--marke);
+}
 
 .geraete-wahl { display: flex; gap: 2px; }
 

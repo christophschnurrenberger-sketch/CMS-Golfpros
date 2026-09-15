@@ -83,22 +83,50 @@ final class Empfehlungen
         ]];
     }
 
+    /**
+     * Offene Anfragen.
+     *
+     * Vorher fing diese Regel erst nach 24 Stunden an. Damit war eine
+     * Anfrage genau in der Zeitspanne unsichtbar, in der eine Antwort den
+     * Auftrag entscheidet - und wer morgens ins Dashboard sah, erfuhr von
+     * der Anfrage von gestern Abend nichts.
+     *
+     * Jetzt zaehlt jede unbeantwortete Anfrage, und wie alt die aelteste
+     * ist, bestimmt nur noch die Dringlichkeit.
+     */
     private static function unbeantworteteLeads(): array
     {
-        $offen = Leads::unbeantwortet(24);
+        $offen = Leads::offene();
         $anzahl = count($offen);
         if ($anzahl === 0) {
             return [];
         }
-        $aeltester = $offen[0] ?? null;
-        $tage = $aeltester ? Util::tageSeit((string) $aeltester['erstellt']) : 1;
+
+        $seit    = strtotime((string) ($offen[0]['erstellt'] ?? 'now')) ?: time();
+        $stunden = max(0, (int) floor((time() - $seit) / 3600));
+
+        if ($stunden < 24) {
+            $wieAlt = $stunden < 1
+                ? 'Die neueste kam gerade eben herein.'
+                : 'Die älteste wartet seit ' . $stunden . ' Stunde' . ($stunden === 1 ? '' : 'n') . '.';
+            $farbe = 'warnung';
+        } else {
+            $tage   = max(1, (int) floor($stunden / 24));
+            $wieAlt = 'Die älteste liegt seit ' . $tage . ' Tag' . ($tage === 1 ? '' : 'en') . ' da.';
+            $farbe  = 'gefahr';
+        }
+
         return [[
-            'titel'   => $anzahl . ' Anfrage' . ($anzahl === 1 ? '' : 'n') . ' warten auf Antwort',
-            'grund'   => 'Die älteste liegt seit ' . max(1, $tage) . ' Tag' . ($tage === 1 ? '' : 'en')
-                       . ' da. Wer innerhalb eines Tages antwortet, gewinnt deutlich häufiger den Auftrag.',
-            'icon'    => 'leads', 'farbe' => 'gefahr',
+            'titel'   => $anzahl === 1
+                ? 'Eine Anfrage wartet auf Antwort'
+                : $anzahl . ' Anfragen warten auf Antwort',
+            'grund'   => $wieAlt . ' Wer innerhalb eines Tages antwortet, gewinnt deutlich '
+                       . 'häufiger den Auftrag.',
+            'icon'    => 'leads', 'farbe' => $farbe,
             'knopf'   => 'Pipeline öffnen', 'url' => '/app/leads.php',
-            'gewicht' => 95 + min(10, $anzahl * 2),
+            // Nichts im Betrieb ist eiliger als ein Mensch, der auf Antwort
+            // wartet. Deshalb steht diese Empfehlung immer ganz oben.
+            'gewicht' => 95 + min(10, $anzahl * 2) + ($stunden >= 24 ? 10 : 0),
         ]];
     }
 
@@ -108,7 +136,7 @@ final class Empfehlungen
         if ($ueberfaellig === 0) {
             return [];
         }
-        $betrag = Tenant::sum('invoices', 'summe_cent - bezahlt_cent', 'status = "ueberfaellig"');
+        $betrag = Tenant::sum('invoices', 'summe_cent - bezahlt_cent', "status = 'ueberfaellig'");
         return [[
             'titel'   => $ueberfaellig . ' überfällige Rechnung' . ($ueberfaellig === 1 ? '' : 'en')
                        . ' über ' . Util::geld($betrag),

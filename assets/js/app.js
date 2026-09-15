@@ -481,14 +481,155 @@
 
   document.addEventListener('drop', (e) => {
     const liste = e.target.closest('[data-sortierbar]');
-    if (!liste) return;
+    // Ohne diese Abfrage schickt auch ein Baustein aus dem Vorrat eine
+    // Umsortierung los - und zwar die alte Reihenfolge, die den gerade
+    // eingefuegten Baustein noch gar nicht kennt.
+    if (!liste || !gezogen) return;
     const url = liste.dataset.sortierbar;
     if (!url) return;
     const reihen = Array.from(liste.querySelectorAll('[data-ziehbar]')).map(el => el.dataset.id);
     const daten = new FormData();
+    // Ohne aktion faellt der POST beim Server durch alle Abfragen hindurch
+    // und wird still verworfen: Die Bausteine springen an Ort und Stelle,
+    // und beim naechsten Laden steht die alte Reihenfolge wieder da.
+    daten.append('aktion', 'reihenfolge');
     daten.append('reihenfolge', reihen.join(','));
     daten.append('_csrf', window.gpCsrf || '');
-    fetch(url, { method: 'POST', body: daten }).catch(() => {});
+    fetch(url, { method: 'POST', body: daten })
+      .then(r => { if (!r.ok) melden('Reihenfolge konnte nicht gespeichert werden.', 'fehler'); })
+      .catch(() => melden('Keine Verbindung zum Server.', 'fehler'));
+  });
+
+  /* ------------------------------------- Bausteine aus dem Vorrat ---- */
+
+  /**
+   * Einen neuen Baustein an die Stelle ziehen, an der er stehen soll.
+   *
+   * Der Vorrat links besteht aus echten Submit-Knoepfen: Ein Klick haengt
+   * den Baustein hinter den gerade gewaehlten, und das funktioniert auch
+   * ohne JavaScript. Was fehlte, war das, was man von einem Baukasten
+   * erwartet - den Baustein dorthin ziehen, wo er hin soll.
+   *
+   * Zwei Flaechen nehmen ihn an: die Bausteinliste links und die Seite in
+   * der Mitte. Beide zeigen waehrend des Ziehens eine Linie an der Stelle,
+   * an der er landen wuerde. Ohne diese Linie raet man.
+   */
+  let neuerTyp = null;
+  let marke = null;
+
+  function markeWeg() {
+    if (marke) { marke.remove(); marke = null; }
+    $$('.ist-bau-ziel').forEach(el => el.classList.remove('ist-bau-ziel'));
+  }
+
+  function markeSetzen(vor, elternteil) {
+    if (!marke) {
+      marke = document.createElement('div');
+      marke.className = 'einfuege-marke';
+      marke.setAttribute('aria-hidden', 'true');
+    }
+    if (vor) elternteil.insertBefore(marke, vor);
+    else elternteil.appendChild(marke);
+  }
+
+  /**
+   * Wo landet der Baustein?
+   *
+   * Rueckgabe ist die Kennung des Bausteins, HINTER den eingefuegt wird -
+   * so erwartet es der Server. '' heisst ans Ende, 'anfang' ganz nach vorn.
+   */
+  /**
+   * Die Kennung des Bausteins vor diesem - ueber alles hinweg, was kein
+   * Baustein ist.
+   *
+   * Das ist nicht Vorsicht auf Verdacht: Die Einfuegelinie selbst steht
+   * beim Ablegen noch zwischen den Bausteinen. Wer stumpf
+   * previousElementSibling nimmt, greift sie ab, findet keine Kennung und
+   * setzt den neuen Baustein ganz nach vorn statt an die gezeigte Stelle.
+   */
+  function kennungDavor(teil) {
+    let vor = teil.previousElementSibling;
+    while (vor && !(vor.dataset.blockId || vor.dataset.id)) {
+      vor = vor.previousElementSibling;
+    }
+    return vor ? (vor.dataset.blockId || vor.dataset.id) : 'anfang';
+  }
+
+  function einfuegeStelle(flaeche, y) {
+    const teile = Array.from(flaeche.querySelectorAll('[data-block-id], [data-ziehbar][data-id]'));
+    if (!teile.length) return { nach: '', vor: null, elternteil: flaeche };
+
+    for (const teil of teile) {
+      const k = teil.getBoundingClientRect();
+      if (y < k.top + k.height / 2) {
+        return { nach: kennungDavor(teil), vor: teil, elternteil: teil.parentElement };
+      }
+    }
+    const letzter = teile[teile.length - 1];
+    return {
+      nach: letzter.dataset.blockId || letzter.dataset.id || '',
+      vor: null,
+      elternteil: letzter.parentElement,
+    };
+  }
+
+  document.addEventListener('dragstart', (e) => {
+    const quelle = e.target.closest('[data-neuer-typ]');
+    if (!quelle) return;
+    neuerTyp = quelle.dataset.neuerTyp;
+    quelle.classList.add('wird-gezogen');
+    e.dataTransfer.effectAllowed = 'copy';
+    try { e.dataTransfer.setData('text/plain', 'baustein:' + neuerTyp); } catch (err) {}
+  });
+
+  document.addEventListener('dragend', (e) => {
+    const quelle = e.target.closest('[data-neuer-typ]');
+    if (quelle) quelle.classList.remove('wird-gezogen');
+    neuerTyp = null;
+    markeWeg();
+  });
+
+  document.addEventListener('dragover', (e) => {
+    if (!neuerTyp) return;
+    const flaeche = e.target.closest('[data-bau-ziel]');
+    if (!flaeche) { markeWeg(); return; }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    flaeche.classList.add('ist-bau-ziel');
+    const stelle = einfuegeStelle(flaeche, e.clientY);
+    markeSetzen(stelle.vor, stelle.elternteil);
+  });
+
+  document.addEventListener('drop', (e) => {
+    if (!neuerTyp) return;
+    const flaeche = e.target.closest('[data-bau-ziel]');
+    if (!flaeche) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Erst die Linie raus, dann rechnen - sie ist selbst ein Element im
+    // Fluss und wuerde die Nachbarschaft verfaelschen.
+    markeWeg();
+    const stelle = einfuegeStelle(flaeche, e.clientY);
+    const typ = neuerTyp;
+    neuerTyp = null;
+
+    /*
+     * Abgeschickt wird ein ganz normales Formular, kein fetch: Der Server
+     * legt den Baustein an und leitet auf ihn weiter, sodass seine Felder
+     * gleich rechts aufgehen. Genau dasselbe passiert beim Anklicken.
+     */
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.style.display = 'none';
+    [['aktion', 'block_hinzu'], ['typ', typ], ['nach', stelle.nach],
+     ['_csrf', window.gpCsrf || '']].forEach(([name, wert]) => {
+      const f = document.createElement('input');
+      f.type = 'hidden'; f.name = name; f.value = wert;
+      form.appendChild(f);
+    });
+    document.body.appendChild(form);
+    form.submit();
   });
 
   /* ------------------------------------------------------ Kleinkram --- */

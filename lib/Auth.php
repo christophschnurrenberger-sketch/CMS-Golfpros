@@ -312,6 +312,22 @@ final class Auth
     /** Für POST-Verarbeitung: prüft und bricht bei Fälschung ab. */
     public static function csrfFordern(): void
     {
+        /*
+         * Ein zu grosser POST kommt hier als fehlendes CSRF-Merkmal an: PHP
+         * hat den Inhalt samt Token verworfen, bevor eine Zeile dieser
+         * Anwendung lief. Die Antwort „Sicherheitspruefung fehlgeschlagen"
+         * waere zwar technisch richtig, schickt aber in die falsche
+         * Richtung - der Fehler ist fast immer ein zu grosses Foto.
+         */
+        if (App::postVerworfen()) {
+            http_response_code(413);
+            $grenze = App::uploadGrenze();
+            exit('Die Datei ist zu gross für diesen Server'
+                . ($grenze > 0 ? ' (Grenze: ' . Util::bytes($grenze) . ')' : '')
+                . '. Bitte das Bild verkleinern – 1600 Pixel Breite reichen für '
+                . 'jede Website – oder beim Hoster post_max_size und '
+                . 'upload_max_filesize heraufsetzen lassen.');
+        }
         if (!self::csrfPruefen()) {
             http_response_code(400);
             exit('Sicherheitsprüfung fehlgeschlagen. Bitte die Seite neu laden.');
