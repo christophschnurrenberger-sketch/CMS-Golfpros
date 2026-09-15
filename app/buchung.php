@@ -31,7 +31,18 @@ if (App::istPost()) {
             'customer_id' => App::postInt('customer_id'),
             'trainer_id'  => App::postInt('trainer_id'),
             'location_id' => App::postInt('location_id'),
-            'start'       => App::post('start_datum') . ' ' . App::post('start_zeit') . ':00',
+            /*
+             * Das Feld heisst 'datum' - unter diesem Namen liest die Seite
+             * den Tag auch beim Neuladen aus der Adresse.
+             *
+             * Eine von Hand eingetragene Uhrzeit sticht die angebotene:
+             * Wer sie ausfuellt, meint sie auch. Die Kollisionspruefung
+             * laeuft trotzdem, ausser der Haken darunter ist gesetzt.
+             */
+            'start'       => Util::zeitpunkt(
+                App::post('datum'),
+                App::post('zeit_frei') !== '' ? App::post('zeit_frei') : App::post('start_zeit')
+            ),
             'titel'       => App::post('titel'),
             'notiz'       => App::post('notiz'),
             'interne_notiz' => App::post('interne_notiz'),
@@ -62,7 +73,7 @@ if (App::istPost()) {
 
     if ($aktion === 'umbuchen' && $id > 0) {
         [$ok, $fehler] = Bookings::umbuchen($id,
-            App::post('neu_datum') . ' ' . App::post('neu_zeit') . ':00',
+            Util::zeitpunkt(App::post('neu_datum'), App::post('neu_zeit')),
             App::postInt('trainer_id'));
         App::melden($ok ? 'Termin verschoben. Der Kunde wurde nicht automatisch informiert.'
                         : $fehler, $ok ? 'erfolg' : 'fehler');
@@ -93,9 +104,33 @@ if ($istNeu) {
     Auth::fordern('bookings.write');
     $kundeId   = App::getInt('kunde');
     $serviceId = App::getInt('leistung', (int) ($leistungen[0]['id'] ?? 0));
-    $datum     = App::get('datum', Util::heute());
     $service   = $serviceId > 0 ? Tenant::find('services', $serviceId) : null;
-    $frei      = $serviceId > 0 ? Bookings::freieZeiten($serviceId, $datum) : [];
+
+    /*
+     * Ohne ausdruecklichen Wunsch nicht stur auf heute stellen.
+     *
+     * Jede Leistung hat eine Vorlauffrist - zwoelf Stunden sind die
+     * Voreinstellung -, und die sperrt den heutigen Tag fast immer
+     * vollstaendig. Wer "Termin anlegen" klickt, sah deshalb jedes Mal
+     * "An diesem Tag ist keine Zeit frei" und hielt die Funktion fuer
+     * kaputt. Gesucht wird darum der naechste Tag, an dem wirklich etwas
+     * frei ist; gefunden sich in zwei Wochen keiner, bleibt es bei heute.
+     */
+    $gewuenscht = App::get('datum');
+    $datum      = $gewuenscht !== '' ? $gewuenscht : Util::heute();
+    $frei       = $serviceId > 0 ? Bookings::freieZeiten($serviceId, $datum) : [];
+
+    if ($gewuenscht === '' && $frei === [] && $serviceId > 0) {
+        for ($i = 1; $i <= 14; $i++) {
+            $probe = date('Y-m-d', strtotime('+' . $i . ' days'));
+            $treffer = Bookings::freieZeiten($serviceId, $probe);
+            if ($treffer !== []) {
+                $datum = $probe;
+                $frei  = $treffer;
+                break;
+            }
+        }
+    }
     $pakete    = $kundeId > 0 ? Commerce::offenePakete($kundeId) : [];
 
     $titel = 'Termin anlegen';
@@ -161,6 +196,31 @@ if ($istNeu) {
             <?php endif; ?>
           </div>
 
+          <?php /*
+           * Die angebotenen Zeiten sind der bequeme Weg, aber sie duerfen
+           * nicht der einzige sein. Ein Kunde ruft an und will Samstag um
+           * sieben - die Vorlauffrist und die Arbeitszeiten gelten fuer die
+           * Online-Buchung, nicht fuer den Pro an seinem eigenen Kalender.
+           * Ohne dieses Feld liess sich an einem ausgebuchten Tag gar kein
+           * Termin anlegen, auch nicht mit dem Haken weiter unten.
+           *
+           * Die Kollisionspruefung laeuft weiter: Wer sich mit sich selbst
+           * ueberschneidet, bekommt es gesagt und muss es ausdruecklich
+           * wollen.
+           */ ?>
+          <div class="feld">
+            <label class="feld__label" for="zeit_frei">
+              <?= $frei === [] ? 'Uhrzeit eintragen' : 'Oder eine andere Uhrzeit' ?>
+            </label>
+            <input class="eingabe" id="zeit_frei" type="time" name="zeit_frei"
+                   step="300" style="max-width:150px">
+            <div class="feld__hinweis">
+              <?= $frei === []
+                    ? 'An diesem Tag bietet das System nichts an – hier trägst du die Zeit selbst ein.'
+                    : 'Ausgefüllt sticht dieses Feld die Auswahl darüber.' ?>
+            </div>
+          </div>
+
           <div class="feld">
             <label class="feld__label" for="customer_id">Kunde</label>
             <select id="customer_id" name="customer_id">
@@ -202,7 +262,13 @@ if ($istNeu) {
         <div class="karte__fuss">
           <div class="fueller"></div>
           <a class="btn" href="<?= Util::attr(App::url('/app/kalender.php')) ?>">Abbrechen</a>
-          <button class="btn btn--primaer" type="submit"<?= $frei === [] ? ' disabled' : '' ?>>Termin buchen</button>
+          <?php /*
+           * Frueher war der Knopf gesperrt, sobald das System nichts
+           * anbot. Zusammen mit dem Feld fuer eine eigene Uhrzeit waere
+           * das eine Tuer mit Schloss und ohne Klinke: Der Pro traegt eine
+           * Zeit ein und kann sie nicht abschicken.
+           */ ?>
+          <button class="btn btn--primaer" type="submit">Termin buchen</button>
         </div>
       </div>
 

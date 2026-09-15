@@ -175,7 +175,7 @@ final class Bookings
         $quelle     = (string) ($daten['quelle'] ?? 'backend');
 
         if ($start === '') {
-            return [0, 'Es fehlt der Termin.'];
+            return [0, 'Es fehlt der Zeitpunkt. Bitte Tag und Uhrzeit wählen.'];
         }
         $service = $serviceId > 0 ? Tenant::find('services', $serviceId) : null;
         $dauer   = (int) ($daten['dauer_min'] ?? ($service['dauer_min'] ?? 60));
@@ -282,6 +282,9 @@ final class Bookings
         $b = Tenant::find('bookings', $id);
         if (!$b) {
             return [false, 'Der Termin wurde nicht gefunden.'];
+        }
+        if (trim($neuerStart) === '') {
+            return [false, 'Es fehlt der neue Zeitpunkt. Bitte Tag und Uhrzeit wählen.'];
         }
         $dauer = (strtotime((string) $b['ende']) - strtotime((string) $b['start'])) / 60;
         $ende  = date('Y-m-d H:i:s', strtotime($neuerStart) + (int) $dauer * 60);

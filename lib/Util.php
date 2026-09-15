@@ -8,6 +8,47 @@
  */
 final class Util
 {
+    /**
+     * Setzt Tag und Uhrzeit zu einem Zeitpunkt zusammen - oder zu nichts.
+     *
+     * Der Rueckgabewert '' ist der eigentliche Zweck. Wer die beiden Teile
+     * einfach mit einem Leerzeichen aneinanderhaengt, bekommt aus einem
+     * fehlenden Datum " 17:45:00", und strtotime() macht daraus
+     * klaglos *heute* um 17:45. Der Fehler faellt dann nicht auf, sondern
+     * legt einen Termin am falschen Tag an - oder scheitert an einer
+     * Kollision, die niemand versteht, weil auf dem Bildschirm ein ganz
+     * anderer Tag steht.
+     *
+     * @param  string $datum 'JJJJ-MM-TT'
+     * @param  string $zeit  'HH:MM' oder 'HH:MM:SS'
+     * @return string 'JJJJ-MM-TT HH:MM:SS', leer wenn etwas nicht stimmt
+     */
+    public static function zeitpunkt(string $datum, string $zeit): string
+    {
+        $datum = trim($datum);
+        $zeit  = trim($zeit);
+        if ($datum === '' || $zeit === '') {
+            return '';
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $datum)) {
+            return '';
+        }
+        if (!preg_match('/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/', $zeit, $teile)) {
+            return '';
+        }
+        [$jahr, $monat, $tag] = array_map('intval', explode('-', $datum));
+        if (!checkdate($monat, $tag, $jahr)) {
+            return '';
+        }
+        $stunde = (int) $teile[1];
+        $minute = (int) $teile[2];
+        $sekunde = (int) ($teile[3] ?? 0);
+        if ($stunde > 23 || $minute > 59 || $sekunde > 59) {
+            return '';
+        }
+        return sprintf('%s %02d:%02d:%02d', $datum, $stunde, $minute, $sekunde);
+    }
+
     /* ---------------------------------------------------------- Ausgabe */
 
     /** Escaping für HTML. Kurz, weil es auf jeder Seite hundertfach vorkommt. */

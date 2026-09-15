@@ -6,5 +6,9 @@ data/cache/
 uploads/*
 !uploads/index.html
 !uploads/.htaccess
+# Abfall aus Testlaeufen: Wenn ein Skript seinen Ablageort nicht kennt,
+# legt Playwright die Bilder in einen Ordner namens "undefined".
+undefined/
+
 .DS_Store
 Thumbs.db
