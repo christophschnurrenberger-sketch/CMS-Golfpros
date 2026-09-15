@@ -519,38 +519,77 @@ elseif ($ansicht === 'fortschritt'):
   $hcpWerte = array_values(array_filter(array_map(
       static fn ($e) => Util::zahlAus((string) $e['hcp']), $leistung), static fn ($v) => $v > 0));
 ?>
-  <div class="pt-kacheln mb-5">
+  <?php
+  /*
+   * Das Handicap ist die Zahl, wegen der diese Seite geöffnet wird – also
+   * steht sie groß da und nicht als eine Kachel unter vier gleichen. Der
+   * Satz darunter sagt in Worten, was die Ziffer bedeutet: „von 28,0 im
+   * April" ist verständlicher als jedes Pfeilsymbol.
+   */
+  $erster = $hcpWerte[0] ?? null;
+  $letzter = $hcpWerte !== [] ? end($hcpWerte) : null;
+  $seitDatum = $leistung[0]['datum'] ?? '';
+  ?>
+  <div class="zwei-spalten" style="display:flex;flex-wrap:wrap;gap:clamp(30px,5vw,70px);align-items:flex-end">
+    <div class="grosse-zahl" style="flex:1 1 240px;min-width:0;margin-bottom:0">
+      <div class="grosse-zahl__label">Handicap aktuell</div>
+      <div class="grosse-zahl__wert"><?= Util::h(Util::hcp((string) $kunde['hcp'])) ?></div>
+      <?php if ($erster !== null && $letzter !== null && abs($erster - $letzter) >= 0.1): ?>
+        <div class="grosse-zahl__notiz">
+          von <?= Util::h(str_replace('.', ',', number_format($erster, 1, '.', ''))) ?>
+          <?= $seitDatum !== '' ? 'im ' . Util::h(Util::monatName((int) date('n', strtotime((string) $seitDatum)))) : '' ?>
+          — <?= Util::h(str_replace('.', ',', number_format(abs($erster - $letzter), 1, '.', ''))) ?>
+          <?= $letzter < $erster ? 'weniger' : 'mehr' ?>
+        </div>
+      <?php endif; ?>
+    </div>
+
+    <?php if (count($hcpWerte) > 1): ?>
+      <?php
+      /*
+       * Balken statt Linie: Auf dem Telefon ist eine Kurve über acht
+       * Messpunkte nicht zu lesen. Die Höhe zeigt die Spanne zwischen
+       * bestem und schlechtestem Wert, umgedreht – niedriges Handicap,
+       * hoher Balken.
+       */
+      $min = min($hcpWerte); $max = max($hcpWerte);
+      $spanne = max(0.1, $max - $min);
+      ?>
+      <div style="flex:1 1 300px;min-width:0">
+        <div class="kurve-balken">
+          <?php foreach ($hcpWerte as $i => $w):
+            $anteil = 28 + (1 - ($w - $min) / $spanne) * 72; ?>
+            <div style="height:<?= round($anteil) ?>%;background:<?= $i === count($hcpWerte) - 1
+                ? 'var(--marke)' : 'var(--flaeche)' ?>"
+                 title="<?= Util::attr(Util::hcp((string) $w)) ?>"></div>
+          <?php endforeach; ?>
+        </div>
+        <div class="kurve-achse">
+          <span><?= Util::h(Util::datum((string) ($leistung[0]['datum'] ?? ''), false)) ?></span>
+          <span>heute</span>
+        </div>
+      </div>
+    <?php endif; ?>
+  </div>
+
+  <div class="pt-kacheln" style="margin-top:clamp(34px,5vw,54px)">
     <div class="pt-kachel">
-      <span class="pt-kachel__symbol"><?= Icon::svg('flag', 17) ?></span>
-      <span class="pt-kachel__wert"><?= Util::h(Util::hcp((string) $kunde['hcp'])) ?></span>
-      <span class="pt-kachel__label">Handicap heute</span></div>
-    <div class="pt-kachel">
-      <span class="pt-kachel__symbol"><?= Icon::svg('activity', 17) ?></span>
       <span class="pt-kachel__wert"><?= count($akte['leistung']) ?></span>
       <span class="pt-kachel__label">Erfasste Runden</span></div>
     <div class="pt-kachel">
-      <span class="pt-kachel__symbol"><?= Icon::svg('calendar', 17) ?></span>
       <span class="pt-kachel__wert"><?= (int) $zahlen['termine'] ?></span>
       <span class="pt-kachel__label">Einheiten</span></div>
     <div class="pt-kachel">
-      <span class="pt-kachel__symbol"><?= Icon::svg('clock', 17) ?></span>
+      <span class="pt-kachel__wert"><?= (int) $zahlen['einheiten'] ?></span>
+      <span class="pt-kachel__label">Offen im Paket</span></div>
+    <div class="pt-kachel">
       <span class="pt-kachel__wert"><?= Util::h(Util::datum((string) $zahlen['seit'], false)) ?></span>
       <span class="pt-kachel__label">Dabei seit</span></div>
   </div>
 
-  <?php if (count($hcpWerte) > 1): ?>
-    <div class="karte mb-5">
-      <div class="karte__kopf"><h2>Handicap-Entwicklung</h2></div>
-      <div class="karte__koerper">
-        <?= Diagramm::kurve($hcpWerte, 640, 130, ['kleinerIstBesser' => true]) ?>
-        <p class="winzig gedimmt mt-3">Je niedriger, desto besser – die Linie soll nach unten zeigen.</p>
-      </div>
-    </div>
-  <?php endif; ?>
-
   <?php if ($akte['leistung'] !== []): ?>
-    <div class="karte">
-      <div class="karte__kopf"><h2>Deine Runden</h2></div>
+    <p class="abschnitt-titel">Deine Runden</p>
+    <div>
       <div class="tabelle-huelle">
         <table class="tabelle tabelle--eng">
           <thead><tr><th>Datum</th><th>HCP</th><th>Score</th>

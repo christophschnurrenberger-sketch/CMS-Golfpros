@@ -326,8 +326,10 @@ final class KI
         $basis = [
             'anfaenger' => [
                 'obertitel' => 'Golftraining für Einsteiger',
-                'titel' => 'In acht Wochen zur Platzreife',
+                'titel' => 'In acht Wochen zur Platzreife. Ohne Umwege.',
                 'text' => 'Vom ersten Schlag bis auf den Platz – in kleinen Gruppen, mit festem Ablauf und ohne den Druck, schon etwas können zu müssen. Schläger stehen bereit.',
+                'notiz' => 'Erste Stunde? Schläger und Bälle stelle ich — Sportschuhe genügen.',
+                'fakten' => 'PGA Professional · Kleine Gruppen · Prüfung inklusive',
                 'vorteile' => [
                     ['Kleine Gruppen', 'Höchstens sechs Teilnehmer. So bleibt genug Zeit für jeden Einzelnen.'],
                     ['Alles inklusive', 'Leihschläger, Bälle und Unterlagen sind dabei. Du brauchst nur bequeme Schuhe.'],
@@ -344,6 +346,8 @@ final class KI
                 'obertitel' => 'Leistungstraining',
                 'titel' => 'Ein Handicap tiefer. Mit Zahlen statt Gefühl.',
                 'text' => 'Videoanalyse, Launch-Monitor-Daten und ein Trainingsplan, der auf dein konkretes Ziel ausgerichtet ist – nicht auf allgemeine Ratschläge.',
+                'notiz' => 'Wer schon spielt, fängt am besten mit einer Standortbestimmung an.',
+                'fakten' => 'Trackman · Videoanalyse · Schriftlicher Trainingsplan',
                 'vorteile' => [
                     ['Messbar', 'Schlägerkopfgeschwindigkeit, Carry, Streuung. Wir arbeiten mit Zahlen, nicht mit Eindrücken.'],
                     ['Videoanalyse', 'Dein Schwung in Zeitlupe, mit Linien und Anmerkungen – jederzeit nachschaubar.'],
@@ -357,8 +361,10 @@ final class KI
             ],
             'junior' => [
                 'obertitel' => 'Golf für Kinder und Jugendliche',
-                'titel' => 'Golf, das Kindern Spaß macht',
+                'titel' => 'Golf für Kinder, das wirklich Spaß macht.',
                 'text' => 'Spielerisches Training in altersgerechten Gruppen. Bewegung, Technik und Regeln kommen dabei nebenbei – weil Kinder am besten lernen, wenn sie nicht merken, dass sie lernen.',
+                'notiz' => 'Schläger in der richtigen Länge sind da — mitbringen muss man nichts.',
+                'fakten' => 'Gruppen nach Alter · Ab sechs Jahren · Ferienprogramm',
                 'vorteile' => [
                     ['Altersgerechte Gruppen', 'Getrennt nach Alter und Können, damit niemand über- oder unterfordert ist.'],
                     ['Material inklusive', 'Kindergerechte Schläger stehen bereit und wachsen mit.'],
@@ -374,6 +380,8 @@ final class KI
                 'obertitel' => 'Golf Academy',
                 'titel' => 'Ein Team, ein Konzept, alle Spielstärken',
                 'text' => 'Vom ersten Schlag bis zum Turnierspiel: mehrere Trainer, abgestimmte Trainingswege und ein gemeinsames Verständnis davon, wie Golf gelernt wird.',
+                'notiz' => 'Wer zu wem passt, klären wir beim ersten Termin — nicht vorher am Telefon.',
+                'fakten' => 'Mehrere Trainer · Alle Spielstärken · Sechs Tage die Woche',
                 'vorteile' => [
                     ['Abgestimmtes Team', 'Jeder Trainer kennt deinen Stand – auch bei einem Wechsel geht nichts verloren.'],
                     ['Alle Spielstärken', 'Platzreife, Handicap-Verbesserung, Turniervorbereitung und Juniorenförderung unter einem Dach.'],
@@ -388,6 +396,8 @@ final class KI
                 'obertitel' => 'PGA Golf Professional',
                 'titel' => 'Besser Golf spielen. Mit einem Plan.',
                 'text' => 'Individuelles Training für Einsteiger und Fortgeschrittene – mit klaren Zielen, Videoanalyse und einem Trainingsplan, der zu deinem Alltag passt.',
+                'notiz' => 'Erste Stunde? Schläger und Bälle stelle ich — Sportschuhe genügen.',
+                'fakten' => 'PGA Professional · Videoanalyse · Kleine Gruppen',
                 'vorteile' => [
                     ['Klares Ziel', 'Wir legen gemeinsam fest, woran du arbeitest. Messbar statt gefühlt.'],
                     ['Videoanalyse', 'Dein Schwung in Zeitlupe, mit Linien und Anmerkungen zum Nachschauen.'],
@@ -406,30 +416,66 @@ final class KI
         return $basis[$schwerpunkt] ?? $basis['allgemein'];
     }
 
+    /**
+     * Setzt den letzten Satz einer Überschrift auf den gelben Textmarker.
+     *
+     * Getrennt wird am letzten Punkt vor dem Schluss; hat die Überschrift
+     * nur einen Satz, wird sein zweiter Teil ab dem letzten Komma betont.
+     * Findet sich nichts davon, bleibt der Titel wie er ist – lieber keine
+     * Betonung als eine an der falschen Stelle.
+     */
+    private static function titelMitMarker(string $titel): string
+    {
+        $titel = trim($titel);
+        if ($titel === '' || str_contains($titel, '*')) {
+            return $titel;
+        }
+        foreach (['. ', ', '] as $trenner) {
+            $pos = mb_strrpos(rtrim($titel, '.'), $trenner);
+            if ($pos !== false && $pos > 8 && mb_strlen($titel) - $pos > 6) {
+                $vorn = mb_substr($titel, 0, $pos + mb_strlen($trenner));
+                $rest = mb_substr($titel, $pos + mb_strlen($trenner));
+                return $vorn . '*' . $rest . '*';
+            }
+        }
+        return $titel;
+    }
+
     private static function entwurfAusRegeln(string $schwerpunkt, string $name, string $beschreibung): array
     {
         $t = self::textbasis($schwerpunkt);
 
         $hero = Bloecke::neu('hero');
         $hero['daten']['obertitel']  = $t['obertitel'];
-        $hero['daten']['titel']      = $t['titel'];
+        /*
+         * Der letzte Satz der Überschrift kommt auf den gelben Textmarker.
+         * Ein Titel ohne Sternchen bliebe einfarbig – das sähe nicht falsch
+         * aus, aber der Entwurf lebt von genau dieser einen Betonung.
+         */
+        $hero['daten']['titel']      = self::titelMitMarker($t['titel']);
         $hero['daten']['text']       = $t['text'];
-        $hero['daten']['knopf_text'] = 'Termin buchen';
+        $hero['daten']['notiz']      = $t['notiz'] ?? '';
+        $hero['daten']['fakten']     = $t['fakten'] ?? '';
+        $hero['daten']['knopf_text'] = 'Freie Termine ansehen';
         $hero['daten']['knopf_url']  = '#buchung';
-        $hero['daten']['knopf2_text'] = 'Leistungen ansehen';
+        $hero['daten']['knopf2_text'] = 'Preise, alle';
         $hero['daten']['knopf2_url'] = '#leistungen';
 
         $spalten = Bloecke::neu('spalten');
-        $spalten['daten']['titel'] = 'Was dich erwartet';
+        $spalten['daten']['titel'] = 'Was hier gerade los ist';
+        $spalten['daten']['text']  = 'Kurzfristige Plätze, Termine und was sonst auf dem Zettel steht.';
         $spalten['daten']['eintraege'] = [];
-        $icons = ['target', 'video', 'training', 'award'];
-        foreach ($t['vorteile'] as $i => [$titel, $text]) {
-            $spalten['daten']['eintraege'][] = ['icon' => $icons[$i % count($icons)], 'titel' => $titel, 'text' => $text];
+        foreach ($t['vorteile'] as [$titel, $text]) {
+            $spalten['daten']['eintraege'][] = ['titel' => $titel, 'text' => $text];
         }
 
+        $trainer = Bloecke::neu('team');
+        $trainer['daten']['titel'] = '';
+
         $leistungen = Bloecke::neu('leistungen');
-        $leistungen['daten']['titel'] = 'Leistungen und Preise';
-        $leistungen['daten']['text']  = 'Alle Preise verstehen sich je Einheit. Pakete sind günstiger.';
+        $leistungen['daten']['obertitel'] = 'Kursangebot & Preise';
+        $leistungen['daten']['titel'] = 'Alle Wege, besser zu werden.';
+        $leistungen['daten']['text']  = 'Sie brauchen genau einen davon. Welchen, klären wir in zehn Minuten am Telefon.';
 
         $stimmen = Bloecke::neu('testimonials');
         $stimmen['daten']['eintraege'] = [
@@ -448,15 +494,26 @@ final class KI
         );
 
         $cta = Bloecke::neu('cta');
-        $cta['daten']['titel'] = 'Bereit für die nächste Runde?';
-        $cta['daten']['text']  = 'Buche dein erstes Training – unverbindlich und in unter einer Minute.';
+        $cta['daten']['titel'] = 'Sagen Sie kurz, was Sie vorhaben.';
+        $cta['daten']['text']  = 'Drei Sätze genügen. Sie bekommen einen konkreten Vorschlag zurück, '
+                               . 'in der Regel noch am selben Abend.';
+        $cta['daten']['notiz'] = 'Anrufen geht meistens schneller.';
 
         $buchung = Bloecke::neu('buchung');
+        $buchung['daten']['obertitel'] = 'Buchung';
+        $buchung['daten']['titel'] = 'Drei Angaben, dann haben Sie den Termin.';
+        $buchung['daten']['text'] = 'Keine Registrierung, keine Kreditkarte. '
+                                  . 'Bezahlt wird vor Ort oder per Rechnung.';
+
         $kontakt = Bloecke::neu('kontakt');
-        $zahlen  = Bloecke::neu('zahlen');
+        $kontakt['daten']['obertitel'] = 'Kontakt';
+        $kontakt['daten']['titel'] = 'So finden Sie her.';
+        $kontakt['daten']['karte'] = true;
+
+        $zahlen = Bloecke::neu('zahlen');
 
         return [
-            'bloecke' => [$hero, $zahlen, $spalten, $leistungen, $stimmen, $buchung, $faq, $cta, $kontakt],
+            'bloecke' => [$hero, $spalten, $trainer, $zahlen, $leistungen, $stimmen, $buchung, $faq, $cta, $kontakt],
             'seo' => [
                 'titel' => Util::kuerzen($name . ' – ' . $t['titel'], 60),
                 'beschreibung' => Util::kuerzen($t['text'], 155),
@@ -476,6 +533,7 @@ final class KI
                 $hero['daten'][$feld] = (string) $j['hero'][$feld];
             }
         }
+        $hero['daten']['titel'] = self::titelMitMarker((string) $hero['daten']['titel']);
         $hero['daten']['knopf_url'] = '#buchung';
 
         $spalten = Bloecke::neu('spalten');

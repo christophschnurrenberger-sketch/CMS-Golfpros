@@ -82,7 +82,7 @@
   --schatten-4: 0 24px 64px rgba(16,20,18,.18);
   --ring: 0 0 0 3px color-mix(in srgb, var(--marke) 22%, transparent);
 
-  --schrift: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+  --schrift: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
              "Helvetica Neue", Arial, sans-serif;
   --schrift-titel: var(--schrift);
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;

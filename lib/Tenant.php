@@ -69,10 +69,15 @@ final class Tenant
     /** @return array<string,mixed> */
     public static function branding(): array
     {
+        /*
+         * Die Rückfallwerte sind die des Entwurfs, nicht irgendein Grün:
+         * Tannengrün auf warmem Papier, mit gelbem Textmarker als Akzent.
+         * Ein Workspace, der nichts einstellt, sieht damit richtig aus.
+         */
         $standard = [
-            'primaer'   => '#1d6f4a',
-            'akzent'    => '#c8a44d',
-            'schrift'   => 'Inter',
+            'primaer'   => '#2e6a3e',
+            'akzent'    => '#f2c64b',
+            'schrift'   => 'Archivo',
             'radius'    => 14,
             'stil'      => 'modern',
             'dunkel'    => false,

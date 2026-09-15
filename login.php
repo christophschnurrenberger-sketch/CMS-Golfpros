@@ -68,9 +68,8 @@ $meldungen = App::meldungen();
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Anmelden · GolfPro CMS</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<?php /* Schrift vom eigenen Server: keine Verbindung zu Google beim Anmelden. */ ?>
+<link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/schriften.css')) ?>">
 <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/app.css')) ?>">
 <script>(function(){try{var t=localStorage.getItem('gp-thema')||'system';
 var d=t==='dunkel'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);

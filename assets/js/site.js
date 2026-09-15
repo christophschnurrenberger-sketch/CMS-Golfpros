@@ -14,6 +14,24 @@
     if (navi) navi.classList.remove('ist-offen');
   });
 
+  /*
+   * Fragen und Antworten.
+   *
+   * Ohne JavaScript stehen alle Antworten offen da – das ist nicht nur
+   * eine Notlösung, sondern für Suchmaschinen sogar die bessere Fassung.
+   * Erst dieses Skript klappt sie zu; deshalb steht die Klasse hier und
+   * nicht im HTML.
+   */
+  document.querySelectorAll('.frage').forEach(function (f, i) {
+    f.classList.add('ist-zu');
+    if (i === 0) f.classList.add('ist-offen');
+  });
+  document.addEventListener('click', function (e) {
+    var k = e.target.closest('[data-frage]');
+    if (!k) return;
+    k.parentElement.classList.toggle('ist-offen');
+  });
+
   /* OpenStreetMap braucht eine Bounding-Box; die rechnen wir aus der Suche */
   document.querySelectorAll('.kartenrahmen iframe[data-suche]').forEach(function (rahmen) {
     var suche = rahmen.dataset.suche;

@@ -32,15 +32,25 @@ final class Bloecke
                 'knopf2_text' => ['Zweiter Knopf', 'text'],
                 'knopf2_url'  => ['Ziel des zweiten Knopfs', 'url'],
                 'bild'        => ['Bild', 'bild'],
-                'ausrichtung' => ['Ausrichtung', 'auswahl', ['links' => 'Links', 'mitte' => 'Mittig', 'geteilt' => 'Bild daneben']],
+                'notiz'       => ['Handschriftliche Notiz', 'text'],
+                'fakten'      => ['Faktenzeile ganz unten', 'text'],
+                'ausrichtung' => ['Ausrichtung', 'auswahl', ['mitte' => 'Mittig', 'geteilt' => 'Bild daneben']],
                 'hoehe'       => ['Höhe', 'auswahl', ['normal' => 'Normal', 'gross' => 'Bildschirmfüllend', 'klein' => 'Kompakt']],
             ],
+            /*
+             * Sternchen um ein Wort setzen es auf den gelben Textmarker:
+             * „Besser Golf spielen. *Mit einem Plan.*" Ein Sternchenpaar
+             * ist schneller erklärt als ein Farbwähler und überlebt jedes
+             * Kopieren aus einem anderen Programm.
+             */
             'standard' => [
                 'obertitel' => 'PGA Golf Professional',
-                'titel' => 'Besser Golf spielen. Mit einem Plan.',
-                'text' => 'Individuelles Training für Einsteiger und Fortgeschrittene – mit klaren Zielen, Videoanalyse und einem Trainingsplan, der zu deinem Alltag passt.',
-                'knopf_text' => 'Termin buchen', 'knopf_url' => '#buchung',
-                'knopf2_text' => 'Leistungen ansehen', 'knopf2_url' => '#leistungen',
+                'titel' => 'Eine Golfschule, die Sie beim *Namen kennt.*',
+                'text' => 'Platzreife, Einzelstunden und ein Saisonprogramm für Spieler, die ihr Handicap ernst nehmen. Kleine Gruppen. Keine Kurspakete, die niemand versteht.',
+                'knopf_text' => 'Freie Termine ansehen', 'knopf_url' => '#buchung',
+                'knopf2_text' => 'Preise, alle', 'knopf2_url' => '#leistungen',
+                'notiz' => 'Erste Stunde? Schläger und Bälle stelle ich — Sportschuhe genügen.',
+                'fakten' => 'PGA Professional · Videoanalyse · Di bis Sa',
                 'ausrichtung' => 'geteilt', 'hoehe' => 'normal',
             ],
         ],
@@ -174,10 +184,12 @@ final class Bloecke
                     'titel' => ['Titel', 'text'],
                     'text'  => ['Beschreibung', 'mehrzeilig'],
                     'preis' => ['Preis', 'text'],
-                    'dauer' => ['Dauer', 'text'],
+                    'dauer' => ['Umfang', 'text'],
+                    'wer'   => ['Für wen', 'text'],
+                    'note'  => ['Handschriftliche Notiz', 'text'],
                 ]],
             ],
-            'standard' => ['titel' => 'Leistungen', 'automatisch' => true, 'eintraege' => []],
+            'standard' => ['titel' => 'Kursangebot & Preise', 'automatisch' => true, 'eintraege' => []],
         ],
 
         'preise' => [
@@ -250,12 +262,15 @@ final class Bloecke
                 'text'       => ['Text', 'mehrzeilig'],
                 'knopf_text' => ['Knopf', 'text'],
                 'knopf_url'  => ['Ziel', 'url'],
-                'stil'       => ['Stil', 'auswahl', ['marke' => 'Markenfarbe', 'dunkel' => 'Dunkel', 'hell' => 'Hell']],
+                'notiz'      => ['Handschriftliche Notiz', 'text'],
+                'stil'       => ['Stil', 'auswahl', ['marke' => 'Ruhiges Band', 'still' => 'Sehr hell']],
             ],
             'standard' => [
-                'titel' => 'Bereit für die nächste Runde?',
-                'text' => 'Buche dein erstes Training – unverbindlich und in unter einer Minute.',
-                'knopf_text' => 'Jetzt Termin buchen', 'knopf_url' => '#buchung', 'stil' => 'marke',
+                'titel' => 'Sagen Sie kurz, was Sie vorhaben.',
+                'text' => 'Drei Sätze genügen. Sie bekommen einen konkreten Vorschlag zurück, in der Regel noch am selben Abend.',
+                'knopf_text' => 'Zum Kontaktformular', 'knopf_url' => '#kontakt',
+                'notiz' => 'Anrufen geht meistens schneller.',
+                'stil' => 'marke',
             ],
         ],
 

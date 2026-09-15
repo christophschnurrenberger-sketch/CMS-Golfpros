@@ -119,6 +119,11 @@ Entwurfsauftrag übertragen – wer das nicht möchte, lässt das Feld leer.
   mit Frist. Die Frist beträgt einen Monat.
 * Der Datenexport eines Kunden ist eine JSON-Datei mit allem, was zu ihm
   gespeichert ist – ohne Passwörter und ohne interne Zugangstoken.
+* Die Schriften der öffentlichen Website liegen in `assets/fonts/` auf dem
+  eigenen Server; es geht kein Aufruf an Google. Wer unter *Website →
+  Design* eine andere Schrift wählt, holt sie wieder von dort – dann
+  gehört ein Hinweis in die Datenschutzerklärung und, je nach Auslegung,
+  eine Einwilligung davor.
 * Die erzeugten Texte für Impressum, Datenschutzerklärung und AGB sind
   Gerüste mit Platzhaltern. Sie sind keine Rechtsberatung und sollten vor
   dem Online-Gehen von jemandem mit Fachkenntnis angesehen werden.

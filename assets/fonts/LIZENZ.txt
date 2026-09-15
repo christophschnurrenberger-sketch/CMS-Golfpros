@@ -1,0 +1,19 @@
+Archivo und Caveat stehen unter der SIL Open Font License, Version 1.1.
+
+  Archivo  Copyright (c) Omnibus-Type
+           https://github.com/Omnibus-Type/Archivo
+  Caveat   Copyright (c) Impallari Type
+           https://github.com/googlefonts/caveat
+
+Die Lizenz erlaubt Verwendung, Weitergabe und Einbettung – auch
+kommerziell – unter drei Bedingungen: Dieser Hinweis bleibt bei den
+Dateien, die Schriften werden nicht einzeln verkauft, und ein geänderter
+Schnitt trägt nicht mehr denselben Namen.
+
+Der vollständige Lizenztext:
+https://openfontlicense.org/open-font-license-official-text/
+
+Die Dateien hier sind die unveränderten Variable-Font-Auslieferungen von
+Google Fonts, aufgeteilt nach Zeichensatz (latin, latin-ext). Sie liegen
+auf diesem Server, damit beim Aufruf der Website keine IP-Adresse eines
+Besuchers an Google geht – siehe assets/css/schriften.css.

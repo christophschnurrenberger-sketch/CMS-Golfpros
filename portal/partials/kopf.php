@@ -23,33 +23,21 @@ $ansicht  = $ansicht ?? 'start';
 $logo     = (string) (Tenant::workspace()['logo'] ?? '');
 ?>
 <!DOCTYPE html>
-<html lang="de" data-theme="hell">
+<html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title><?= Util::h($titel) ?> · <?= Util::h(Tenant::name()) ?></title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/app.css')) ?>">
+<?php /* Schriften vom eigenen Server – siehe assets/css/schriften.css. */ ?>
+<link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/schriften.css')) ?>">
 <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/portal.css')) ?>">
-<script>
-(function(){try{var t=localStorage.getItem('gp-thema')||'system';
-var d=t==='dunkel'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);
-document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){}})();
-</script>
 <style>
-:root{
+/* Nur die Marke kommt aus dem Workspace; alles andere steht im Stylesheet. */
+.portal{
   --marke: <?= Util::attr((string) $branding['primaer']) ?>;
   --marke-dunkel: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 82%, #000);
-  --marke-hell: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 10%, #fff);
-  --marke-rand: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 28%, #fff);
   --akzent: <?= Util::attr((string) $branding['akzent']) ?>;
-}
-[data-theme="dunkel"]{
-  --marke-hell: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 22%, #0b0d0e);
-  --marke-rand: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 42%, #0b0d0e);
 }
 </style>
 </head>
@@ -57,20 +45,17 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
 
 <header class="portal__kopf">
   <a class="portal__marke" href="<?= Util::attr(App::url('/portal/')) ?>">
-    <span class="marke__zeichen">
-      <?php if ($logo !== '' && is_file(GP_ROOT . '/' . ltrim($logo, '/'))): ?>
-        <img src="<?= Util::attr(App::url($logo)) ?>" alt="">
-      <?php else: ?>
-        <?= Util::h(mb_substr(Tenant::name(), 0, 1)) ?>
-      <?php endif; ?>
-    </span>
-    <span class="portal__marke-text"><?= Util::h(Tenant::name()) ?></span>
+    <?php if ($logo !== '' && is_file(GP_ROOT . '/' . ltrim($logo, '/'))): ?>
+      <img src="<?= Util::attr(App::url($logo)) ?>" alt="<?= Util::attr(Tenant::name()) ?>" style="max-height:34px">
+    <?php else: ?>
+      <span class="portal__marke-text"><?= Util::h(Tenant::name()) ?></span>
+    <?php endif; ?>
+    <span class="portal__marke-zusatz">Dein Bereich</span>
   </a>
   <div class="fueller"></div>
-  <button class="rundknopf" data-thema-um aria-label="Darstellung wechseln"><?= Icon::svg('sun', 17) ?></button>
   <a class="portal__ich" href="<?= Util::attr(App::url('/portal/?ansicht=profil')) ?>"
      aria-label="Mein Profil">
-    <span class="avatar avatar--klein" style="background:<?= Util::attr(Util::avatarFarbe(Customers::name($kunde))) ?>">
+    <span class="avatar" style="background:<?= Util::attr(Util::avatarFarbe(Customers::name($kunde))) ?>">
       <?= Util::h(Util::initialen(Customers::name($kunde))) ?></span>
   </a>
 </header>

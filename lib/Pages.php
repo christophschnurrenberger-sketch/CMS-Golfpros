@@ -123,48 +123,106 @@ final class Pages
      */
     public static function vorlage(string $name, string $schwerpunkt = 'allgemein'): array
     {
+        $ort = Tenant::one('locations', 'aktiv = 1');
+        $stadt = $ort ? (string) $ort['ort'] : '';
+
+        /*
+         * Der Aufmacher.
+         *
+         * Die Sternchen im Titel setzen den zweiten Satz auf den gelben
+         * Textmarker. Die Notiz darunter ist der Satz, den man am Telefon
+         * sagen würde – sie steht in Handschrift und nimmt genau die
+         * Sorge vorweg, die Anfänger vom Anrufen abhält.
+         */
         $hero = Bloecke::neu('hero');
-        $hero['daten']['titel'] = match ($schwerpunkt) {
-            'anfaenger' => 'Dein Weg zur Platzreife – ohne Umwege',
-            'leistung'  => 'Vom soliden Spieler zum Turnierspieler',
-            'junior'    => 'Golf, das Kindern Spaß macht',
-            default     => 'Besser Golf spielen. Mit einem Plan.',
-        };
         $hero['daten']['obertitel'] = $name;
+        $hero['daten']['titel'] = match ($schwerpunkt) {
+            'anfaenger' => 'Ihr Weg zur Platzreife. *Ohne Umwege.*',
+            'leistung'  => 'Vom soliden Spieler *zum Turnierspieler.*',
+            'junior'    => 'Golf, das Kindern *Spaß macht.*',
+            default     => 'Eine Golfschule, die Sie *beim Namen kennt.*',
+        };
         $hero['daten']['text'] = match ($schwerpunkt) {
             'anfaenger' => 'In wenigen Wochen von den ersten Schlägen bis auf den Platz – in kleinen Gruppen, mit klarem Ablauf und ohne Druck.',
-            'leistung'  => 'Videoanalyse, Leistungsdaten und ein Trainingsplan, der auf dein Handicap-Ziel ausgerichtet ist.',
+            'leistung'  => 'Videoanalyse, Leistungsdaten und ein Trainingsplan, der auf Ihr Handicap-Ziel ausgerichtet ist. Eine Baustelle pro Quartal, nicht fünf.',
             'junior'    => 'Spielerisches Training für Kinder und Jugendliche, in Gruppen mit gleichaltrigen Spielerinnen und Spielern.',
-            default     => 'Individuelles Training für Einsteiger und Fortgeschrittene – mit klaren Zielen, Videoanalyse und einem Plan, der zu deinem Alltag passt.',
+            default     => 'Platzreife, Einzelstunden und ein Saisonprogramm für Spieler, die ihr Handicap ernst nehmen. Kleine Gruppen. Keine Kurspakete, die niemand versteht.',
         };
+        $hero['daten']['notiz'] = match ($schwerpunkt) {
+            'junior'    => 'Schläger in der richtigen Länge sind da — mitbringen muss man nichts.',
+            'leistung'  => 'Wer schon spielt, fängt am besten mit einer Standortbestimmung an.',
+            default     => 'Erste Stunde? Schläger und Bälle stelle ich — Sportschuhe genügen.',
+        };
+        $hero['daten']['fakten'] = 'PGA Professional · Videoanalyse · Kleine Gruppen'
+            . ($stadt !== '' ? ' · ' . $stadt : '');
+        $hero['daten']['knopf_text'] = 'Freie Termine ansehen';
+        $hero['daten']['knopf2_text'] = 'Preise, alle';
 
-        $spalten = Bloecke::neu('spalten');
-        $zahlen  = Bloecke::neu('zahlen');
-        $leistungen = Bloecke::neu('leistungen');
-        $stimmen = Bloecke::neu('testimonials');
-        $stimmen['daten']['eintraege'] = [
-            ['text' => 'Nach acht Wochen hatte ich meine Platzreife – und zum ersten Mal das Gefühl, zu wissen, was ich da tue.',
-             'name' => 'Sandra K.', 'zusatz' => 'seit 2024 dabei', 'sterne' => 5],
-            ['text' => 'Die Videoanalyse war der Wendepunkt. Ich sehe jetzt selbst, woran ich arbeiten muss.',
-             'name' => 'Michael B.', 'zusatz' => 'HCP 18,4', 'sterne' => 5],
-            ['text' => 'Klare Ansagen, kein Fachchinesisch, und nach jeder Stunde weiß ich, was ich üben soll.',
-             'name' => 'Tobias R.', 'zusatz' => 'HCP 26,1', 'sterne' => 5],
+        /* Was gerade ansteht – drei kurze Karten mit einem Datum. */
+        $aktuell = Bloecke::neu('spalten');
+        $aktuell['daten']['titel'] = 'Was hier gerade los ist';
+        $aktuell['daten']['text'] = 'Kurzfristige Plätze, Termine und was sonst auf dem Zettel steht.';
+        $aktuell['daten']['eintraege'] = [
+            ['titel' => 'Platzreifekurs im Frühjahr',
+             'text' => 'Sechs Termine, kleine Gruppe, Prüfung inklusive. Der Kurs startet, sobald sechs Plätze belegt sind.'],
+            ['titel' => 'Kurzfristige Plätze',
+             'text' => 'Diese Woche sind noch Einzelstunden frei. Wer flexibel ist, findet fast immer einen Termin.'],
+            ['titel' => 'Wintertraining indoor',
+             'text' => 'Von November bis März mit Abschlagnetz und Videoanalyse – an der Technik lässt sich auch ohne Platz arbeiten.'],
         ];
+
+        $zahlen = Bloecke::neu('zahlen');
+        $zahlen['daten']['eintraege'] = [
+            ['wert' => '12', 'label' => 'Jahre Unterricht'],
+            ['wert' => '340', 'label' => 'begleitete Platzreifen'],
+            ['wert' => '4,9', 'label' => 'Bewertung'],
+        ];
+
+        $trainer = Bloecke::neu('team');
+        $trainer['daten']['titel'] = '';
+
+        $leistungen = Bloecke::neu('leistungen');
+        $leistungen['daten']['obertitel'] = 'Kursangebot & Preise';
+        $leistungen['daten']['titel'] = 'Alle Wege, besser zu werden.';
+        $leistungen['daten']['text'] = 'Sie brauchen genau einen davon. Welchen, klären wir in zehn Minuten am Telefon.';
+
+        $stimmen = Bloecke::neu('testimonials');
+        $stimmen['daten']['titel'] = 'Was Spieler sagen';
+        $stimmen['daten']['eintraege'] = [
+            ['text' => 'In zwei Saisons von 28 auf 16 — vor allem, weil wir irgendwann aufgehört haben, am Schwung zu basteln.',
+             'name' => 'Andreas B.', 'zusatz' => 'Hcp 16,4', 'sterne' => 5],
+            ['text' => 'Er erklärt nie mehr, als man in dem Moment gebrauchen kann. Das ist seltener, als man denkt.',
+             'name' => 'Dr. Miriam K.', 'zusatz' => 'Platzreife 2025', 'sterne' => 5],
+            ['text' => 'Vier Playing Lessons haben mehr gebracht als drei Jahre allein auf der Range.',
+             'name' => 'Stefan L.', 'zusatz' => 'Hcp 9,1', 'sterne' => 5],
+        ];
+
         $faq = Bloecke::neu('faq');
+        $faq['daten']['titel'] = 'Was am häufigsten gefragt wird';
         $faq['daten']['eintraege'] = [
             ['frage' => 'Brauche ich eigene Schläger?',
-             'antwort' => 'Für die ersten Stunden nicht. Leihschläger stehen bereit – und wir schauen gemeinsam, was zu dir passt, bevor du etwas kaufst.'],
+             'antwort' => 'Für die ersten Stunden nicht. Leihschläger stehen bereit – und wir schauen gemeinsam, was zu Ihnen passt, bevor Sie etwas kaufen.'],
             ['frage' => 'Wie lange dauert es bis zur Platzreife?',
-             'antwort' => 'Die meisten brauchen sechs bis zehn Wochen bei einer Einheit pro Woche. Es kommt darauf an, wie oft du zusätzlich übst.'],
+             'antwort' => 'Die meisten brauchen sechs bis zehn Wochen bei einer Einheit pro Woche. Es kommt darauf an, wie oft Sie zusätzlich üben.'],
             ['frage' => 'Kann ich einen Termin verschieben?',
-             'antwort' => 'Ja, bis 24 Stunden vorher kostenfrei – am einfachsten über deinen Zugang oder telefonisch.'],
-            ['frage' => 'Gibt es Training für Kinder?',
-             'antwort' => 'Ja, in altersgerechten Gruppen. Sprich mich gern an, dann finden wir die passende Gruppe.'],
+             'antwort' => 'Ja, bis 24 Stunden vorher kostenfrei – am einfachsten über Ihren Zugang oder telefonisch.'],
+            ['frage' => 'Findet das Training auch bei Regen statt?',
+             'antwort' => 'Bei leichtem Regen ja. Bei Gewitter, Sturm oder gesperrtem Platz holen wir den Termin ohne Kosten nach.'],
         ];
-        $cta = Bloecke::neu('cta');
-        $buchung = Bloecke::neu('buchung');
-        $kontakt = Bloecke::neu('kontakt');
 
-        return [$hero, $zahlen, $spalten, $leistungen, $stimmen, $buchung, $faq, $cta, $kontakt];
+        $buchung = Bloecke::neu('buchung');
+        $buchung['daten']['obertitel'] = 'Buchung';
+        $buchung['daten']['titel'] = 'Drei Angaben, dann haben Sie den Termin.';
+        $buchung['daten']['text'] = 'Keine Registrierung, keine Kreditkarte. Bezahlt wird vor Ort oder per Rechnung.';
+
+        $cta = Bloecke::neu('cta');
+        $cta['daten']['notiz'] = 'Anrufen geht meistens schneller.';
+
+        $kontakt = Bloecke::neu('kontakt');
+        $kontakt['daten']['obertitel'] = 'Kontakt';
+        $kontakt['daten']['titel'] = 'So finden Sie her.';
+        $kontakt['daten']['karte'] = true;
+
+        return [$hero, $aktuell, $trainer, $zahlen, $leistungen, $stimmen, $buchung, $faq, $cta, $kontakt];
     }
 }

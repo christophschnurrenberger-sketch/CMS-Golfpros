@@ -16,23 +16,36 @@ final class Website
         'kraftvoll'=> ['Kraftvoll', 'Große Typografie, starke Kontraste, dunkler Titelbereich.'],
     ];
 
+    /*
+     * Fünf Schriften, nicht fünfzig. Jede hat eine andere Tonlage, und
+     * alle funktionieren in den sehr großen Überschriften dieses Entwurfs –
+     * das schließt die meisten Webfonts von vornherein aus.
+     */
     public const SCHRIFTEN = [
+        'Archivo'         => 'Archivo · schmal, kräftig, redaktionell',
         'Inter'           => 'Inter · sachlich, sehr gut lesbar',
         'Source Sans 3'   => 'Source Sans · freundlich, offen',
         'DM Sans'         => 'DM Sans · rund, modern',
         'Libre Baskerville' => 'Libre Baskerville · Serife, klassisch',
-        'Manrope'         => 'Manrope · technisch, präzise',
     ];
 
     /** CSS-Variablen der Marke – als style-Attribut auf den Seitenrahmen. */
     public static function stilVariablen(): string
     {
-        $b = Tenant::branding();
-        $stil = (string) ($b['stil'] ?? 'modern');
+        $b     = Tenant::branding();
+        $stil  = (string) ($b['stil'] ?? 'modern');
+        $marke = self::sauber((string) $b['primaer']);
+
+        /*
+         * Nur die Werte, die der Workspace wirklich bestimmt. Alles andere –
+         * Papierton, Textfarben, Linien – steht im Stylesheet, weil es zum
+         * Entwurf gehört und nicht zur Marke. Wer hier zehn Variablen
+         * freigibt, bekommt zehn Möglichkeiten, die Seite hässlich zu machen.
+         */
         return implode(';', [
-            '--marke: ' . self::sauber((string) $b['primaer']),
-            '--marke-dunkel: color-mix(in srgb, ' . self::sauber((string) $b['primaer']) . ' 80%, #000)',
-            '--marke-hell: color-mix(in srgb, ' . self::sauber((string) $b['primaer']) . ' 8%, #fff)',
+            '--marke: ' . $marke,
+            '--marke-dunkel: color-mix(in srgb, ' . $marke . ' 82%, #000)',
+            '--marke-hell: color-mix(in srgb, ' . $marke . ' 12%, #fbf8f0)',
             '--akzent: ' . self::sauber((string) $b['akzent']),
             '--radius: ' . (int) $b['radius'] . 'px',
             '--schrift: "' . self::sauber((string) $b['schrift']) . '", system-ui, sans-serif',
@@ -47,18 +60,66 @@ final class Website
         return preg_replace('/[^A-Za-z0-9#,.%()\s-]/', '', $wert) ?? '';
     }
 
+    /** Schriften, die auf diesem Server liegen – siehe assets/css/schriften.css. */
+    private const EIGENE_SCHRIFTEN = ['Archivo', 'Caveat'];
+
+    /**
+     * Die Schrifteinbindung als fertige HTML-Zeilen.
+     *
+     * Archivo und Caveat liegen im Haus; alles andere kommt von Google.
+     * Das ist kein technischer, sondern ein rechtlicher Unterschied: Beim
+     * Laden von Googles Servern geht die IP-Adresse des Besuchers dorthin,
+     * bevor er etwas anklicken konnte. Wer die Standardschrift behält,
+     * hat das Problem nicht.
+     */
+    public static function schriften(): string
+    {
+        $b       = Tenant::branding();
+        $schrift = (string) $b['schrift'];
+        $stil    = (string) ($b['stil'] ?? '');
+
+        $html = '<link rel="stylesheet" href="' . Util::attr(App::asset('assets/css/schriften.css')) . '">';
+
+        $vonGoogle = [];
+        if (!in_array($schrift, self::EIGENE_SCHRIFTEN, true)) {
+            $vonGoogle[] = 'family=' . str_replace(' ', '+', $schrift) . ':wght@400;500;600;700';
+        }
+        if ($stil === 'klassisch' && !in_array('Libre Baskerville', self::EIGENE_SCHRIFTEN, true)) {
+            $vonGoogle[] = 'family=Libre+Baskerville:wght@400;700';
+        }
+
+        if ($vonGoogle !== []) {
+            $html = '<link rel="preconnect" href="https://fonts.googleapis.com">'
+                  . '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+                  . '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?'
+                  . Util::attr(implode('&', $vonGoogle)) . '&display=swap">'
+                  . $html;
+        }
+        return $html;
+    }
+
+    /**
+     * Liegt diese Schrift auf dem eigenen Server?
+     *
+     * Der Design-Dialog fragt danach, um an der Auswahl zu sagen, was sie
+     * kostet: eine fremde Schrift überträgt die IP-Adresse jedes Besuchers
+     * an Google, bevor er die Seite gesehen hat.
+     */
+    public static function vomEigenenServer(string $schrift): bool
+    {
+        return in_array($schrift, self::EIGENE_SCHRIFTEN, true);
+    }
+
+    /** Nur noch für den Baukasten, der eine einzelne Adresse braucht. */
     public static function schriftLink(): string
     {
         $b = Tenant::branding();
-        $schriften = [(string) $b['schrift']];
-        if ((string) ($b['stil'] ?? '') === 'klassisch') {
-            $schriften[] = 'Libre Baskerville';
+        $schrift = (string) $b['schrift'];
+        if (in_array($schrift, self::EIGENE_SCHRIFTEN, true)) {
+            return App::asset('assets/css/schriften.css');
         }
-        $teile = [];
-        foreach (array_unique($schriften) as $s) {
-            $teile[] = 'family=' . str_replace(' ', '+', $s) . ':wght@400;500;600;700';
-        }
-        return 'https://fonts.googleapis.com/css2?' . implode('&', $teile) . '&display=swap';
+        return 'https://fonts.googleapis.com/css2?family=' . str_replace(' ', '+', $schrift)
+             . ':wght@400;500;600;700&display=swap';
     }
 
     /* ------------------------------------------------------- Bausteine - */
@@ -78,15 +139,32 @@ final class Website
         $start = Pages::startseite();
         $startUrl = $start ? Pages::url($start) : App::url('/site.php?w=' . rawurlencode($slug));
 
+        /*
+         * Die Marke steht zweizeilig: Name in der Grundschrift, darunter
+         * in Handschrift, was der Betrieb ist und wo er liegt. Das ersetzt
+         * den Untertitel, den sonst niemand liest, und gibt dem Kopf die
+         * persönliche Note, um die es in diesem Entwurf geht.
+         */
+        $ort     = Tenant::one('locations', 'aktiv = 1');
+        $zusatz  = trim((string) Tenant::einstellung('kopf_zusatz', ''));
+        if ($zusatz === '') {
+            $zusatz = 'Golfschule' . ($ort && (string) $ort['ort'] !== '' ? ' · ' . $ort['ort'] : '');
+        }
+        $telefon = trim((string) Tenant::einstellung('telefon', ''));
+
         return '<header class="kopf-band"><div class="inhalt-breite kopf-band__innen">'
              . '<a class="kopf__marke" href="' . Util::attr($startUrl) . '">'
              . ($logo !== '' && is_file(GP_ROOT . '/' . ltrim($logo, '/'))
                 ? '<img src="' . Util::attr(App::url($logo)) . '" alt="' . Util::attr(Tenant::name()) . '">'
-                : '<span>' . Util::h(Tenant::name()) . '</span>')
+                : '<span class="kopf__name">' . Util::h(Tenant::name()) . '</span>'
+                  . '<span class="kopf__zusatz">' . Util::h($zusatz) . '</span>')
              . '</a>'
              . '<nav class="kopf__navi">' . $menue . '</nav>'
-             . '<a class="knopf knopf--primaer knopf--klein kopf__aktion" href="#buchung">Termin buchen</a>'
-             . '<button class="kopf__menue" aria-label="Menü" onclick="document.querySelector(\'.kopf__navi\').classList.toggle(\'ist-offen\')">'
+             . ($telefon !== ''
+                ? '<p class="kopf__ruf">' . Util::h($telefon) . '</p>'
+                : '<a class="knopf knopf--klein kopf__aktion" href="#buchung">Termin buchen</a>')
+             . '<button class="kopf__menue" aria-label="Menü" '
+             . 'onclick="document.querySelector(\'.kopf__navi\').classList.toggle(\'ist-offen\')">'
              . Icon::svg('menu', 20) . '</button>'
              . '</div></header>';
     }
@@ -107,12 +185,18 @@ final class Website
             $menue .= '<a href="' . Util::attr(Pages::url($s)) . '">' . Util::h((string) $s['titel']) . '</a>';
         }
 
+        $telefon = trim((string) Tenant::einstellung('telefon', ''));
+        $mail    = trim((string) Tenant::einstellung('mail_absender', ''));
+
         return '<footer class="fuss-band"><div class="inhalt-breite">'
              . '<div class="fuss-band__spalten">'
              . '<div><div class="fuss-band__marke">' . Util::h(Tenant::name()) . '</div>'
              . ($ort ? '<address class="fuss-band__adresse">'
                  . Util::h((string) $ort['strasse']) . '<br>'
-                 . Util::h(trim(((string) $ort['plz']) . ' ' . ((string) $ort['ort']))) . '</address>' : '')
+                 . Util::h(trim(((string) $ort['plz']) . ' ' . ((string) $ort['ort'])))
+                 . ($telefon !== '' ? '<br>' . Util::h($telefon) : '')
+                 . ($mail !== '' ? '<br><a href="mailto:' . Util::attr($mail) . '">' . Util::h($mail) . '</a>' : '')
+                 . '</address>' : '')
              . '</div>'
              . ($menue !== '' ? '<nav class="fuss-band__navi"><span>Seiten</span>' . $menue . '</nav>' : '')
              . ($rechtliches !== '' ? '<nav class="fuss-band__navi"><span>Rechtliches</span>' . $rechtliches . '</nav>' : '')
@@ -185,9 +269,7 @@ final class Website
                . '<meta property="og:description" content="' . Util::attr((string) ($seo['beschreibung'] ?? '')) . '">'
                . '<meta property="og:type" content="website">'
                . ($bild !== '' ? '<meta property="og:image" content="' . Util::attr(App::absolut($bild)) . '">' : '')
-               . '<link rel="preconnect" href="https://fonts.googleapis.com">'
-               . '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-               . '<link href="' . Util::attr(self::schriftLink()) . '" rel="stylesheet">'
+               . self::schriften()
                . '<link rel="stylesheet" href="' . Util::attr(App::asset('assets/css/site.css')) . '">'
                . SEO::strukturierteDaten()
                . '</head><body class="seite seite--' . Util::attr((string) ($branding['stil'] ?? 'modern')) . '" '

@@ -133,8 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $bereit) {
                 'name'     => $name,
                 'typ'      => 'pro',
                 'plan'     => 'academy',      // ohne Abrechnung: alles sichtbar, Module regeln den Rest
-                'branding' => Util::json(['primaer' => '#1d6f4a', 'akzent' => '#c8a44d',
-                                          'schrift' => 'Inter', 'radius' => 14, 'stil' => 'modern']),
+                'branding' => Util::json(['primaer' => '#2e6a3e', 'akzent' => '#f2c64b',
+                                          'schrift' => 'Archivo', 'radius' => 14, 'stil' => 'modern']),
                 'waehrung' => 'EUR', 'sprache' => 'de', 'zeitzone' => 'Europe/Berlin',
                 'onboarding_schritt' => 0, 'aktiv' => 1, 'demo' => 0,
                 'erstellt' => date('Y-m-d H:i:s'),

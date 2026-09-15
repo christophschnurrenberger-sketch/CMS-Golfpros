@@ -60,7 +60,7 @@ anfrage.php   Formulareingang → Lead
 cron.php      Wartung für alle, die einen Cronjob haben
 webhook.php   Stripe meldet Zahlungen hierher
 install.php   Einrichtung, danach löschen
-assets/       Ein Stylesheet für die Anwendung, eins für die Website
+assets/       Stylesheets, Skripte und die Schriften auf eigenem Server
 docs/         Architektur und Betrieb im Detail
 ```
 
@@ -89,6 +89,21 @@ Rechnungen, Versand und Löschungen laufen immer über eine ausdrückliche
 Bestätigung. In der Videoanalyse stehen „KI-Hinweise" und „Pro-Analyse" als
 getrennte Blöcke nebeneinander – die fachliche Bewertung trifft der Trainer,
 und das soll man sehen.
+
+**Die Website sieht nicht nach Verwaltung aus.** Der Renderer setzt keine
+Kachelraster, sondern eine redaktionelle Ordnung: eine Titelzeile über dem
+Bild, Listen mit Haarlinien, versetzte Zitate, ein handschriftlicher
+Einwurf dort, wo eine Person spricht. Kunden buchen Unterricht bei einem
+Menschen; zwölf gleiche Kacheln erzählen das Gegenteil. Farben, Rundungen
+und Abstände stehen als Variablen in `assets/css/site.css`, aus dem
+Workspace kommt nur die Marke.
+
+**Die Schriften liegen auf dem eigenen Server.** Archivo und Caveat als
+variable Schnitte in `assets/fonts/`, zusammen 180 KB, kein Aufruf zu
+Google. Das Landgericht München I hat am 20.01.2022 (Az. 3 O 17493/20)
+entschieden, dass die Einbindung von Google Fonts die IP-Adresse des
+Besuchers ohne Einwilligung überträgt. Wer hiermit seine Betriebswebsite
+veröffentlicht, soll deswegen keine Post bekommen.
 
 **Zählen ohne Cookies.** Die Websitestatistik bildet aus der IP-Adresse und
 einem täglich wechselnden Zufallswert eine Prüfsumme. Wiederkehrende

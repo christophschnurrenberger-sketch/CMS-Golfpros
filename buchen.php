@@ -182,7 +182,7 @@ if (isset($fehler) && $fehler !== '') {
 /* Schritt 1: Leistung und Zeit */
 $inhalt .= '<form method="post" class="vorgang__form">'
          . '<input type="hidden" name="w" value="' . Util::attr((string) (Tenant::workspace()['slug'] ?? '')) . '">'
-         . '<div class="vorgang__feld"><label for="leistung">Leistung</label>'
+         . '<div class="feld"><label for="leistung">Leistung</label>'
          . '<select id="leistung" name="service_id" onchange="this.form.submit()">';
 foreach ($leistungen as $l) {
     $inhalt .= '<option value="' . (int) $l['id'] . '"' . ((int) $l['id'] === $serviceId ? ' selected' : '') . '>'
@@ -190,10 +190,10 @@ foreach ($leistungen as $l) {
              . '</option>';
 }
 $inhalt .= '</select></div>'
-         . '<div class="vorgang__feld"><label for="datum">Ab wann</label>'
+         . '<div class="feld"><label for="datum">Ab wann</label>'
          . '<input id="datum" type="date" name="datum" value="' . Util::attr($datum) . '" min="'
          . Util::attr(Util::heute()) . '" onchange="this.form.submit()"></div>'
-         . '<noscript><button class="knopf" type="submit">Zeiten anzeigen</button></noscript>'
+         . '<noscript><button class="knopf knopf--klein" type="submit">Zeiten anzeigen</button></noscript>'
          . '</form>';
 
 if ((string) $service['beschreibung'] !== '') {
@@ -207,24 +207,39 @@ if ($tage === []) {
       . '<p class="vorgang__zurueck"><a href="' . Util::attr(Oeffentlich::url('/', ['s' => 'kontakt']))
       . '">Zum Kontaktformular</a></p>';
 } else {
-    $inhalt .= '<div class="zeitwahl">';
+    /*
+     * Die freien Zeiten als Liste, nicht als Knopfwolke.
+     *
+     * Eine Wolke aus dreißig gleich aussehenden Uhrzeiten zwingt zum
+     * Suchen; untereinander liest man Tag, Uhrzeit und Leistung in einer
+     * Zeile. Der wechselnde Einzug nimmt der Liste die Strenge, und die
+     * gewählte Zeile wird dunkel – das sieht man auch aus dem Augenwinkel.
+     */
+    $inhalt .= '<div class="zeitliste">';
     foreach ($tage as $tag => $frei) {
-        $inhalt .= '<div class="zeitwahl__tag">'
-                 . '<div class="zeitwahl__datum">' . Util::h(Util::datumLang($tag)) . '</div>'
-                 . '<div class="zeitwahl__zeiten">';
+        /*
+         * Das Datum steht nur in der ersten Zeile eines Tages. Viermal
+         * „Donnerstag, 17. September" untereinander liest niemand – und
+         * es verdeckt genau das, was sich von Zeile zu Zeile ändert.
+         */
+        $ersteDesTages = true;
         foreach ($frei as $z) {
             $aktiv = (string) $z['start'] === $gewaehlt;
-            $inhalt .= '<form method="post" class="zeitwahl__form">'
+            $inhalt .= '<form method="post" style="display:contents">'
                      . '<input type="hidden" name="w" value="' . Util::attr((string) (Tenant::workspace()['slug'] ?? '')) . '">'
                      . '<input type="hidden" name="service_id" value="' . $serviceId . '">'
                      . '<input type="hidden" name="datum" value="' . Util::attr($datum) . '">'
                      . '<input type="hidden" name="start" value="' . Util::attr((string) $z['start']) . '">'
                      . '<input type="hidden" name="trainer_id" value="' . (int) $z['trainer_id'] . '">'
-                     . '<button class="zeitknopf' . ($aktiv ? ' ist-gewaehlt' : '') . '" type="submit">'
-                     . Util::h(Util::uhrzeit((string) $z['start'])) . '</button>'
-                     . '</form>';
+                     . '<button class="zeit-zeile' . ($aktiv ? ' ist-gewaehlt' : '') . '" type="submit">'
+                     . '<span class="zeit-zeile__tag">'
+                     . ($ersteDesTages ? Util::h(Util::datumLang($tag)) : '') . '</span>'
+                     . '<span class="zeit-zeile__zeit">' . Util::h(Util::uhrzeit((string) $z['start'])) . '</span>'
+                     . '<span class="zeit-zeile__art">' . Util::h((string) $service['name'])
+                     . ' · ' . (int) $service['dauer_min'] . ' Minuten</span>'
+                     . '</button></form>';
+            $ersteDesTages = false;
         }
-        $inhalt .= '</div></div>';
     }
     $inhalt .= '</div>';
 }
@@ -246,19 +261,19 @@ if ($gewaehlt !== '') {
              . '<input type="hidden" name="trainer_id" value="' . $trainerId . '">'
              . '<input type="hidden" name="begonnen" value="' . time() . '">'
              . '<input type="text" name="website" class="honigtopf" tabindex="-1" autocomplete="off" aria-hidden="true">'
-             . '<div class="vorgang__paar">'
-             . '<div class="vorgang__feld"><label for="vorname">Vorname</label>'
+             . '<div class="feld-paar">'
+             . '<div class="feld"><label for="vorname">Vorname</label>'
              . '<input id="vorname" name="vorname" required value="' . Util::attr(App::post('vorname')) . '"></div>'
-             . '<div class="vorgang__feld"><label for="nachname">Nachname</label>'
+             . '<div class="feld"><label for="nachname">Nachname</label>'
              . '<input id="nachname" name="nachname" required value="' . Util::attr(App::post('nachname')) . '"></div>'
              . '</div>'
-             . '<div class="vorgang__paar">'
-             . '<div class="vorgang__feld"><label for="email">E-Mail</label>'
+             . '<div class="feld-paar">'
+             . '<div class="feld"><label for="email">E-Mail</label>'
              . '<input id="email" type="email" name="email" required value="' . Util::attr(App::post('email')) . '"></div>'
-             . '<div class="vorgang__feld"><label for="telefon">Telefon</label>'
+             . '<div class="feld"><label for="telefon">Telefon</label>'
              . '<input id="telefon" type="tel" name="telefon" value="' . Util::attr(App::post('telefon')) . '"></div>'
              . '</div>'
-             . '<div class="vorgang__feld"><label for="notiz">Möchtest du noch etwas dazusagen?</label>'
+             . '<div class="feld"><label for="notiz">Möchtest du noch etwas dazusagen?</label>'
              . '<textarea id="notiz" name="notiz" rows="2">' . Util::h(App::post('notiz')) . '</textarea></div>'
              . '<label class="einwilligung"><input type="checkbox" name="einwilligung" value="1" required>'
              . '<span>Ich bin mit der Verarbeitung meiner Angaben zur Durchführung des Termins '

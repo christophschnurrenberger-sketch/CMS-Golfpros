@@ -1,51 +1,100 @@
 /*
  * Kundenportal.
  *
- * Baut auf app.css auf – dieselben Farbtoken, dieselben Karten, Pillen und
- * Knöpfe. Hier steht nur, was der Kunde anders braucht als der Trainer:
- * eine Navigation, die auf dem Telefon unten am Daumen liegt, und ein
- * großzügigerer Rhythmus, weil auf einer Seite selten mehr als drei Dinge
- * stehen.
+ * Trägt dieselbe Handschrift wie die öffentliche Website – warmes Papier,
+ * Archivo, Caveat als zweite Stimme, sehr große Zahlen –, nicht die dichte
+ * Oberfläche der Anwendung. Der Kunde verwaltet nichts, er schaut nach:
+ * Wann ist mein nächster Termin, wie steht mein Handicap, woran arbeiten
+ * wir gerade.
+ *
+ * Die Navigation liegt auf dem Telefon unten am Daumen und wandert am
+ * Schreibtisch nach oben.
  */
 
 .portal {
-  background: var(--flaeche-2);
+  --marke: #2e6a3e;
+  --marke-dunkel: #24512f;
+  --akzent: #f2c64b;
+
+  --grund: #fbf8f0;
+  --flaeche: #edefe1;
+  --flaeche-2: #f4f2e6;
+  --streifen-a: #e3e5ce;
+  --streifen-b: #edefdc;
+
+  --text: #17271c;
+  --text-2: #45524a;
+  --text-3: #5a6659;
+  --rand: rgba(23, 39, 28, 0.16);
+  --rand-stark: rgba(23, 39, 28, 0.3);
+
+  --schrift: "Archivo", system-ui, sans-serif;
+  --hand: "Caveat", "Segoe Script", cursive;
+  --rand-seite: clamp(18px, 5vw, 36px);
+
+  margin: 0;
+  background: var(--grund);
+  color: var(--text);
+  font-family: var(--schrift);
+  font-size: 17px;
+  line-height: 1.66;
+  -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
 
+.portal *, .portal *::before, .portal *::after { box-sizing: border-box; }
+.portal a { color: inherit; text-decoration: none; }
+.portal h1, .portal h2, .portal h3 { margin: 0; font-weight: 500; letter-spacing: -0.025em; }
+
 /* ------------------------------------------------------------- Kopf --- */
 
 .portal__kopf {
   position: sticky; top: 0; z-index: 40;
-  display: flex; align-items: center; gap: var(--r3);
-  padding: 0 var(--r4);
-  height: 58px;
-  background: color-mix(in srgb, var(--flaeche) 88%, transparent);
-  backdrop-filter: saturate(180%) blur(14px);
-  border-bottom: 1px solid var(--rand);
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 var(--rand-seite);
+  height: 62px;
+  background: color-mix(in srgb, var(--grund) 90%, transparent);
+  backdrop-filter: saturate(150%) blur(12px);
+  -webkit-backdrop-filter: saturate(150%) blur(12px);
 }
-.portal__marke { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
-.portal__marke-text { font-weight: 640; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.portal__ich { display: flex; text-decoration: none; }
+.portal__marke { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+.portal__marke-text { font-weight: 600; font-size: 17px; letter-spacing: -0.028em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.portal__marke-zusatz { font-family: var(--hand); font-size: 17px; color: var(--marke); }
+.portal__ich { display: flex; }
+.portal .fueller { flex: 1; }
+.portal .rundknopf {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1px solid var(--rand); background: none; color: var(--text-2);
+  cursor: pointer;
+}
+.portal .rundknopf:hover { border-color: var(--rand-stark); color: var(--text); }
+.portal .avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center;
+  color: #fff; font-size: 13px; font-weight: 600;
+}
 
 /* --------------------------------------------------------- Navigation - */
 
 .portal__navi {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
   display: flex;
-  background: color-mix(in srgb, var(--flaeche) 94%, transparent);
-  backdrop-filter: saturate(180%) blur(14px);
+  background: color-mix(in srgb, var(--grund) 95%, transparent);
+  backdrop-filter: saturate(150%) blur(14px);
+  -webkit-backdrop-filter: saturate(150%) blur(14px);
   border-top: 1px solid var(--rand);
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 .portal__navi-teil {
   flex: 1;
   display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 9px 2px 8px;
-  color: var(--text-3); text-decoration: none;
-  font-size: 10.5px; font-weight: 560;
+  padding: 10px 2px 9px;
+  color: var(--text-3);
+  font-size: 10.5px; font-weight: 500;
   transition: color .15s;
 }
 .portal__navi-teil span { white-space: nowrap; }
@@ -56,107 +105,288 @@
 
 .portal__inhalt {
   flex: 1;
-  width: 100%; max-width: 760px;
+  width: 100%; max-width: 780px;
   margin: 0 auto;
-  padding: var(--r5) var(--r4) 96px;
+  padding: clamp(26px, 5vw, 44px) var(--rand-seite) 104px;
 }
-.portal__titel { font-size: 24px; font-weight: 680; letter-spacing: -.02em; margin-bottom: var(--r5); }
+.portal__titel {
+  font-size: clamp(30px, 7vw, 52px); font-weight: 500;
+  letter-spacing: -0.032em; line-height: 1.02;
+  margin-bottom: clamp(24px, 4vw, 38px);
+  text-wrap: balance;
+}
 
 .portal__fuss {
   display: none;
-  align-items: center; justify-content: center; gap: 7px;
-  padding: var(--r5) var(--r4) calc(var(--r5) + 76px);
-  color: var(--text-4); font-size: 12px;
+  align-items: center; justify-content: center; gap: 8px;
+  padding: clamp(30px, 4vw, 50px) var(--rand-seite) calc(clamp(30px, 4vw, 50px) + 76px);
+  color: var(--text-3); font-size: 14px;
 }
-.portal__fuss a { color: var(--text-3); }
+.portal__fuss a { color: var(--text-2); }
 .portal__fuss-trenner { opacity: .5; }
 
 /* -------------------------------------------------- Nächster Termin --- */
 
 /*
- * Die wichtigste Karte im Portal. Sie beantwortet die Frage, mit der
- * neun von zehn Kunden das Portal öffnen: „Wann ist mein nächster Termin?"
+ * Die wichtigste Karte im Portal. Sie beantwortet die Frage, mit der neun
+ * von zehn Kunden das Portal öffnen: „Wann ist mein nächster Termin?"
+ * Deshalb steht sie ganz oben, trägt die Markenfarbe und nennt das Datum
+ * groß genug, um es im Vorbeigehen zu lesen.
  */
-.naechster {
-  background: linear-gradient(140deg, var(--marke), var(--marke-dunkel));
-  color: #fff;
-  border-radius: var(--radius-l);
-  padding: var(--r5);
-  margin-bottom: var(--r5);
+.portal .naechster {
+  background: var(--marke); color: var(--grund);
+  border-radius: clamp(24px, 4vw, 34px) clamp(24px, 4vw, 34px) clamp(24px, 4vw, 34px) 8px;
+  padding: clamp(26px, 4vw, 36px);
+  margin-bottom: clamp(30px, 4vw, 44px);
 }
-.naechster__label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; opacity: .8; margin-bottom: 6px; }
-.naechster__tag { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
-.naechster__zeit { font-size: 15px; opacity: .92; margin-top: 4px; }
-.naechster__was { margin-top: var(--r4); padding-top: var(--r4); border-top: 1px solid rgba(255,255,255,.22); font-size: 13.5px; }
-.naechster__reihe { display: flex; align-items: center; gap: 8px; opacity: .92; margin-top: 5px; }
-.naechster__knoepfe { display: flex; gap: 8px; margin-top: var(--r4); flex-wrap: wrap; }
-.naechster .btn {
-  background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.28); color: #fff;
+.portal .naechster__label {
+  font-family: var(--hand); font-size: 21px;
+  opacity: .82; margin-bottom: 4px;
 }
-.naechster .btn:hover { background: rgba(255,255,255,.26); }
+.portal .naechster__tag {
+  font-size: clamp(26px, 6vw, 40px); font-weight: 500;
+  letter-spacing: -0.03em; line-height: 1.03;
+}
+.portal .naechster__zeit { font-size: 16px; opacity: .9; margin-top: 6px; }
+.portal .naechster__was {
+  margin-top: clamp(18px, 3vw, 24px); padding-top: clamp(18px, 3vw, 24px);
+  border-top: 1px solid rgba(255, 255, 255, .22);
+  font-size: 15.5px;
+}
+.portal .naechster__reihe { display: flex; align-items: flex-start; gap: 9px; opacity: .9; margin-top: 7px; }
+.portal .naechster__knoepfe { display: flex; gap: 10px; margin-top: clamp(18px, 3vw, 24px); flex-wrap: wrap; }
 
-/* ------------------------------------------------------ Zeitstrahl ---- */
+/* ------------------------------------------------------------ Zahlen -- */
 
-.pt-liste { display: flex; flex-direction: column; gap: 2px; }
-.pt-zeile {
-  display: flex; align-items: center; gap: var(--r3);
-  padding: var(--r3) var(--r4);
+/*
+ * Das Handicap ist die Zahl, die der Kunde sehen will – also steht sie
+ * groß da und nicht als Kachel unter anderen Kacheln.
+ */
+.portal .grosse-zahl { margin-bottom: clamp(30px, 4vw, 46px); }
+.portal .grosse-zahl__label { font-size: 14px; color: var(--text-3); margin-bottom: 2px; }
+.portal .grosse-zahl__wert {
+  font-size: clamp(56px, 16vw, 128px); font-weight: 600;
+  letter-spacing: -0.05em; line-height: 0.86;
+}
+.portal .grosse-zahl__notiz { font-family: var(--hand); font-size: 24px; color: var(--marke); margin-top: 8px; }
+
+.portal .pt-kacheln { display: grid; gap: clamp(20px, 4vw, 34px); grid-template-columns: repeat(2, 1fr); }
+.portal .pt-kachel { display: flex; flex-direction: column; gap: 2px; color: inherit; }
+.portal .pt-kachel__wert { font-size: clamp(30px, 8vw, 44px); font-weight: 600; letter-spacing: -0.04em; line-height: 1; }
+.portal .pt-kachel__label { font-size: 14px; color: var(--text-3); }
+.portal .pt-kachel:hover .pt-kachel__wert { color: var(--marke); }
+
+/* Balkenkurve für die Handicap-Entwicklung. */
+.portal .kurve-balken { display: flex; align-items: flex-end; gap: clamp(6px, 2vw, 13px); height: clamp(120px, 26vw, 180px); }
+.portal .kurve-balken > div { flex: 1; background: var(--flaeche); border-radius: 7px 6px 2px 2px; }
+.portal .kurve-balken > div:nth-child(2n) { border-radius: 6px 8px 2px 2px; }
+.portal .kurve-achse { display: flex; justify-content: space-between; margin-top: 11px; font-size: 13.5px; color: var(--text-3); }
+
+/* ------------------------------------------------------------ Listen -- */
+
+.portal .pt-liste { border-bottom: 1px solid var(--rand); }
+.portal .pt-zeile {
+  display: flex; align-items: center; gap: clamp(14px, 3vw, 24px);
+  padding: 18px 0;
+  border-top: 1px solid var(--rand);
+  color: inherit;
+}
+.portal .pt-zeile:hover { color: var(--marke); }
+.portal .pt-zeile__datum {
+  flex: none; width: 52px;
+  font-family: var(--hand); font-size: 21px; color: var(--marke); line-height: 1.1;
+}
+.portal .pt-zeile__text { flex: 1; min-width: 0; }
+.portal .pt-zeile__titel { font-weight: 500; font-size: 16.5px; letter-spacing: -0.018em; }
+.portal .pt-zeile__unter { font-size: 14.5px; color: var(--text-3); margin-top: 1px; }
+
+/* Aufgaben mit Kreisziffer – die Zahl in Handschrift. */
+.portal .aufgabe { display: flex; gap: clamp(14px, 3vw, 24px); align-items: flex-start; padding: 22px 0; border-top: 1px solid var(--rand); }
+.portal .aufgabe__ring {
+  flex: none; width: 38px; height: 38px; border-radius: 50%;
+  border: 1.5px solid var(--rand-stark);
+  display: grid; place-items: center;
+  font-family: var(--hand); font-size: 22px;
+}
+
+/* ------------------------------------------------------------ Karten -- */
+
+.portal .karte {
   background: var(--flaeche);
-  border: 1px solid var(--rand);
-  text-decoration: none; color: inherit;
+  border-radius: clamp(20px, 3vw, 28px) clamp(20px, 3vw, 28px) clamp(20px, 3vw, 28px) 6px;
+  padding: clamp(22px, 3.4vw, 30px);
 }
-.pt-zeile:first-child { border-radius: var(--radius-m) var(--radius-m) 0 0; }
-.pt-zeile:last-child { border-radius: 0 0 var(--radius-m) var(--radius-m); }
-.pt-zeile:only-child { border-radius: var(--radius-m); }
-.pt-zeile + .pt-zeile { border-top: 0; }
-.pt-zeile:hover { background: var(--flaeche-3); }
-.pt-zeile__datum {
-  flex: none; width: 46px; text-align: center;
-  display: flex; flex-direction: column; line-height: 1.1;
-}
-.pt-zeile__tag { font-size: 17px; font-weight: 680; font-variant-numeric: tabular-nums; }
-.pt-zeile__monat { font-size: 10.5px; color: var(--text-4); text-transform: uppercase; letter-spacing: .05em; }
-.pt-zeile__text { flex: 1; min-width: 0; }
-.pt-zeile__titel { font-weight: 560; font-size: 13.5px; }
-.pt-zeile__unter { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+.portal .karte--rand { background: none; border: 1px solid var(--rand); }
+.portal .karte__kopf { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; }
+.portal .karte__kopf h2 { font-size: clamp(19px, 2.4vw, 23px); flex: 1; }
+.portal .karte__fuss { display: flex; align-items: center; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
 
-/* -------------------------------------------------------- Kacheln ----- */
-
-.pt-kacheln { display: grid; gap: var(--r3); grid-template-columns: repeat(2, 1fr); }
-.pt-kachel {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: var(--r4);
-  background: var(--flaeche); border: 1px solid var(--rand);
-  border-radius: var(--radius-m);
-  text-decoration: none; color: inherit;
+.portal .abschnitt-titel {
+  font-family: var(--hand); font-size: clamp(24px, 5vw, 30px); color: var(--marke);
+  margin: clamp(34px, 5vw, 52px) 0 clamp(14px, 2vw, 20px);
 }
-.pt-kachel:hover { border-color: var(--rand-stark); }
-.pt-kachel__symbol { color: var(--marke); display: flex; margin-bottom: 2px; }
-.pt-kachel__wert { font-size: 21px; font-weight: 680; letter-spacing: -.02em; }
-.pt-kachel__label { font-size: 12px; color: var(--text-3); }
+.portal .abschnitt-titel:first-child { margin-top: 0; }
+
+/* ------------------------------------------------------------ Knöpfe -- */
+
+.portal .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 24px; border-radius: 999px;
+  background: var(--marke); color: var(--grund);
+  font-family: var(--schrift); font-size: 15.5px; font-weight: 600;
+  border: none; cursor: pointer; width: fit-content;
+  transition: background .18s;
+}
+.portal .btn:hover { background: var(--marke-dunkel); color: var(--grund); }
+.portal .btn--klein { padding: 10px 18px; font-size: 14.5px; }
+.portal .btn--rand { background: none; color: var(--text); border: 1px solid var(--rand-stark); }
+.portal .btn--rand:hover { background: none; border-color: var(--text); color: var(--text); }
+.portal .naechster .btn { background: rgba(255,255,255,.16); color: var(--grund); }
+.portal .naechster .btn:hover { background: rgba(255,255,255,.26); }
+
+/* Pillen und Marken */
+.portal .pille {
+  display: inline-flex; align-items: center;
+  padding: 5px 13px; border-radius: 999px;
+  border: 1px solid var(--rand-stark);
+  font-size: 13.5px; font-weight: 500; color: var(--text-2);
+}
+.portal .pille--marke { background: var(--flaeche); border-color: transparent; color: var(--marke); }
+.portal .pille--erfolg { background: var(--flaeche); border-color: transparent; color: var(--marke); }
+.portal .pille--gefahr { border-color: #c98b7a; color: #8f3721; }
+.portal .pille--offen { border-color: var(--akzent); color: #7a5c12; }
+
+/* --------------------------------------------------------- Formulare -- */
+
+.portal .feld { margin-bottom: 18px; }
+.portal .feld__label { display: block; font-size: 14px; color: var(--text-3); margin-bottom: 6px; }
+.portal .eingabe {
+  width: 100%; padding: 12px 0;
+  border: none; border-bottom: 1px solid var(--rand-stark); border-radius: 0;
+  background: transparent; color: var(--text);
+  font-family: var(--schrift); font-size: 17px;
+}
+.portal .eingabe:focus { outline: none; border-bottom-color: var(--marke); border-bottom-width: 1.5px; }
+.portal textarea.eingabe { resize: vertical; }
+.portal .feld-reihe { display: flex; flex-wrap: wrap; gap: clamp(18px, 3vw, 30px); }
+.portal .feld-reihe > * { flex: 1 1 200px; min-width: 0; }
+.portal .haken { display: flex; gap: 11px; align-items: flex-start; font-size: 15px; }
+.portal .haken input { margin-top: 5px; accent-color: var(--marke); }
+.portal .haken__hinweis { display: block; font-size: 13.5px; color: var(--text-3); margin-top: 2px; }
+
+.portal .hinweis {
+  display: flex; gap: 13px; align-items: flex-start;
+  padding: 15px 18px; margin-bottom: 20px;
+  border-radius: 16px 16px 16px 5px;
+  background: var(--flaeche); color: var(--text-2);
+  font-size: 15px;
+}
+.portal .hinweis--gefahr { background: #fbebe7; color: #8f3721; }
+.portal .hinweis--erfolg { background: var(--flaeche); color: var(--marke-dunkel); }
+.portal .hinweis__titel { display: block; font-weight: 600; margin-bottom: 2px; }
+
+/* ----------------------------------------------------------- Tabellen -- */
+
+.portal .tabelle-huelle { overflow-x: auto; }
+.portal .tabelle { width: 100%; border-collapse: collapse; font-size: 15.5px; }
+.portal .tabelle th {
+  text-align: left; font-weight: 400; font-size: 13px;
+  color: var(--text-3); text-transform: uppercase; letter-spacing: .06em;
+  padding: 0 14px 10px 0; border-bottom: 1px solid var(--rand);
+}
+.portal .tabelle td { padding: 13px 14px 13px 0; border-bottom: 1px solid var(--rand); }
+.portal .tabelle tr:last-child td { border-bottom: 0; }
+.portal .tabnum { font-variant-numeric: tabular-nums; }
+
+/* ----------------------------------------------------------- Kleines --- */
+
+.portal .stapel { display: flex; flex-direction: column; gap: clamp(16px, 2.4vw, 24px); }
+.portal .stapel--eng { gap: 10px; }
+.portal .reihe { display: flex; align-items: center; gap: 12px; }
+.portal .reihe--zwischen { justify-content: space-between; }
+.portal .reihe--umbruch { flex-wrap: wrap; }
+.portal .mitte { text-align: center; }
+.portal .rechts { text-align: right; }
+.portal .gedimmt { color: var(--text-2); }
+.portal .klein { font-size: 14.5px; }
+.portal .winzig { font-size: 13px; color: var(--text-3); }
+.portal .halbfett { font-weight: 600; }
+.portal .hand { font-family: var(--hand); color: var(--marke); }
+.portal .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: .92em; }
+.portal .umbruch-nein { white-space: nowrap; }
+.portal .mb-2 { margin-bottom: 8px; }  .portal .mb-3 { margin-bottom: 12px; }
+.portal .mb-4 { margin-bottom: 18px; } .portal .mb-5 { margin-bottom: 26px; }
+.portal .mt-2 { margin-top: 8px; }     .portal .mt-3 { margin-top: 12px; }
+.portal .mt-4 { margin-top: 18px; }    .portal .mt-5 { margin-top: 26px; }
+.portal .versteckt { display: none; }
+.portal .nicht-mobil { display: none; }
+
+.portal .balken { height: 6px; border-radius: 999px; background: var(--flaeche); overflow: hidden; }
+.portal .balken__fuellung { height: 100%; background: var(--marke); border-radius: 999px; transition: width .6s ease; }
+
+.portal .leerzustand__symbol {
+  width: 54px; height: 54px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--flaeche); color: var(--marke);
+}
+
+.portal video { border-radius: clamp(18px, 3vw, 26px) clamp(18px, 3vw, 26px) clamp(18px, 3vw, 26px) 6px; }
 
 /* --------------------------------------------------- Ab dem Tablet ---- */
 
 @media (min-width: 760px) {
   .portal__navi {
-    position: sticky; top: 58px; bottom: auto;
-    max-width: 760px; margin: 0 auto;
+    position: sticky; top: 62px; bottom: auto;
+    max-width: 780px; margin: 0 auto;
     border-top: 0; border-bottom: 1px solid var(--rand);
-    /* Gleicher Seitenrand wie der Inhalt, damit der erste Reiter genau
-       unter der Überschrift beginnt und die Spalte nicht ausfranst. */
-    padding: 0 var(--r4);
-    gap: var(--r5);
+    padding: 0 var(--rand-seite);
+    gap: clamp(18px, 3vw, 34px);
   }
   .portal__navi-teil {
-    flex: 0 0 auto;
-    flex-direction: row; gap: 7px;
-    padding: 13px 0 11px;
-    font-size: 13px;
+    flex: 0 0 auto; flex-direction: row; gap: 8px;
+    padding: 14px 0 12px;
+    font-size: 14.5px;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
   }
   .portal__navi-teil.ist-aktiv { border-bottom-color: var(--marke); }
-  .portal__inhalt { padding-bottom: var(--r6); }
-  .portal__fuss { display: flex; padding-bottom: var(--r5); }
-  .pt-kacheln { grid-template-columns: repeat(4, 1fr); }
+  .portal__inhalt { padding-bottom: clamp(40px, 5vw, 70px); }
+  .portal__fuss { display: flex; padding-bottom: clamp(30px, 4vw, 50px); }
+  .portal .pt-kacheln { grid-template-columns: repeat(4, 1fr); }
+  .portal .nicht-mobil { display: revert; }
 }
+
+/* ==========================================================================
+   Klassen der gemeinsamen Ausgabebausteine
+   --------------------------------------------------------------------------
+   lib/vorlage.php erzeugt für Anwendung und Portal dasselbe HTML – pille(),
+   balken(), person(). Damit das Portal nicht app.css mitladen muss, stehen
+   die wenigen davon benutzten Klassen hier noch einmal, in der Sprache
+   dieses Entwurfs statt in der der Anwendung.
+   ========================================================================== */
+
+.portal .karte__koerper { padding: clamp(22px, 3.4vw, 30px); }
+.portal .karte > .karte__koerper:first-child { padding-top: clamp(22px, 3.4vw, 30px); }
+.portal .karte .karte__kopf { margin-bottom: 0; padding: clamp(20px, 3vw, 26px) clamp(22px, 3.4vw, 30px) 0; }
+.portal .karte .karte__fuss { margin-top: 0; padding: 0 clamp(22px, 3.4vw, 30px) clamp(20px, 3vw, 26px); }
+.portal .karte__kopf-aktionen { display: flex; gap: 10px; align-items: center; }
+
+.portal .btn--primaer { background: var(--marke); color: var(--grund); }
+.portal .btn--voll { width: 100%; }
+.portal .feld__hinweis { font-size: 13.5px; color: var(--text-3); margin-top: 6px; }
+.portal .feld-reihe--2 > * { flex: 1 1 200px; }
+.portal .haken__text { flex: 1; }
+.portal .hinweis--still { background: var(--flaeche-2); }
+.portal .hinweis__text { flex: 1; min-width: 0; }
+.portal .inline { display: inline; }
+.portal .versal { text-transform: uppercase; letter-spacing: .07em; font-size: 11px; font-weight: 600; color: var(--text-3); }
+.portal .tabelle--eng td, .portal .tabelle--eng th { padding-top: 10px; padding-bottom: 10px; }
+.portal .pt-kachel__symbol { display: flex; color: var(--marke); margin-bottom: 4px; }
+.portal .pt-zeile__monat { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); display: block; }
+.portal .pt-zeile__tag { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; display: block; line-height: 1.05; }
+.portal .person { display: inline-flex; align-items: center; gap: 11px; }
+.portal .person__name { font-weight: 500; display: block; }
+.portal .person__unter { font-size: 13.5px; color: var(--text-3); display: block; }
+.portal .avatar--gross { width: 64px; height: 64px; font-size: 21px; }
+.portal .avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.portal .ico { flex: none; }

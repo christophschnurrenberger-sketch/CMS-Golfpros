@@ -17,9 +17,9 @@ if (App::istPost()) {
 
     if (App::aktion() === 'speichern') {
         Tenant::aktualisieren(['branding' => Util::json([
-            'primaer' => App::post('primaer', '#0d6b4f'),
+            'primaer' => App::post('primaer', '#2e6a3e'),
             'akzent'  => App::post('akzent', '#b08829'),
-            'schrift' => App::post('schrift', 'Inter'),
+            'schrift' => App::post('schrift', 'Archivo'),
             'radius'  => max(0, min(28, App::postInt('radius', 14))),
             'stil'    => App::post('stil', 'modern'),
         ])]);
@@ -122,9 +122,21 @@ require __DIR__ . '/partials/kopf.php';
           <select id="schrift" name="schrift" onchange="vorschau()">
             <?php foreach (Website::SCHRIFTEN as $k => $name): ?>
               <option value="<?= Util::attr($k) ?>"<?= (string) $b['schrift'] === $k ? ' selected' : '' ?>>
-                <?= Util::h($name) ?></option>
+                <?= Util::h($name) ?><?= Website::vomEigenenServer($k) ? '' : ' · von Google' ?></option>
             <?php endforeach; ?>
           </select>
+          <?php /*
+           * Der Hinweis steht bewusst hier und nicht im Kleingedruckten: Die
+           * Entscheidung fällt in diesem Auswahlfeld, und wer sie trifft,
+           * soll wissen, was sie bedeutet. LG München I, 20.01.2022,
+           * Az. 3 O 17493/20.
+           */ ?>
+          <div class="feld__hinweis">
+            Archivo liegt auf deinem Server. Die anderen Schriften lädt der
+            Browser deines Besuchers bei Google – dabei geht seine
+            IP-Adresse dorthin, bevor er etwas angeklickt hat. Das gehört
+            dann in die Datenschutzerklärung.
+          </div>
         </div>
         <div class="feld">
           <label class="feld__label" for="radius">Rundung: <span id="radius-wert"><?= (int) $b['radius'] ?></span> px</label>
@@ -144,6 +156,10 @@ require __DIR__ . '/partials/kopf.php';
                 <span class="wahl-karte__text"><?= Util::h($text) ?></span>
               </label>
             <?php endforeach; ?>
+          </div>
+          <div class="feld__hinweis">
+            „Klassisch“ setzt die Überschriften in Libre Baskerville und holt
+            diese Schrift ebenfalls bei Google.
           </div>
         </div>
       </div>
@@ -187,30 +203,57 @@ require __DIR__ . '/partials/kopf.php';
 
     <div class="karte">
       <div class="karte__kopf"><h3>Vorschau</h3></div>
+      <?php /*
+       * Die Vorschau zeigt denselben Entwurf wie die echte Seite: warmes
+       * Papier, sehr große Überschrift, gelber Marker, Handschrift als
+       * zweite Stimme, eine abweichende Ecke. Eine hübschere, aber andere
+       * Vorschau wäre schlimmer als gar keine – dann wählt der Pro seine
+       * Farbe an einem Bild aus, das es nicht gibt.
+       */ ?>
       <div class="karte__koerper" id="vorschau-flaeche"
-           style="--v-marke:<?= Util::attr((string) $b['primaer']) ?>;--v-radius:<?= (int) $b['radius'] ?>px">
-        <div style="border:1px solid var(--rand);border-radius:var(--v-radius);overflow:hidden">
-          <div style="padding:var(--r4);border-bottom:1px solid var(--rand);display:flex;align-items:center;gap:10px">
-            <strong style="font-size:15px"><?= Util::h(Tenant::name()) ?></strong>
-            <span class="fueller"></span>
-            <span style="background:var(--v-marke);color:#fff;padding:6px 13px;
-                         border-radius:calc(var(--v-radius) - 4px);font-size:12.5px;font-weight:600">
-              Termin buchen</span>
+           style="--v-marke:<?= Util::attr((string) $b['primaer']) ?>;
+                  --v-akzent:<?= Util::attr((string) $b['akzent']) ?>;
+                  --v-radius:<?= (int) $b['radius'] ?>px;
+                  --v-ecke:calc(var(--v-radius) * 2.1);
+                  --v-ecke-klein:calc(var(--v-radius) * .43);
+                  --v-ecke-knopf:calc(var(--v-radius) * 1.8);
+                  background:#fbf8f0;color:#17271c;
+                  border-radius:var(--v-ecke) var(--v-ecke) var(--v-ecke) var(--v-ecke-klein)">
+
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:22px">
+          <div style="min-width:0">
+            <div id="vorschau-marke" style="font-size:15px;font-weight:600;letter-spacing:-.03em;
+                 line-height:1.05"><?= Util::h(Tenant::name()) ?></div>
+            <div class="vorschau-hand" style="font-size:14px;color:var(--v-marke)">Golfschule</div>
           </div>
-          <div style="padding:var(--r5)">
-            <div style="color:var(--v-marke);font-size:11px;font-weight:660;letter-spacing:.09em;
-                        text-transform:uppercase;margin-bottom:8px">PGA Golf Professional</div>
-            <div id="vorschau-titel" style="font-size:23px;font-weight:680;letter-spacing:-.026em;
-                        line-height:1.2;margin-bottom:10px">Besser Golf spielen.<br>Mit einem Plan.</div>
-            <p class="klein gedimmt" style="margin-bottom:var(--r4)">Individuelles Training für
-              Einsteiger und Fortgeschrittene.</p>
-            <div class="reihe reihe--eng">
-              <span style="background:var(--v-marke);color:#fff;padding:9px 18px;
-                           border-radius:calc(var(--v-radius) - 4px);font-size:13.5px;font-weight:600">Buchen</span>
-              <span style="border:1.5px solid var(--rand-2);padding:8px 17px;
-                           border-radius:calc(var(--v-radius) - 4px);font-size:13.5px;font-weight:560">Leistungen</span>
-            </div>
-          </div>
+          <span class="fueller"></span>
+          <span style="background:var(--v-marke);color:#fbf8f0;padding:7px 15px;
+                       border-radius:var(--v-ecke-knopf);font-size:12px;font-weight:600;
+                       white-space:nowrap">Termin buchen</span>
+        </div>
+
+        <div id="vorschau-titel" style="font-size:31px;font-weight:500;letter-spacing:-.035em;
+             line-height:.98;margin-bottom:14px">In acht Wochen<br>zur Platzreife.<br>
+          <span id="vorschau-marker" style="background:var(--v-akzent);border-radius:7px;
+                padding:0 .08em .04em">Ohne Umwege.</span></div>
+
+        <p style="font-size:13.5px;line-height:1.65;color:#45524a;margin:0 0 18px;max-width:34ch">
+          Vom ersten Schlag bis auf den Platz – in kleinen Gruppen, mit festem Ablauf.</p>
+
+        <div class="reihe reihe--eng" style="align-items:center;gap:18px">
+          <span style="background:var(--v-marke);color:#fbf8f0;padding:11px 22px;
+                       border-radius:var(--v-ecke-knopf);font-size:13.5px;font-weight:600">
+            Freie Termine ansehen</span>
+          <span style="font-size:13.5px;font-weight:560;border-bottom:1.5px solid currentColor;
+                       padding-bottom:2px">Preise</span>
+        </div>
+
+        <div style="display:flex;align-items:flex-end;gap:14px;margin-top:24px;
+                    padding-top:20px;border-top:1px solid rgba(23,39,28,.16)">
+          <div style="flex:none;width:58px;height:58px;border-radius:0 50% 50% 50%;
+                      background:repeating-linear-gradient(107deg,#e3e5ce 0 7px,#edefdc 7px 14px)"></div>
+          <div class="vorschau-hand" style="font-size:17px;color:var(--v-marke);line-height:1.25">
+            Erste Stunde? Schläger<br>stelle ich.</div>
         </div>
       </div>
     </div>
@@ -224,17 +267,29 @@ require __DIR__ . '/partials/kopf.php';
   </div>
 </div>
 
+<style>
+/* Die zweite Stimme des Entwurfs. Caveat liegt bereits im Kopf bereit. */
+.vorschau-hand { font-family: "Caveat", "Segoe Script", cursive; }
+</style>
+
 <script>
 function vorschau() {
   var f = document.getElementById('vorschau-flaeche');
   f.style.setProperty('--v-marke', document.getElementById('primaer').value);
+  f.style.setProperty('--v-akzent', document.getElementById('akzent').value);
   f.style.setProperty('--v-radius', document.getElementById('radius').value + 'px');
+
   var stil = document.querySelector('input[name="stil"]:checked');
-  var titel = document.getElementById('vorschau-titel');
   var schrift = document.getElementById('schrift').value;
+  var titel = document.getElementById('vorschau-titel');
+
+  /* Dieselbe Regel wie in Website::stilVariablen(): nur „klassisch“ tauscht
+     die Titelschrift; „kraftvoll“ macht sie schwerer, nicht anders. */
   titel.style.fontFamily = (stil && stil.value === 'klassisch')
     ? '"Libre Baskerville", Georgia, serif' : '"' + schrift + '", system-ui, sans-serif';
-  titel.style.fontWeight = (stil && stil.value === 'kraftvoll') ? '760' : '680';
+  titel.style.fontWeight = (stil && stil.value === 'kraftvoll') ? '660' : '500';
+  document.getElementById('vorschau-marke').style.fontFamily =
+    '"' + schrift + '", system-ui, sans-serif';
 }
 </script>
 

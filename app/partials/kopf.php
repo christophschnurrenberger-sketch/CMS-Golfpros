@@ -31,9 +31,8 @@ $logo       = (string) (Tenant::workspace()['logo'] ?? '');
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title><?= Util::h($titel) ?> · <?= Util::h(Tenant::name()) ?></title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<?php /* Schrift vom eigenen Server: keine Verbindung zu Google beim Anmelden. */ ?>
+<link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/schriften.css')) ?>">
 <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/app.css')) ?>">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230d6b4f'/><text x='16' y='22' font-family='Helvetica' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>G</text></svg>">
 <script>

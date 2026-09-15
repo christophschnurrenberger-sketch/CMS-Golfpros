@@ -452,9 +452,7 @@ require __DIR__ . '/partials/kopf.php';
                  value="<?= Util::attr((string) $branding['akzent']) ?>"></div>
         <div class="feld"><label class="feld__label" for="f-schrift">Schrift</label>
           <select id="f-schrift" name="schrift">
-            <?php foreach (['Inter' => 'Inter – sachlich, sehr gut lesbar',
-                            'Source Serif 4' => 'Source Serif – traditionell',
-                            'Outfit' => 'Outfit – modern, rund'] as $k => $v): ?>
+            <?php foreach (Website::SCHRIFTEN as $k => $v): ?>
               <option value="<?= Util::attr($k) ?>"<?= (string) $branding['schrift'] === $k ? ' selected' : '' ?>>
                 <?= Util::h($v) ?></option>
             <?php endforeach; ?>

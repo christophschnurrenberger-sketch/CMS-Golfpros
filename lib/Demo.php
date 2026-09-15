@@ -52,8 +52,8 @@ final class Demo
                 'plan'      => 'academy',
                 'domain'    => '',
                 'branding'  => Util::json([
-                    'primaer' => '#0d6b4f', 'akzent' => '#b08829',
-                    'schrift' => 'Inter', 'radius' => 14, 'stil' => 'modern',
+                    'primaer' => '#2e6a3e', 'akzent' => '#f2c64b',
+                    'schrift' => 'Archivo', 'radius' => 14, 'stil' => 'modern',
                 ]),
                 'waehrung'  => 'EUR',
                 'sprache'   => 'de',
@@ -113,6 +113,9 @@ final class Demo
             'website_beschreibung' => 'Golftraining für Einsteiger, Fortgeschrittene und Junioren '
                                     . 'in Karlsruhe – mit Videoanalyse und Trainingsplan.',
             'mail_absender_name' => 'Golf Academy Bergmann',
+            /* Die Handschriftzeile im Kopf und die Zeile im Trainerprofil. */
+            'kopf_zusatz' => 'Golfschule · Karlsruhe',
+            'unterrichtszeiten' => 'Di – Sa, nach Vereinbarung',
             'stornofrist_stunden' => 24,
         ] as $k => $v) {
             Tenant::einstellungSetzen($k, $v);
@@ -1179,7 +1182,8 @@ final class Demo
 
         /* Weitere Seiten */
         $ueberMich = [
-            self::block('hero', ['obertitel' => 'Über mich', 'titel' => 'Daniel Bergmann',
+            self::block('hero', ['obertitel' => 'Der Trainer', 'ausrichtung' => 'mitte',
+                'titel' => 'Daniel Bergmann',
                 'text' => 'PGA Golf Professional seit 2008. Seit 2019 mit eigener Akademie in Karlsruhe.',
                 'ausrichtung' => 'links', 'hoehe' => 'klein', 'knopf_text' => '', 'knopf2_text' => '']),
             self::block('text', ['titel' => 'Wie ich arbeite', 'text' =>
@@ -1212,7 +1216,8 @@ final class Demo
         ]);
 
         $preise = [
-            self::block('hero', ['obertitel' => 'Preise', 'titel' => 'Was Training kostet',
+            self::block('hero', ['obertitel' => 'Kursangebot & Preise',
+                'titel' => 'Was Training *wirklich kostet.*',
                 'text' => 'Alle Preise inklusive Mehrwertsteuer. Pakete sind günstiger als Einzelstunden.',
                 'ausrichtung' => 'mitte', 'hoehe' => 'klein', 'knopf_text' => '', 'knopf2_text' => '']),
             self::block('leistungen', ['titel' => 'Einzelleistungen', 'automatisch' => true]),

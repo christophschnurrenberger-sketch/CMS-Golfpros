@@ -189,6 +189,68 @@ sich nie ganz schließen lässt.
 Gerendert wird auf dem Server. Das hält die Website schnell, macht sie für
 Suchmaschinen lesbar und funktioniert ohne JavaScript.
 
+## Gestaltung
+
+Der Renderer erzeugt kein Raster aus gleich großen Kacheln. Die
+öffentliche Website folgt einer redaktionellen Ordnung: eine Titelzeile,
+die über das Bild darunter läuft, Listen mit Haarlinien statt Boxen,
+Zitate, die versetzt untereinander stehen, ein handschriftlicher Einwurf
+dort, wo eine Person spricht.
+
+Der Grund ist nicht Geschmack. Eine Seite aus zwölf gleichen Kacheln sieht
+aus wie ein Verwaltungswerkzeug, und genau so wird sie gelesen. Die Kunden
+dieser Trainer buchen Unterricht bei einem Menschen, nicht bei einem
+Betrieb. Die Seite muss das aushalten.
+
+Die Werte stehen als CSS-Variablen im `:root` von `assets/css/site.css`:
+Creme `#FBF8F0` als Grund, Tannengrün `#2E6A3E` als Marke, ein
+Beinahe-Schwarz `#17271C` für Text, Gelb `#F2C64B` als Marker. Die
+Marke überschreibt der Mandant im Kopf der Seite – nur sie, nicht das
+System dahinter; sonst könnte eine Farbwahl im Einrichtungsdialog die
+Lesbarkeit zerstören.
+
+Die eine Form-Einstellung, die der Pro hat, ist die Rundung (0 bis 28).
+Sie steht nicht als fertige Ecke im Stylesheet, sondern als Maß, aus dem
+`--ecke`, `--ecke-klein` und `--ecke-knopf` abgeleitet werden. Bei 0 wird
+die Seite streng und kantig, bei 28 weich; die eine abweichende kleine
+Ecke der Karten bleibt als Signatur erhalten. Ein Regler, der auf nichts
+mehr wirkt, ist schlimmer als kein Regler – deshalb hängt hier alles, was
+„Rundung“ heißt, an diesem einen Wert.
+
+Schriftgrößen sind fließend (`clamp()`), nicht gestuft. Zwischen Telefon
+und Schreibtisch liegen bei der Titelzeile 42 und 126 Pixel; das über
+Haltepunkte zu schalten ergäbe Sprünge, die man sieht.
+
+Ein paar Regeln, die von Fehlern kommen und deshalb aufgeschrieben sind:
+
+* Absichtliche Überstände (`margin-right: clamp(-44px, -3vw, 0)`) werden
+  mit `overflow-x: clip` am Abschnitt gefangen, **nicht** mit `hidden`:
+  `hidden` erzeugt einen Scroll-Container und nimmt dem Kopf sein
+  `position: sticky`. Am `body` wirkt beides gar nicht – der Browser
+  reicht die Angabe an `html` weiter.
+* Rasterspalten sind `minmax(0, 1fr)`, nicht `1fr`. Sonst wächst eine
+  lange URL die Spalte über den Bildschirm hinaus.
+* Der Schrittanzeiger blendet unter 680 Pixeln alle Namen außer dem
+  aktuellen aus. Drei Namen nebeneinander passen nicht in 390 Pixel, und
+  die Seite ließe sich seitlich verschieben.
+
+### Schriften liegen auf dem eigenen Server
+
+`assets/fonts/` enthält Archivo und Caveat als variable Schriftschnitte,
+`assets/css/schriften.css` bindet sie ein. Kein Aufruf zu Google.
+
+Das ist keine Vorsicht, sondern die Rechtslage: Das Landgericht München I
+hat am 20.01.2022 (Az. 3 O 17493/20) entschieden, dass die Einbindung von
+Google Fonts die IP-Adresse des Besuchers ohne Einwilligung an einen
+Dritten überträgt und einen Unterlassungs- und Schadenersatzanspruch
+begründet. Wer mit dieser Software die Website seines Betriebs
+veröffentlicht, soll deswegen keine Post bekommen.
+
+Ein variabler Schnitt je Familie und Zeichensatz deckt alle Stärken ab;
+zusammen 180 KB. Wählt ein Mandant im Einrichtungsdialog eine andere
+Schrift, lädt `Website::schriften()` diese weiterhin bei Google – dann
+aber als bewusste Entscheidung und mit dem Hinweis daneben.
+
 ## Verfügbarkeit ist Rechnen, nicht Speichern
 
 `Bookings::freieZeiten()` speichert keine Zeitfenster. Es nimmt die
