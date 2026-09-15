@@ -284,6 +284,46 @@ final class Bloecke
             'standard' => ['titel' => 'Termin buchen', 'text' => 'Wähle eine Leistung und einen freien Termin.', 'service_id' => 0],
         ],
 
+        /*
+         * Der Weg zum Konto, direkt auf der Website.
+         *
+         * Bis hierher gab es ihn nur im Kundenzugang – wer ihn nicht
+         * suchte, fand ihn nicht. Auf der Startseite steht er da, wo die
+         * Leute ohnehin sind.
+         *
+         * Wichtig bleibt die Reihenfolge der Dinge: Gebucht wird weiter
+         * ohne Konto. Dieser Baustein wirbt für den Bereich danach –
+         * Termine, Trainingsplan, Unterlagen –, nicht für eine Hürde vor
+         * der ersten Buchung.
+         */
+        'konto' => [
+            'name' => 'Kundenzugang', 'icon' => 'lock', 'gruppe' => 'Handlung',
+            'felder' => [
+                'titel'      => ['Überschrift', 'text'],
+                'text'       => ['Text', 'mehrzeilig'],
+                'vorteile'   => ['Was der Kunde davon hat', 'liste', [
+                    'text' => ['Zeile', 'text'],
+                ]],
+                'knopf_text' => ['Knopf', 'text'],
+                'stil'       => ['Darstellung', 'auswahl', [
+                    'formular' => 'Formular direkt auf der Seite',
+                    'knopf'    => 'Nur ein Knopf zum Anmeldebereich',
+                ]],
+            ],
+            'standard' => [
+                'titel' => 'Dein Bereich bei uns',
+                'text'  => 'Termine, Trainingsplan und Unterlagen an einem Ort – '
+                         . 'auf dem Telefon genauso wie am Rechner.',
+                'vorteile' => [
+                    ['text' => 'Alle Termine auf einen Blick, absagen mit zwei Klicks'],
+                    ['text' => 'Trainingsplan und Videoanalysen jederzeit griffbereit'],
+                    ['text' => 'Rechnungen und Unterlagen zum Nachlesen'],
+                ],
+                'knopf_text' => 'Konto anlegen',
+                'stil' => 'formular',
+            ],
+        ],
+
         'formular' => [
             'name' => 'Formular', 'icon' => 'inbox', 'gruppe' => 'Handlung',
             'felder' => [

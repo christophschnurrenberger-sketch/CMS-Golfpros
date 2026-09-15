@@ -1198,6 +1198,22 @@ final class Demo
         $entwurf = KI::websiteEntwurf('Golf Professional mit Schwerpunkt Anfänger und Platzreife, '
             . 'dazu Leistungstraining und Junioren', 'Golf Academy Bergmann');
 
+        /*
+         * Der Kundenzugang gehört auf die Startseite der Vorführung, damit
+         * man ihn beim Durchklicken sieht. Für eine echte Golfschule setzt
+         * ihn der Pro selbst – manche wollen ihn, manche nicht.
+         */
+        $kontoBlock = self::block('konto', []);
+        $vorKontakt = array_search('kontakt', array_column($entwurf['bloecke'], 'typ'), true);
+        if ($vorKontakt === false) {
+            $entwurf['bloecke'][] = $kontoBlock;
+        } else {
+            /* Vor „Kontakt & Anfahrt": Wer bis hierher gelesen hat, ist
+               überzeugt – dann kommt das Angebot und erst danach die
+               Adresse. Hinter der Anfahrt wirkt es angehängt. */
+            array_splice($entwurf['bloecke'], (int) $vorKontakt, 0, [$kontoBlock]);
+        }
+
         $startId = Tenant::insert('pages', [
             'titel' => 'Startseite', 'slug' => 'start',
             'bloecke' => Util::json($entwurf['bloecke']),

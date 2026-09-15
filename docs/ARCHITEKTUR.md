@@ -324,6 +324,15 @@ kann den Weg abschalten (`registrierung_offen`, Einstellungen →
 Buchung); die Gastbuchung bleibt davon unberührt, denn sie ist kein
 Konto.
 
+Auf der Website steht der Weg als Baustein **Kundenzugang** zur
+Verfügung (Gruppe *Handlung*). Er kennt drei Zustände: Wer angemeldet
+ist, sieht keine Werbung, sondern eine Tür in seinen Bereich; ist die
+Selbstregistrierung abgeschaltet, verschwindet der Baustein ganz – ein
+Formular, das nichts anlegt, ist schlimmer als keins; sonst zeigt er je
+nach Einstellung das Formular oder nur einen Knopf. Abgeschickt wird an
+dieselbe `portal/registrieren.php` mit derselben Prüfung, derselben
+Roboterfalle und demselben Protokoll. Der Baustein baut nichts nach.
+
 `Kundenlogin::registrieren()` antwortet mit einem von drei Wörtern:
 `fehler`, `angemeldet` oder `mail`. Der dritte Fall ist der wichtige. Ist
 die Adresse hier schon bekannt, sagt die Seite das **nicht** – sonst

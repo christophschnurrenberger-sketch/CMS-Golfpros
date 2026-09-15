@@ -555,6 +555,71 @@
 .seite .vorgang__zurueck a { border-bottom: 1.5px solid var(--marke); padding-bottom: 2px; font-weight: 500; }
 .seite .vorgang__form { margin: 0 0 26px; }
 
+/* ------------------------------------------ Baustein Kundenzugang ---- */
+
+/*
+ * Der Kasten steht auf der Website, nicht im Portal – er darf also nicht
+ * wie ein Formular aussehen, das man ausfüllen muss, sondern wie ein
+ * Angebot, das man annehmen kann. Deshalb der ruhige Grund und die
+ * Vorteile über dem Formular: Erst der Grund, dann die Felder.
+ */
+.seite .kontokasten {
+  border: 1px solid var(--rand);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+  background: var(--flaeche-2);
+  padding: clamp(22px, 4vw, 36px);
+}
+.seite .kontokasten .vorgang__form { margin: 0; }
+
+.seite .kontokasten__vorteile {
+  list-style: none;
+  margin: 0 0 26px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.seite .kontokasten__vorteile li {
+  position: relative;
+  padding-left: 28px;
+  font-size: 16.5px;
+  color: var(--text-2);
+}
+/* Der Haken ist gezeichnet, nicht getippt: Ein Häkchen aus der Schrift
+   sitzt je nach Gerät zu hoch, zu tief oder fehlt ganz. */
+.seite .kontokasten__vorteile li::before {
+  content: '';
+  position: absolute;
+  left: 4px; top: 8px;
+  width: 11px; height: 6px;
+  border-left: 2px solid var(--marke);
+  border-bottom: 2px solid var(--marke);
+  transform: rotate(-45deg);
+}
+
+.seite .kontokasten__klein {
+  margin: 16px 0 0;
+  font-size: 14.5px;
+  color: var(--text-3);
+}
+.seite .kontokasten__klein a {
+  color: var(--marke);
+  font-weight: 500;
+  border-bottom: 1.5px solid currentColor;
+  padding-bottom: 1px;
+}
+
+/* Wer schon angemeldet ist, bekommt keine Werbung, sondern eine Tür. */
+.seite .kontokasten--bekannt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  background: var(--marke-hell);
+}
+.seite .kontokasten__gruss { margin: 0; font-size: 17.5px; }
+
 /* -------------------------------------- Anmelden oder als Gast ------- */
 
 /*

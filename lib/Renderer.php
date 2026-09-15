@@ -634,6 +634,100 @@ final class Renderer
              . '</form></div>';
     }
 
+    /**
+     * Der Kundenzugang auf der Website.
+     *
+     * Drei Zustände, und alle drei sind gemeint:
+     *
+     *   * **Angemeldet** – dann wirbt nichts mehr, dann steht da ein Weg
+     *     in den eigenen Bereich. Jemandem ein Anmeldeformular zu zeigen,
+     *     der schon angemeldet ist, wirkt wie eine Seite, die ihn nicht
+     *     kennt.
+     *   * **Registrierung abgeschaltet** – dann verschwindet der Baustein
+     *     ganz. Ein Formular, das nichts anlegt, ist schlimmer als keins.
+     *   * **Sonst** – Formular oder Knopf, je nach Einstellung.
+     *
+     * Das Formular schickt direkt an portal/registrieren.php; dieselbe
+     * Prüfung, dieselbe Roboterfalle, dasselbe Protokoll wie dort. Die
+     * Seite baut nichts nach, was es schon gibt.
+     */
+    private static function blockKonto(array $d): string
+    {
+        $slug = (string) (Tenant::workspace()['slug'] ?? '');
+        $ziel = Oeffentlich::url('/portal/registrieren.php');
+
+        $angemeldet = Kundenlogin::kunde();
+        if ($angemeldet !== null) {
+            return '<div class="inhalt-breite inhalt-breite--schmal" id="konto">'
+                 . self::kopfzeile($d)
+                 . '<div class="kontokasten kontokasten--bekannt">'
+                 . '<p class="kontokasten__gruss">Schön, dass du da bist, '
+                 . Util::h((string) $angemeldet['vorname']) . '.</p>'
+                 . '<a class="knopf knopf--primaer" href="' . Util::attr(Oeffentlich::url('/portal/')) . '">'
+                 . 'Zu deinem Bereich</a>'
+                 . '</div></div>';
+        }
+
+        if (!Kundenlogin::registrierungOffen()) {
+            return '';
+        }
+
+        $vorteile = '';
+        foreach ((array) ($d['vorteile'] ?? []) as $v) {
+            $zeile = trim((string) ($v['text'] ?? ''));
+            if ($zeile !== '') {
+                $vorteile .= '<li>' . Util::h($zeile) . '</li>';
+            }
+        }
+        $vorteile = $vorteile !== '' ? '<ul class="kontokasten__vorteile">' . $vorteile . '</ul>' : '';
+
+        $knopf = trim((string) ($d['knopf_text'] ?? '')) ?: 'Konto anlegen';
+        $anmelden = '<p class="kontokasten__klein">Schon ein Konto? '
+                  . '<a href="' . Util::attr(Oeffentlich::url('/portal/')) . '">Anmelden</a></p>';
+
+        /* Nur ein Knopf: für Seiten, auf denen schon genug Formulare stehen. */
+        if ((string) ($d['stil'] ?? 'formular') === 'knopf') {
+            return '<div class="inhalt-breite inhalt-breite--schmal" id="konto">'
+                 . self::kopfzeile($d)
+                 . '<div class="kontokasten">'
+                 . $vorteile
+                 . '<a class="knopf knopf--primaer" href="' . Util::attr($ziel) . '">' . Util::h($knopf) . '</a>'
+                 . $anmelden
+                 . '</div></div>';
+        }
+
+        return '<div class="inhalt-breite inhalt-breite--schmal" id="konto">'
+             . self::kopfzeile($d)
+             . '<div class="kontokasten">'
+             . $vorteile
+             . '<form class="vorgang__form" method="post" action="' . Util::attr($ziel) . '">'
+             . Auth::csrfFeld()
+             . '<input type="hidden" name="aktion" value="registrieren">'
+             . '<input type="hidden" name="w" value="' . Util::attr($slug) . '">'
+             . '<input type="hidden" name="begonnen" value="' . time() . '">'
+             . '<input type="text" name="website" class="honigtopf" tabindex="-1" autocomplete="off" aria-hidden="true">'
+             . '<div class="feld-paar">'
+             . '<div class="feld"><label for="kk-vorname">Vorname</label>'
+             . '<input id="kk-vorname" name="vorname" required autocomplete="given-name"></div>'
+             . '<div class="feld"><label for="kk-nachname">Nachname</label>'
+             . '<input id="kk-nachname" name="nachname" required autocomplete="family-name"></div>'
+             . '</div>'
+             . '<div class="feld-paar">'
+             . '<div class="feld"><label for="kk-email">E-Mail</label>'
+             . '<input id="kk-email" type="email" name="email" required autocomplete="email"></div>'
+             . '<div class="feld"><label for="kk-passwort">Passwort</label>'
+             . '<input id="kk-passwort" type="password" name="passwort" required'
+             . ' autocomplete="new-password" minlength="10"></div>'
+             . '</div>'
+             . '<label class="einwilligung"><input type="checkbox" name="einwilligung" value="1" required>'
+             . '<span>Ich bin mit der Verarbeitung meiner Angaben für meinen Kundenzugang '
+             . 'einverstanden. Die Einwilligung kann ich jederzeit widerrufen.</span></label>'
+             . '<button class="knopf knopf--primaer" type="submit">' . Util::h($knopf) . '</button>'
+             . '</form>'
+             . $anmelden
+             . '</div></div>';
+    }
+
     private static function blockFormular(array $d): string
     {
         $formId = (int) ($d['form_id'] ?? 0);
