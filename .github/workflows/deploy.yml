@@ -1,0 +1,201 @@
+# ==========================================================================
+# GolfPro CMS – automatischer Upload auf den Webspace
+# --------------------------------------------------------------------------
+# Jeder Push auf den Hauptzweig landet per FTPS auf dem Server. Es wird
+# nichts gebaut: Das System hat weder Composer noch Node, die Dateien im
+# Repository sind bereits die Dateien, die laufen sollen.
+#
+# Zwei Dinge sind hier wichtiger als die Bequemlichkeit:
+#
+#   1. Vor dem Upload wird jede PHP-Datei auf Syntax geprüft. Ein Tippfehler
+#      auf einem Webspace ohne Kommandozeile heißt weiße Seite für echte
+#      Kunden – und die merkt man erst, wenn jemand anruft.
+#
+#   2. Der Abgleich fasst die Daten des Betriebs nicht an. config.php,
+#      die Datenbank und der uploads-Ordner bleiben, wie sie sind. Sie
+#      stehen nicht im Repository, also kann ein Abgleich sie auch nicht
+#      ersetzen – die Ausschlussliste unten sagt es zusätzlich ausdrücklich.
+#
+# Was eingerichtet sein muss, steht in docs/DEPLOY.md.
+# ==========================================================================
+
+name: Auf den Webspace laden
+
+on:
+  push:
+    # Nur der Zweig, der wirklich live geht. Wer einen main-Zweig anlegt,
+    # trägt ihn hier ein und nimmt den anderen heraus.
+    branches:
+      - main
+      - master
+      - claude/fervent-knuth-cr7shs
+  # Erlaubt den Start von Hand unter „Actions“ – nützlich nach einem
+  # Hosterwechsel oder wenn ein Upload abgebrochen ist.
+  workflow_dispatch:
+
+# Zwei Uploads gleichzeitig würden sich auf halbem Weg ins Gehege kommen
+# und die Abgleichsdatei auf dem Server verderben. Deshalb wird gewartet
+# statt abgebrochen: Ein abgebrochener Upload hinterlässt halbe Dateien.
+concurrency:
+  group: webspace-ftp
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+
+  pruefen:
+    name: Syntax prüfen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Geprüft wird gegen 8.1, die niedrigste unterstützte Version. Gegen
+      # 8.4 zu prüfen ginge auch durch, wenn im Code etwas steht, das auf
+      # einem älteren Hoster nicht läuft.
+      - name: PHP 8.1 bereitstellen
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+
+      - name: Jede PHP-Datei auf Syntax prüfen
+        run: |
+          fehler=0
+          anzahl=0
+          while IFS= read -r -d '' datei; do
+            anzahl=$((anzahl + 1))
+            if ! ausgabe=$(php -l "$datei" 2>&1); then
+              echo "::error file=${datei#./}::$(echo "$ausgabe" | head -n 1)"
+              fehler=1
+            fi
+          done < <(find . -name '*.php' -not -path './.git/*' -print0)
+          echo "$anzahl PHP-Dateien geprüft."
+          exit $fehler
+
+      # Wäre eine dieser Dateien je versehentlich eingecheckt worden, würde
+      # der Upload die Zugangsdaten oder die Kundendatenbank des laufenden
+      # Betriebs überschreiben. Beides ist nicht rückgängig zu machen.
+      - name: Keine Betriebsdaten im Repository
+        run: |
+          gefunden=$(git ls-files -- 'config.php' 'data/*.sqlite*' '*.env' 2>/dev/null)
+          if [ -n "$gefunden" ]; then
+            echo "::error::Diese Dateien gehören nicht ins Repository und würden"
+            echo "::error::beim Upload die Daten auf dem Server ersetzen:"
+            echo "$gefunden"
+            exit 1
+          fi
+          echo "Keine Zugangsdaten und keine Datenbank im Repository."
+
+  hochladen:
+    name: Per FTPS übertragen
+    needs: pruefen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Solange die Zugangsdaten fehlen, soll der Lauf nicht mit einer
+      # kryptischen FTP-Meldung scheitern, sondern sagen, was zu tun ist.
+      # Das ist der Zustand direkt nach dem Anlegen des Workflows.
+      - name: Sind die Zugangsdaten hinterlegt?
+        id: zugang
+        env:
+          SERVER: ${{ secrets.FTP_SERVER }}
+        run: |
+          if [ -z "$SERVER" ]; then
+            echo "bereit=nein" >> "$GITHUB_OUTPUT"
+            echo "::warning::Es ist kein FTP_SERVER hinterlegt, also wird nichts hochgeladen."
+            echo "::warning::Einzurichten unter Settings -> Secrets and variables -> Actions."
+            echo "::warning::Welche Werte gebraucht werden, steht in docs/DEPLOY.md."
+          else
+            echo "bereit=ja" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dateien abgleichen
+        if: steps.zugang.outputs.bereit == 'ja'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server:     ${{ secrets.FTP_SERVER }}
+          username:   ${{ secrets.FTP_BENUTZER }}
+          password:   ${{ secrets.FTP_PASSWORT }}
+
+          # FTPS verschlüsselt die Verbindung. Einfaches „ftp“ schickt das
+          # Passwort im Klartext über das Netz; das ist nur eine Notlösung
+          # für Hoster, die nichts anderes können.
+          protocol:   ${{ vars.FTP_PROTOKOLL || 'ftps' }}
+          port:       ${{ vars.FTP_PORT || 21 }}
+          security:   ${{ vars.FTP_SICHERHEIT || 'strict' }}
+
+          # Zielordner auf dem Server, mit Schrägstrich am Ende.
+          # Häufig: ./  oder  /httpdocs/  oder  /html/
+          server-dir: ${{ vars.FTP_VERZEICHNIS || './' }}
+
+          # NIEMALS dangerous-clean-slate einschalten. Das löscht vor dem
+          # Upload alles im Zielordner – also auch Datenbank und Uploads.
+
+          # Was nicht auf den Server gehört.
+          #
+          # Achtung beim Ändern: Der Block unter „exclude:“ ist ein
+          # wörtlicher Textblock. Eine Raute darin ist kein Kommentar,
+          # sondern ein Suchmuster. Erklärungen gehören deshalb hierher.
+          #
+          #   .git*, .github, node_modules   Entwicklungskram. Die ersten
+          #       vier Zeilen ersetzen die Voreinstellung der Action und
+          #       müssen stehen bleiben, wenn jemand die Liste ergänzt.
+          #   .DS_Store, Thumbs.db           Was macOS und Windows in
+          #       jeden Ordner legen.
+          #   config.php                     Zugangsdaten des Betriebs.
+          #       Liegt ohnehin nicht im Repository; die Zeile ist die
+          #       zweite Sicherung.
+          #   data/*.sqlite*, data/cache     Die Datenbank mit allen
+          #       Kundendaten.
+          #   uploads/w*/                    Logos, Videos, Unterlagen der
+          #       Kunden. uploads/.htaccess und uploads/index.html gehen
+          #       weiterhin mit – sie sperren den Ordner für den Browser.
+          #   install.php                    Richtet die Anlage ein und
+          #       soll danach vom Server verschwinden. Ein Upload, der ihn
+          #       jedes Mal zurückbringt, macht die Empfehlung wertlos.
+          #       Für die erste Einrichtung siehe docs/DEPLOY.md.
+          #   docs/, README.md               Interne Unterlagen gehören
+          #       nicht unter die eigene Domain.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/node_modules/**
+            **/.DS_Store
+            **/Thumbs.db
+            config.php
+            data/*.sqlite
+            data/*.sqlite-shm
+            data/*.sqlite-wal
+            data/cache/**
+            uploads/w*/**
+            install.php
+            docs/**
+            README.md
+
+      # Ein erfolgreicher Upload heißt noch nicht, dass die Seite läuft.
+      # Diese Prüfung ist absichtlich einfach: Sie ruft die Startseite auf
+      # und schaut, ob der Server überhaupt antwortet.
+      - name: Nachsehen, ob die Seite antwortet
+        if: steps.zugang.outputs.bereit == 'ja' && vars.SEITEN_URL != ''
+        # Die Adresse kommt über die Umgebung in das Skript, nicht per
+        # Textersetzung hinein. Sonst würde ein Anführungszeichen im Wert
+        # die Zeile zerlegen und der Rest liefe als Befehl.
+        env:
+          SEITEN_URL: ${{ vars.SEITEN_URL }}
+        run: |
+          url="$SEITEN_URL"
+          for versuch in 1 2 3; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -L "$url" || echo 000)
+            echo "Versuch $versuch: HTTP $code"
+            case "$code" in
+              200|301|302) echo "::notice::$url antwortet mit $code."; exit 0 ;;
+            esac
+            sleep 5
+          done
+          echo "::error::$url antwortet nicht wie erwartet (zuletzt HTTP $code)."
+          echo "::error::Die Dateien sind oben, aber die Seite läuft nicht."
+          exit 1

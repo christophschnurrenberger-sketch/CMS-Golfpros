@@ -61,7 +61,8 @@ cron.php      Wartung für alle, die einen Cronjob haben
 webhook.php   Stripe meldet Zahlungen hierher
 install.php   Einrichtung, danach löschen
 assets/       Stylesheets, Skripte und die Schriften auf eigenem Server
-docs/         Architektur und Betrieb im Detail
+docs/         Architektur, Betrieb und Upload im Detail
+.github/      Ein Workflow: Syntax prüfen, dann per FTPS hochladen
 ```
 
 ## Die tragenden Entscheidungen
@@ -125,6 +126,8 @@ eigenen Daten anzufassen.
   und warum sie so geschnitten sind
 * [docs/BETRIEB.md](docs/BETRIEB.md) – Sicherung, Umzug, Cronjob, Stripe,
   Fehlersuche
+* [docs/DEPLOY.md](docs/DEPLOY.md) – der automatische Upload auf den
+  Webspace: was einzurichten ist und was er nicht anfasst
 
 ## Lizenz
 

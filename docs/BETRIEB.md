@@ -44,6 +44,11 @@ im Jahr auf einer Testadresse ausprobieren.
 Mehr ist nicht nötig. Es gibt keine absoluten Pfade in der Datenbank; alle
 Verweise auf Dateien sind relativ zur Installation.
 
+Wer die Dateien nicht von Hand hochlädt: Der automatische Upload aus
+GitHub ist in [DEPLOY.md](DEPLOY.md) beschrieben. Er fasst Datenbank,
+`config.php` und den `uploads`-Ordner nicht an – ein Umzug betrifft also
+nur die Zugangsdaten im Repository.
+
 ## Cronjob
 
 Ohne Cronjob läuft die Wartung beim Öffnen des Dashboards mit. Das genügt

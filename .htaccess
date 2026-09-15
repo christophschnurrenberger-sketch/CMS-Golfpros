@@ -18,6 +18,18 @@ Options -Indexes
   Require all denied
 </FilesMatch>
 
+# Punktdateien gehen niemanden etwas an. Die Abgleichsdatei des
+# automatischen Uploads (.ftp-deploy-sync-state.json) liegt im Wurzelordner
+# und zählt jede Datei der Anlage auf – eine bequeme Landkarte für jeden,
+# der eine sucht. Siehe docs/DEPLOY.md.
+#
+# FilesMatch prüft nur den Dateinamen, nicht den Pfad. Die Dateien in
+# .well-known/ heißen nicht selbst mit Punkt – die Zertifikatserneuerung
+# von Let's Encrypt läuft also weiter.
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+
 <FilesMatch "\.(sqlite|sqlite3|db|log|ini|sql|bak|md)$">
   Require all denied
 </FilesMatch>
