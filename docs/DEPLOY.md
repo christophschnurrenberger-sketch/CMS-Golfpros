@@ -194,6 +194,19 @@ der Autor der Action nachzieht.
 Fehlt der Schrägstrich am Ende, ergänzt der Workflow ihn und sagt es als
 Hinweis; die Action selbst würde daran abbrechen.
 
+**`500 'AUTH': command unrecognized`** – auf Port 21 läuft ein FTP-Server,
+der kein TLS anbietet. `AUTH` ist der Befehl, mit dem die Verschlüsselung
+eingeschaltet wird; kennt der Server ihn nicht, gibt es dort kein
+explizites FTPS. Der Reihe nach probieren:
+
+1. `FTP_PROTOKOLL` auf `ftps-legacy` und `FTP_PORT` auf `990`. Das ist
+   implizites FTPS: Die Verschlüsselung steht von der ersten Sekunde an,
+   ohne `AUTH`. Viele Hoster bieten es auf diesem Port an, ohne es
+   groß zu erwähnen.
+2. Hilft das nicht, kann der Hoster kein FTPS. Dann bleibt `ftp` – mit
+   Passwort im Klartext über das Netz – oder, besser, SFTP über den
+   SSH-Zugang. Letzteres kann diese Action nicht; siehe oben.
+
 **`protocol: invalid parameter`** – in `FTP_PROTOKOLL` steht etwas, das
 die Action nicht kennt. Erlaubt sind nur `ftp`, `ftps` und `ftps-legacy`;
 zu `sftp` siehe oben.
