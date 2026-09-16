@@ -36,18 +36,28 @@
    * Der Buchungskalender.
    *
    * Ohne dieses Skript stehen alle freien Tage mit ihren Uhrzeiten
-   * untereinander – vollständig, nur lang. Erst hier wird daraus ein
-   * Kalender, in dem immer ein Tag offen ist: der erste freie beim Laden,
-   * danach der angeklickte. Deshalb steht auch hier die Klasse im Skript
-   * und nicht im HTML.
+   * untereinander – vollständig, nur lang. Das ist die Fassung, die
+   * Suchmaschinen und Vorleseprogramme sehen, und sie funktioniert auch
+   * ohne einen einzigen Klick.
+   *
+   * Mit Skript wird daraus ein Kalender: Ein Klick auf einen freien Tag
+   * öffnet ein Fenster mit genau dessen Uhrzeiten. Warum ein Fenster und
+   * nicht eine Liste unter dem Gitter: Auf dem Telefon steht die Liste
+   * sonst unter der Falz – man tippt auf den 22., und scheinbar passiert
+   * nichts. Das Fenster liegt vor dem Kalender, egal wie groß der Bildschirm
+   * ist.
+   *
+   * Die Liste wird verschoben, nicht kopiert: Kopiert stünden dieselben
+   * Kennungen zweimal im Dokument, und aria-controls zeigte auf zwei
+   * Elemente gleichzeitig.
    */
   document.querySelectorAll('[data-buchkal]').forEach(function (kal) {
     var listen = Array.prototype.slice.call(kal.querySelectorAll('.buchkal__tagzeiten'));
     var tage   = Array.prototype.slice.call(kal.querySelectorAll('.buchkal__tag[data-tag]'));
-    if (!listen.length) return;
+    var heim   = kal.querySelector('.buchkal__zeiten');
+    if (!listen.length || !heim) return;
 
-    function zeigen(tag) {
-      listen.forEach(function (l) { l.hidden = l.dataset.tag !== tag; });
+    function markieren(tag) {
       tage.forEach(function (t) {
         var ist = t.dataset.tag === tag;
         t.classList.toggle('ist-gewaehlt', ist);
@@ -55,13 +65,72 @@
       });
     }
 
-    zeigen(listen[0].dataset.tag);
+    var fenster = document.createElement('dialog');
+
+    /*
+     * Kein dialog-Element, kein Fenster: Dann bleibt es beim Auf- und
+     * Zuklappen unter dem Gitter. Lieber die ältere Fassung als gar
+     * keine Uhrzeiten.
+     */
+    if (typeof fenster.showModal !== 'function') {
+      var zeigen = function (tag) {
+        listen.forEach(function (l) { l.hidden = l.dataset.tag !== tag; });
+        markieren(tag);
+      };
+      zeigen(listen[0].dataset.tag);
+      kal.addEventListener('click', function (e) {
+        var t = e.target.closest('.buchkal__tag[data-tag]');
+        if (t) zeigen(t.dataset.tag);
+      });
+      return;
+    }
+
+    fenster.className = 'buchkal__fenster';
+    fenster.innerHTML = '<button type="button" class="buchkal__fenster-zu" aria-label="Schließen">'
+                      + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+                      + ' stroke-width="1.8" stroke-linecap="round" aria-hidden="true">'
+                      + '<path d="M6 6l12 12M18 6L6 18"/></svg></button>'
+                      + '<div class="buchkal__fenster-inhalt"></div>';
+    kal.appendChild(fenster);
+    kal.classList.add('ist-fenster');
+    var inhalt = fenster.querySelector('.buchkal__fenster-inhalt');
+
+    /* Alles wieder an seinen Platz – auch dann, wenn das Fenster über
+       Escape oder den Hintergrund geschlossen wurde. */
+    function zurueck() {
+      while (inhalt.firstChild) { heim.appendChild(inhalt.firstChild); }
+      listen.forEach(function (l) { l.hidden = true; });
+      markieren('');
+    }
+    zurueck();
+
+    function oeffnen(tag) {
+      zurueck();
+      var liste = null;
+      listen.forEach(function (l) { if (l.dataset.tag === tag) liste = l; });
+      if (!liste) return;
+
+      liste.hidden = false;
+      inhalt.appendChild(liste);
+      markieren(tag);
+
+      var datum = liste.querySelector('.buchkal__datum');
+      fenster.setAttribute('aria-label', datum ? datum.textContent.trim() : 'Freie Zeiten');
+      fenster.showModal();
+    }
 
     kal.addEventListener('click', function (e) {
+      if (e.target.closest('.buchkal__fenster-zu')) { fenster.close(); return; }
       var t = e.target.closest('.buchkal__tag[data-tag]');
-      if (!t) return;
-      zeigen(t.dataset.tag);
+      if (t) { oeffnen(t.dataset.tag); }
     });
+
+    /* Klick auf den Hintergrund schließt – das Fenster selbst füllt nur
+       seine Mitte, der Rest gehört dem dialog-Element. */
+    fenster.addEventListener('click', function (e) {
+      if (e.target === fenster) { fenster.close(); }
+    });
+    fenster.addEventListener('close', zurueck);
   });
 
   /* OpenStreetMap braucht eine Bounding-Box; die rechnen wir aus der Suche */

@@ -680,6 +680,43 @@
 }
 
 .seite .buchkal__zeiten { margin-top: clamp(20px, 3vw, 30px); }
+/* Mit Fenster steht unter dem Gitter nichts mehr – dann auch kein Abstand
+   für nichts. Die Klasse setzt das Skript, sonst klaffte ohne JavaScript
+   eine Lücke vor den offenen Listen. */
+.seite .buchkal.ist-fenster .buchkal__zeiten { margin-top: 0; }
+
+/*
+ * Das Fenster mit den Uhrzeiten eines Tages.
+ *
+ * Auf dem Telefon stünde die Liste unter dem Gitter unterhalb der Falz –
+ * man tippt auf den 22., und scheinbar passiert nichts. Vor dem Kalender
+ * ist sie unübersehbar, auf jedem Bildschirm.
+ */
+.seite .buchkal__fenster {
+  border: none; padding: 0;
+  width: min(440px, calc(100vw - 32px));
+  border-radius: var(--ecke) var(--ecke) var(--ecke) 6px;
+  background: var(--grund); color: var(--text);
+  box-shadow: 0 24px 60px rgba(23, 39, 28, .22);
+}
+.seite .buchkal__fenster::backdrop { background: rgba(23, 39, 28, .42); }
+.seite .buchkal__fenster-inhalt { padding: clamp(24px, 4vw, 32px); }
+/* Der Tag ist hier die Überschrift des Fensters, nicht eine Zeile in einer
+   Liste – also größer und ohne den Abstand, den er unter dem Gitter hatte. */
+.seite .buchkal__fenster .buchkal__datum {
+  font-size: clamp(19px, 2.2vw, 22px); margin: 0 0 16px; padding-right: 30px;
+}
+.seite .buchkal__fenster .buchkal__tagzeiten + .buchkal__tagzeiten { margin-top: 0; }
+.seite .buchkal__fenster-zu {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border: none; border-radius: 50%;
+  background: transparent; color: var(--text-3);
+  cursor: pointer;
+}
+.seite .buchkal__fenster-zu:hover { background: var(--flaeche); color: var(--text); }
+
 .seite .buchkal__tagzeiten + .buchkal__tagzeiten { margin-top: 22px; }
 .seite .buchkal__datum {
   font-size: clamp(17px, 1.6vw, 20px); font-weight: 500;

@@ -278,6 +278,28 @@ Die Online-Buchung prüft die gewählte Zeit vor dem Schreiben noch einmal
 gegen `freieZeiten()` – der Browser des Besuchers könnte seit zwanzig
 Minuten offen liegen.
 
+## Der Buchungskalender wächst aus einer Liste
+
+`Oeffentlich::kalender()` gibt HTML zurück, das ohne eine Zeile JavaScript
+vollständig ist: das Monatsgitter und darunter jeder freie Tag mit seinen
+Uhrzeiten, alle offen, jede Zeit ein gewöhnlicher Link auf `buchen.php`.
+Das ist die Fassung für Suchmaschinen, Vorleseprogramme und jeden Browser,
+dem etwas fehlt.
+
+Erst `assets/js/site.js` macht daraus einen Kalender: Es klappt alle Listen
+zu und öffnet auf einen Klick ein `<dialog>` mit den Uhrzeiten genau dieses
+Tages. Unter dem Gitter stünde die Liste auf dem Telefon unter der Falz –
+man tippt auf den 22., und scheinbar passiert nichts.
+
+Die Liste wird dabei in das Fenster **verschoben**, nicht kopiert. Kopiert
+stünden dieselben Kennungen zweimal im Dokument und `aria-controls` zeigte
+auf zwei Elemente. Beim Schließen wandert sie zurück – auch dann, wenn das
+Fenster über Escape oder den Hintergrund geschlossen wurde, denn sonst
+bliebe sie beim nächsten Öffnen doppelt liegen.
+
+Kennt der Browser `showModal()` nicht, bleibt es beim Auf- und Zuklappen
+unter dem Gitter. Lieber die ältere Fassung als gar keine Uhrzeiten.
+
 ## Der Kunde meldet sich einmal an, nicht zweimal
 
 `lib/Kundenlogin.php` ist die einzige Stelle, die die Kundensitzung setzt
