@@ -430,9 +430,14 @@ final class Bookings
      *      benutzten Spuren - sonst waeren die Kaesten unterschiedlich
      *      breit, je nachdem, wen man gerade ansieht.
      *
+     * Die dritte Angabe ist die Nummer der Gruppe. Die Oberflaeche
+     * braucht sie, um beim Daraufzeigen den ganzen Stapel aufzufaechern:
+     * Wer wissen will, was hinter einem Termin liegt, muss alle sehen, die
+     * dazugehoeren - und dafuer muss er sie benennen koennen.
+     *
      * @param  list<array{start:string,ende:string}> $termine
-     * @return list<array{0:int,1:int}> je Termin [Spur, Spuren insgesamt],
-     *         in der Reihenfolge der Eingabe
+     * @return list<array{0:int,1:int,2:int}> je Termin
+     *         [Spur, Spuren insgesamt, Gruppe], in der Reihenfolge der Eingabe
      */
     public static function spalten(array $termine): array
     {
@@ -444,16 +449,21 @@ final class Bookings
         }
         usort($zeiten, static fn ($x, $y) => [$x['a'], $x['e']] <=> [$y['a'], $y['e']]);
 
-        $ergebnis = array_fill(0, count($termine), [0, 1]);
+        $ergebnis = array_fill(0, count($termine), [0, 1, 0]);
         $gruppe   = [];   // Termine der laufenden Gruppe
         $spuren   = [];   // Spur => Ende des letzten Termins darin
         $endeMax  = null; // spaetestes Ende der Gruppe
+        $nummer   = 0;    // laufende Nummer der Gruppe
 
-        $gruppeAbschliessen = static function () use (&$gruppe, &$spuren, &$ergebnis): void {
+        $gruppeAbschliessen = static function () use (&$gruppe, &$spuren, &$ergebnis, &$nummer): void {
+            if ($gruppe === []) {
+                return;
+            }
             $breite = max(1, count($spuren));
             foreach ($gruppe as [$index, $spur]) {
-                $ergebnis[$index] = [$spur, $breite];
+                $ergebnis[$index] = [$spur, $breite, $nummer];
             }
+            $nummer++;
             $gruppe = [];
             $spuren = [];
         };

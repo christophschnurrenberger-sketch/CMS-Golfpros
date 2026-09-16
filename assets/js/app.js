@@ -860,6 +860,130 @@
       d.showModal();
     });
 
+    /* ------------------------------------------- Stapel auffaechern -- */
+
+    /*
+     * Zeigt man auf parallele Termine, ruecken sie auseinander.
+     *
+     * In der Woche liegen Parallele versetzt uebereinander: Der vordere
+     * verdeckt den hinteren bis auf einen 16 Pixel breiten Streifen. Man
+     * sieht, DASS da noch etwas ist, aber nicht WAS. Den angefassten nach
+     * vorn zu holen half nur ihm selbst - bei dreien blieben zwei genauso
+     * verdeckt wie vorher.
+     *
+     * Also faechert der ganze Stapel auf: Alle Termine derselben
+     * Ueberschneidungsgruppe teilen sich fuer die Dauer des Hinsehens die
+     * Spalte. Welche zusammengehoeren, hat der Server schon ausgerechnet
+     * und als data-stapel an jeden Termin geschrieben - im Skript
+     * Ueberschneidungen zu suchen hiesse, dieselbe Rechnung ein zweites
+     * Mal zu pflegen.
+     *
+     * Die Gruppennummer gilt je Spalte: In jedem Tag faengt sie wieder
+     * bei 0 an, also wird immer innerhalb der Spalte gesucht.
+     */
+    const STUNDENLEISTE = 58;   // Breite der Uhrzeitenspalte, siehe app.css
+    let stapel = null;          // { spalte, gruppe, teile[] }
+    let faecherBis = 0;         // bis dahin sind Zeigerwechsel Nachbeben
+
+    /* In der Tagesansicht stehen Parallele ohnehin nebeneinander - da gaebe
+       es nichts aufzufaechern, und die Karte soll am Termin haengen
+       bleiben statt an einer tausend Pixel breiten Spalte. */
+    const geteilt = !!gitter.closest('.kalender--tag');
+
+    /*
+     * Wie weit muss der Faecher nach links, damit er im Kalender bleibt?
+     *
+     * Gerechnet, nicht gemessen: Wer mitten in der Bewegung misst, bekommt
+     * den halben Weg. Die Spaltenkante steht dagegen still, und die
+     * Kastenbreite ist dieselbe Formel wie im Stilblatt.
+     */
+    function schub(spalte, spuren) {
+      const breite = Math.max(140, (spalte.clientWidth - 6) / spuren - 4);
+      const sp = spalte.getBoundingClientRect(), g = gitter.getBoundingClientRect();
+      const rechts = sp.left + 3 + (spuren - 1) * (breite + 4) + breite;
+      /* Hoechstens so weit nach links, wie noch Kalender da ist: Hinter der
+         Stundenleiste faengt der Rollbereich an, und dahinter ist der
+         Faecher abgeschnitten - dann saehe man wieder nichts. */
+      const platz = Math.max(0, sp.left + 3 - (g.left + STUNDENLEISTE));
+      return Math.round(Math.min(platz, Math.max(0, rechts - (g.right - 8))));
+    }
+
+    function faecherWeg() {
+      if (!stapel) return;
+      const teile = stapel.teile, spalte = stapel.spalte;
+      stapel = null;
+      teile.forEach((el) => el.classList.remove('ist-gefaechert'));
+      if (spalte) spalte.style.removeProperty('--schub');
+      /* Die Karte gehoerte zu einem der Weggeraeumten: Sie haette sonst
+         neben einem Termin stehen bleiben koennen, der nicht mehr dort
+         liegt. Eine geplante Karte ueberlebt - die gilt schon dem naechsten. */
+      if (karteFuer && teile.indexOf(karteFuer) !== -1) karteFort();
+    }
+
+    function faechern(el) {
+      if (geteilt) return;
+      const gruppe = el.dataset.stapel;
+      if (!/^\d+$/.test(gruppe || '')) { faecherWeg(); return; }
+      const spalte = el.closest('.kalender__spalte');
+      if (!spalte) return;
+      if (stapel && stapel.spalte === spalte && stapel.gruppe === gruppe) return;
+
+      faecherWeg();
+      const teile = [].slice.call(
+        spalte.querySelectorAll('.termin[data-stapel="' + gruppe + '"]'));
+      if (teile.length < 2) return;
+
+      const spuren = Math.max(1, parseInt(getComputedStyle(teile[0]).getPropertyValue('--spuren'), 10) || 1);
+      /* Der Schub steht an der Spalte, nicht an den Terminen: Er gilt fuer
+         alle gleich, und das style-Attribut der Termine bleibt sauber -
+         das Verschieben legt es beim Anfassen beiseite und spielt es
+         hinterher zurueck. */
+      const weg = schub(spalte, spuren);
+      if (weg > 0) spalte.style.setProperty('--schub', weg + 'px');
+      teile.forEach((t) => t.classList.add('ist-gefaechert'));
+      stapel = { spalte: spalte, gruppe: gruppe, teile: teile };
+      faecherBis = Date.now() + 260;
+    }
+
+    /* Liegt der Zeiger noch am Faecher? Grosszuegig gemessen: Zwischen den
+       aufgefaecherten Kaesten sind ein paar Pixel Luft, und dort hindurch
+       zu fahren darf ihn nicht zuklappen. */
+    function amFaecher(x, y) {
+      if (!stapel) return false;
+      const rand = 10;
+      return stapel.teile.some((t) => {
+        const r = t.getBoundingClientRect();
+        return x >= r.left - rand && x <= r.right + rand
+            && y >= r.top - rand  && y <= r.bottom + rand;
+      });
+    }
+
+    /*
+     * Warum mousemove und nicht mouseout?
+     *
+     * Beim Auffaechern rutschen die Kaesten unter dem stillstehenden
+     * Zeiger weg. mouseout wuerde sofort zuklappen, der Kasten kaeme
+     * zurueck unter den Zeiger, mouseover faecherte wieder auf - ein
+     * Flackern, das nie zur Ruhe kommt. Die Zeigerposition dagegen ist
+     * unabhaengig davon, was gerade unter ihr liegt.
+     */
+    gitter.addEventListener('mousemove', (e) => {
+      if (zug) { faecherWeg(); return; }
+      const el = e.target.closest('.termin[data-stapel]');
+      if (el) { faechern(el); return; }
+      if (stapel && !amFaecher(e.clientX, e.clientY)) faecherWeg();
+    });
+    gitter.addEventListener('mouseleave', faecherWeg);
+    gitter.addEventListener('scroll', faecherWeg, { passive: true });
+    /* Wer daneben drueckt, zieht eine Zeit auf. Der Faecher laege ueber der
+       aufgezogenen Flaeche - also weg damit. Auf einem Termin bleibt er:
+       Dort faengt entweder ein Klick oder ein Verschieben an, und beides
+       soll den Kasten nicht unter dem Zeiger wegziehen. */
+    gitter.addEventListener('mousedown', (e) => {
+      if (!e.target.closest('.termin')) faecherWeg();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') faecherWeg(); });
+
     /* ------------------------------------------- Vorschaukarte ------- */
 
     /*
@@ -877,10 +1001,41 @@
     const VERZOEGERUNG = 180;
     let karte = null, karteFuer = null, warten = null;
 
-    function karteWeg() {
-      clearTimeout(warten);
+    /* Nur die Karte, die gerade dasteht. Eine schon eingeplante bleibt
+       eingeplant - beim Wechsel von einem Termin zum naechsten ist sie
+       naemlich bereits die des neuen. */
+    function karteFort() {
       if (karte) { karte.remove(); karte = null; }
       karteFuer = null;
+    }
+
+    function karteWeg() {
+      clearTimeout(warten);
+      karteFort();
+    }
+
+    /*
+     * Woran weicht die Karte aus?
+     *
+     * Normal am Termin selbst. Ist der Stapel aber aufgefaechert, dann am
+     * ganzen Faecher - sonst stellt sich die Karte genau auf die Nachbarn,
+     * die das Auffaechern eben erst sichtbar gemacht hat. Das waere die
+     * Sache ad absurdum gefuehrt: aufraeumen und sofort wieder zudecken.
+     *
+     * Oben bleibt die Kante des angefassten Termins, damit die Karte auf
+     * seiner Hoehe steht und nicht irgendwo am Stapel.
+     */
+    function ankerkasten(el) {
+      if (!stapel || stapel.teile.indexOf(el) === -1) return el.getBoundingClientRect();
+      const eigen = el.getBoundingClientRect();
+      let links = Infinity, rechts = -Infinity, unten = -Infinity;
+      stapel.teile.forEach((t) => {
+        const k = t.getBoundingClientRect();
+        links  = Math.min(links, k.left);
+        rechts = Math.max(rechts, k.right);
+        unten  = Math.max(unten, k.bottom);
+      });
+      return { left: links, right: rechts, top: eigen.top, bottom: unten };
     }
 
     function karteZeigen(el) {
@@ -897,7 +1052,7 @@
 
       /* Erst messen, dann setzen: Die Hoehe steht erst fest, wenn der
          Inhalt im Dokument haengt. */
-      const k = el.getBoundingClientRect();
+      const k = ankerkasten(el);
       const v = karte.getBoundingClientRect();
       const luft = 10;
 
@@ -920,9 +1075,18 @@
       requestAnimationFrame(() => karte && karte.classList.add('ist-da'));
     }
 
+    /* Waehrend der Faecher aufgeht, wandern die Kaesten unter dem ruhenden
+       Zeiger hindurch und loesen mouseover/mouseout aus, ohne dass sich
+       jemand bewegt haette. Das ist kein Zeigerwechsel: Wer auf den
+       zweiten Termin gezeigt hat, will dessen Karte sehen und nicht die
+       des ersten, nur weil der gerade unter den Zeiger gerutscht ist. */
+    const nachbeben = (el) =>
+      Date.now() < faecherBis && stapel && stapel.teile.indexOf(el) !== -1;
+
     gitter.addEventListener('mouseover', (e) => {
       const el = e.target.closest('.termin');
       if (!el || el === karteFuer || zug) return;
+      if (nachbeben(el)) return;
       clearTimeout(warten);
       warten = setTimeout(() => karteZeigen(el), VERZOEGERUNG);
     });
@@ -932,6 +1096,7 @@
       if (!el) return;
       // Innerhalb desselben Termins von Kind zu Kind: nichts tun.
       if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+      if (nachbeben(el)) return;
       karteWeg();
     });
 

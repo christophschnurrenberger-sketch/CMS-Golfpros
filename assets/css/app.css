@@ -1462,8 +1462,16 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
 
 .kalender__spalte[data-aufziehbar] .termin { cursor: pointer; }
 
+/*
+ * Ein Termin.
+ *
+ * Aussehen hier, Lage weiter unten. In der Monatsansicht stehen dieselben
+ * Kaesten im Textfluss (`position:static` steht am Element). Eine Breite
+ * an dieser Stelle wuerde auch dort gelten und die Monatskaesten schmal
+ * machen - darum kommt alles Raeumliche erst unter `.kalender__spalte`.
+ */
 .termin {
-  position: absolute; left: 3px; right: 3px;
+  position: absolute;
   border-radius: 7px;
   padding: 4px 7px;
   font-size: 11.5px;
@@ -1472,41 +1480,104 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
   border-left: 3px solid var(--marke);
   background: var(--marke-hell);
   color: var(--marke);
+  /* Ein Termin ueber dem anderen braucht eine sichtbare Kante, sonst
+     verschwimmen zwei gleichfarbige zu einem Block. */
+  box-shadow: -1px 0 0 0 color-mix(in srgb, var(--flaeche) 70%, transparent);
   transition: box-shadow var(--tempo), transform var(--tempo);
-  /*
-   * Die Stapelhoehe gehoert hierher, nicht ins style-Attribut.
-   *
-   * Vorher stand sie dort - und ein style-Attribut schlaegt jede
-   * Stilregel. Damit kam `.termin:hover { z-index: 15 }` nie zum Zug: Der
-   * verdeckte Termin blieb beim Daraufzeigen verdeckt, egal was hier
-   * stand. Als Variable uebergeben rechnet die Regel selbst, und die
-   * Hover-Regel kann sie ueberstimmen.
-   */
-  z-index: calc(4 + var(--spur, 0));
 }
-/*
- * Versetzte Termine: der angefasste kommt nach vorn.
- *
- * Bei drei Parallelen liegt der dritte ueber dem zweiten ueber dem
- * ersten. Ohne diese Zeile bliebe der unterste fuer immer halb verdeckt -
- * mit ihr genuegt das Daraufzeigen, um ihn ganz zu sehen.
- */
-/*
- * Daraufzeigen holt nach vorn - und zwar ganz.
- *
- * Jeder versetzte Termin reicht bis zum rechten Spaltenrand; verdeckt ist
- * er nur von seinen Nachbarn. Kommt er nach vorn, steht damit sofort sein
- * ganzer Inhalt da, ohne dass sich irgendetwas verschiebt.
- */
-.termin:hover, .termin:focus-visible {
-  box-shadow: var(--schatten-2);
-  z-index: 15;
-}
+.termin:hover, .termin:focus-visible { box-shadow: var(--schatten-2); }
 .termin:focus-visible { outline: 2px solid var(--marke); outline-offset: 1px; }
 
-/* Ein Termin ueber dem anderen braucht eine sichtbare Kante, sonst
-   verschwimmen zwei gleichfarbige zu einem Block. */
-.termin { box-shadow: -1px 0 0 0 color-mix(in srgb, var(--flaeche) 70%, transparent); }
+/*
+ * Die Lage im Zeitraster.
+ *
+ * Aus dem style-Attribut kommen nur noch Zahlen: --oben und --hoehe fuer
+ * die Uhrzeit, --spur fuer die wievielte Parallele es ist und --spuren
+ * fuer wie viele es zusammen sind. Was daraus fuer eine Lage wird,
+ * rechnet erst diese Regel.
+ *
+ * Diese Trennung ist teuer erkauft: Ein style-Attribut schlaegt jede
+ * Stilregel. Solange dort links, Breite und Stapelhoehe fertig
+ * drinstanden, kam weder das Hervorholen beim Daraufzeigen noch das
+ * Auffaechern je zum Zug - der verdeckte Termin blieb verdeckt, egal was
+ * hier stand.
+ *
+ * Parallele liegen versetzt, nicht geteilt: Geteilt bekaeme bei drei
+ * Parallelen jeder rund 40 Pixel einer Wochenspalte, auf denen kein Name
+ * mehr steht. Versetzt behaelt der vorderste die volle Breite, die
+ * dahinter schauen 16 Pixel weit hervor - genug, um zu sehen, dass da
+ * mehr ist, und um sie zu treffen.
+ */
+.kalender__spalte .termin {
+  top: var(--oben, 0);
+  height: var(--hoehe, 22px);
+  left: calc(3px + var(--spur, 0) * 16px);
+  width: max(28px, 100% - 6px - var(--spur, 0) * 16px);
+  transition: box-shadow var(--tempo), transform var(--tempo),
+              left var(--tempo), width var(--tempo);
+}
+
+/*
+ * Aufgefaechert: der ganze Stapel nebeneinander.
+ *
+ * Nach vorn holen allein genuegt nicht. Wer auf einen Stapel zeigt, will
+ * wissen, was dahinter liegt - und dahinter liegt beim Versatz genau das,
+ * was man nicht sieht. Den obersten nach vorn zu holen zeigt einen von
+ * dreien; die anderen zwei bleiben genauso verdeckt wie vorher.
+ *
+ * Also ruecken beim Daraufzeigen alle Parallelen derselben Gruppe
+ * auseinander und teilen sich die Spalte. Dann ist jede einzelne ganz zu
+ * lesen. Zeiger weg, und sie schieben sich wieder uebereinander - die
+ * Enge gilt nur, solange niemand hinsieht.
+ *
+ * In der Tagesansicht ist die Spalte ueber tausend Pixel breit. Dort ist
+ * geteilt immer richtig, also gilt es dort dauerhaft.
+ */
+.kalender--tag .kalender__spalte .termin {
+  left: calc(3px + var(--spur, 0) * (100% - 6px) / var(--spuren, 1));
+  width: max(24px, (100% - 6px) / var(--spuren, 1) - 4px);
+}
+
+/*
+ * Aufgefaechert wird nie unter Lesebreite geteilt.
+ *
+ * Eine Wochenspalte ist rund 200 Pixel breit. Streng geteilt bleiben bei
+ * zwei Parallelen 95 Pixel, und aus „Florian Ziegler" wird „Fl…". Damit
+ * waere nichts gewonnen: Man saehe zwar zwei Kaesten, aber immer noch
+ * nicht, wer darin steht - und genau darum ging es.
+ *
+ * Also bekommt jeder mindestens 140 Pixel, auch wenn der Faecher dafuer
+ * in den Nachbartag hineinragt. Das ist vertretbar, weil es nur gilt,
+ * solange der Zeiger darauf steht: Man verdeckt den Nachbartag fuer einen
+ * Moment und bekommt dafuer eine Antwort.
+ *
+ * --schub schiebt den ganzen Faecher nach links, wenn er sonst aus dem
+ * Kalender hinausliefe (am Sonntag zum Beispiel). Den Wert kann nur das
+ * Skript kennen; es rechnet ihn aus, statt ihn zu messen - waehrend der
+ * Bewegung misst man sonst den halben Weg.
+ */
+.kalender__spalte .termin.ist-gefaechert {
+  --breite: max(140px, (100% - 6px) / var(--spuren, 1) - 4px);
+  left: calc(3px + var(--spur, 0) * (var(--breite) + 4px) - var(--schub, 0px));
+  width: var(--breite);
+  /* Ein Schatten unter dem ganzen Faecher: Er liegt ueber dem Nachbartag,
+     und ohne Kante saehe es aus, als stuenden die Termine dort. */
+  box-shadow: var(--schatten-2);
+}
+
+/*
+ * Wer liegt ueber wem.
+ *
+ * Alle vier Faelle stehen absichtlich beieinander und in dieser
+ * Reihenfolge: gleiche Gewichtung, spaeter gewinnt. Verteilt ueber die
+ * Datei waere beim naechsten Zusatz nicht mehr zu sehen, wer wen
+ * ueberstimmt.
+ */
+.kalender__spalte .termin               { z-index: calc(4 + var(--spur, 0)); }
+.kalender__spalte .termin.ist-gefaechert { z-index: calc(20 + var(--spur, 0)); }
+.kalender__spalte .termin:hover,
+.kalender__spalte .termin:focus-visible  { z-index: 40; }
+.kalender__spalte .termin.ist-zug        { z-index: 90; transition: none; }
 
 .termin__kopf { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
 .termin__zeit { font-size: 10.5px; opacity: .85; flex: none; font-variant-numeric: tabular-nums; }
@@ -1670,8 +1741,9 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
  */
 .termin.ist-zug {
   cursor: grabbing;
-  z-index: 20;
-  transition: none;
+  /* Stapelhoehe und `transition: none` stehen oben bei den anderen
+     Stapelregeln - sonst waere von hier aus nicht zu sehen, dass der
+     Faecher dazwischenfunken koennte. */
   box-shadow: var(--schatten-3, 0 12px 28px rgba(0, 0, 0, .22));
   transform: scale(1.015);
   opacity: .96;

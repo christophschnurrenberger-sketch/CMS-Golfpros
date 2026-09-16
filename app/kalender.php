@@ -313,7 +313,7 @@ require __DIR__ . '/partials/kopf.php';
   $jetztMin    = (int) date('G') * 60 + (int) date('i');
   $zeigtHeute  = in_array(Util::heute(), $tage, true);
   ?>
-  <div class="kalender kalender--zeit" style="--spalten:<?= count($tage) ?>;--stunde:<?= $stundeHoehe ?>px;--spalte-min:<?= $spaltenMin ?>px">
+  <div class="kalender kalender--zeit kalender--<?= Util::attr($ansicht) ?>" style="--spalten:<?= count($tage) ?>;--stunde:<?= $stundeHoehe ?>px;--spalte-min:<?= $spaltenMin ?>px">
     <div class="kalender__gitter" data-von-stunde="<?= (int) $vonStunde ?>"
          data-stundenhoehe="<?= $stundeHoehe ?>" data-raster="15">
 
@@ -370,7 +370,7 @@ require __DIR__ . '/partials/kopf.php';
             $dauer = max(20, (strtotime((string) $t['ende']) - strtotime((string) $t['start'])) / 60);
             $oben  = ($startMin - $vonStunde * 60) / 60 * $stundeHoehe;
             $hoehe = $dauer / 60 * $stundeHoehe - 3;
-            [$spur, $spurenGesamt] = $spalten[$nr] ?? [0, 1];
+            [$spur, $spurenGesamt, $stapel] = $spalten[$nr] ?? [0, 1, 0];
             /*
              * Parallele Termine liegen versetzt uebereinander, nicht
              * nebeneinander.
@@ -387,24 +387,29 @@ require __DIR__ . '/partials/kopf.php';
              * Lesbarkeit: Drei halb lesbare Namen helfen niemandem, einer
              * ganzer und zwei erreichbare schon.
              *
-             * In der Tagesansicht gilt das Gegenteil: Dort ist die Spalte
-             * ueber tausend Pixel breit, geteilt bleibt jedem reichlich
-             * Platz - und nebeneinander sieht man die Parallele sofort,
-             * statt sie unter dem Nachbarn zu suchen.
+             * Zwei Dinge heben das wieder auf:
+             *
+             *   * In der Tagesansicht ist die Spalte ueber tausend Pixel
+             *     breit. Dort wird geteilt - nebeneinander sieht man die
+             *     Parallele sofort, statt sie unter dem Nachbarn zu suchen.
+             *   * Beim Daraufzeigen faechert der ganze Stapel auf, auch in
+             *     der Woche. Erst dann sieht man wirklich, was dahinter
+             *     liegt - und darum geht es ja.
+             *
+             * Beide Male dieselben Werte, nur anders gerechnet. Deshalb
+             * stehen hier nur noch die Groessen als Variablen; wie daraus
+             * eine Lage wird, entscheidet die Stilregel. Im style-Attribut
+             * waere es festgeschrieben und keine Regel kaeme mehr daran
+             * vorbei - genau daran scheiterte vorher das Hervorholen.
              */
-            $breit = $ansicht === 'tag';
-            $spurBreite = 100 / $spurenGesamt;
-            $versatz = $spur * 16;
             $service = $leistungen[(int) $t['service_id']] ?? null;
             $farbe = $farben[(string) ($service['art'] ?? 'einzel')] ?? '';
             $kunde = (int) $t['customer_id'] > 0 ? Customers::nameVonId((int) $t['customer_id']) : '';
             $verschiebbar = Auth::darf('bookings.write') && (string) $t['status'] !== 'abgesagt';
             ?>
             <a class="termin<?= $farbe !== '' ? ' termin--' . $farbe : '' ?><?= (string) $t['status'] === 'abgesagt' ? ' termin--abgesagt' : '' ?><?= $verschiebbar ? ' termin--ziehbar' : '' ?><?= $hoehe < 34 ? ' termin--flach' : '' ?>"
-               style="top:<?= round($oben, 1) ?>px;height:<?= round($hoehe, 1) ?>px;<?php
-                 if ($breit): ?>left:calc(<?= round($spur * $spurBreite, 4) ?>% + 3px);width:calc(<?= round($spurBreite, 4) ?>% - 6px);right:auto<?php
-                 else: ?>left:<?= $versatz + 3 ?>px;right:3px;width:auto<?php
-                 endif; ?>;--spur:<?= $spur ?>"
+               style="--oben:<?= round($oben, 1) ?>px;--hoehe:<?= round($hoehe, 1) ?>px;--spur:<?= $spur ?>;--spuren:<?= $spurenGesamt ?>"
+               <?= $spurenGesamt > 1 ? 'data-stapel="' . (int) $stapel . '"' : '' ?>
                <?php if ($verschiebbar): ?>
                data-verschiebbar
                data-id="<?= (int) $t['id'] ?>"
