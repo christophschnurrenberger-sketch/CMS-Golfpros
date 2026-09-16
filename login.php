@@ -44,9 +44,37 @@ if (App::istPost()) {
 
     [$ok, $meldung] = Auth::anmelden($email, App::postRoh('passwort'));
     if ($ok) {
-        $ziel = $weiter !== '' && str_starts_with($weiter, '/') ? $weiter : '/app/';
-        header('Location: ' . $ziel);
-        exit;
+        /*
+         * Wohin nach der Anmeldung?
+         *
+         * Ohne Ziel auf die Startseite der Anwendung – über App::url().
+         * Vorher stand hier ein nacktes „/app/". In einer Anlage im
+         * Unterordner schickte das auf example.de/app/ statt auf
+         * example.de/procms/app/: Anmeldung erfolgreich, Seite nicht
+         * gefunden. Wer sich anmeldet, landete im Nichts.
+         *
+         * Mit Ziel: `weiter` kommt aus Auth::fordern() und ist dort die
+         * vollständige angefragte Adresse samt Installationspfad. Sie
+         * wird unverändert übernommen und NICHT noch einmal durch
+         * App::url() geschickt – das hänge die Basis ein zweites Mal
+         * davor.
+         *
+         * Erlaubt ist nur ein Pfad dieser Anlage: genau ein Schrägstrich
+         * am Anfang. „//fremd.de" liest der Browser als fremden Host,
+         * „/\fremd.de" ebenso, weil er den umgekehrten Schrägstrich
+         * geraderückt. Ungeprüft wäre die Anmeldemaske ein Sprungbrett
+         * fürs Phishing: echte Seite, echtes Passwort, fremdes Ziel.
+         */
+        $eigen = $weiter !== ''
+              && str_starts_with($weiter, '/')
+              && !str_starts_with($weiter, '//')
+              && !str_starts_with($weiter, '/\\')
+              && !preg_match('/[\r\n]/', $weiter);
+        if ($eigen) {
+            header('Location: ' . $weiter);
+            exit;
+        }
+        App::weiter('/app/');
     }
     $fehler = $meldung;
 }

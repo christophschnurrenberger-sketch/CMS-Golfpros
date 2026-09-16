@@ -170,9 +170,24 @@ final class App
         exit;
     }
 
+    /**
+     * Zurück, woher der Klick kam – aber nur innerhalb dieser Anlage.
+     *
+     * Woher er kam, sagt der Browser über die Referer-Kopfzeile, und die
+     * setzt letztlich die Seite, die den Klick ausgelöst hat. Ungeprüft
+     * übernommen wird daraus eine Weiterleitung auf jede beliebige
+     * Adresse: Ein fremdes Formular schickt an diese Anwendung, die
+     * schickt den Angemeldeten weiter. Deshalb wird er nur übernommen,
+     * wenn er auf diese Installation zeigt; sonst geht es auf die
+     * Startseite der Anwendung.
+     */
     public static function zurueck(): never
     {
-        $ziel = (string) ($_SERVER['HTTP_REFERER'] ?? self::url('/app/'));
+        $referer = (string) ($_SERVER['HTTP_REFERER'] ?? '');
+        $eigen   = self::absolut('/');
+        $ziel    = $referer !== '' && str_starts_with($referer, $eigen)
+                 ? $referer
+                 : self::url('/app/');
         header('Location: ' . $ziel);
         exit;
     }
