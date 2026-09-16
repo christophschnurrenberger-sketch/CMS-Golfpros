@@ -164,7 +164,7 @@ Menü (`Module::menue()`). Niemand klickt gern auf eine Sperre.
 
 ## Module und Tarif
 
-`Module::LISTE` beschreibt 21 Bereiche mit Gruppe, Symbol und Mindesttarif.
+`Module::LISTE` beschreibt 22 Bereiche mit Gruppe, Symbol und Mindesttarif.
 Zwei Ebenen entscheiden, was sichtbar ist:
 
 1. **Der Tarif** legt fest, was verfügbar *wäre* (`Module::imPlan()`).
@@ -176,10 +176,21 @@ Website, Kunden, Kalender, Buchungen, Einstellungen. Alles andere ist
 Angebot. `Module::standardFuerPlan()` schaltet für Einsteiger absichtlich
 wenig ein – wer mit 22 Menüpunkten anfängt, benutzt am Ende drei.
 
+Daneben gibt es **Unterpunkte** (`Module::UNTERPUNKTE`): eigener Eintrag
+im Menü, aber kein eigenes Modul. Sie erben Recht und Schalter von ihrem
+Hauptpunkt und tauchen im Tarifbildschirm nicht auf – „Pakete" unter den
+Buchungen ist so einer. Ein eigener Schalter dafür wäre nur verwirrend:
+Pakete ohne Buchungen ergeben keinen Sinn.
+
+Ein neu ausgeliefertes Modul steht nicht in der gespeicherten Schalter-
+liste bestehender Anlagen und bliebe dort unsichtbar. `Schema::migrate()`
+schaltet es deshalb einmalig dazu, aber nur wo das verwandte Modul schon
+an ist – siehe `modulNachruesten()`.
+
 ## Der Website-Baukasten
 
 Seiten bestehen aus Blöcken; ein Block ist JSON mit `typ`, `id` und
-`daten`. `lib/Bloecke.php` beschreibt 25 Typen mit ihren Feldern,
+`daten`. `lib/Bloecke.php` beschreibt 27 Typen mit ihren Feldern,
 `lib/Renderer.php` macht HTML daraus.
 
 Entscheidend: Der Baukasten in der Anwendung und die öffentliche Website

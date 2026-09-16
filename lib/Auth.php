@@ -38,16 +38,16 @@ final class Auth
         'admin' => [
             'modul.*', 'customers.*', 'leads.*', 'bookings.*', 'training.*', 'video.*',
             'courses.*', 'products.*', 'payments.*', 'invoices.*', 'marketing.*',
-            'website.*', 'content.*', 'events.*', 'community.*', 'analytics.*',
+            'website.*', 'content.*', 'events.*', 'travel.*', 'community.*', 'analytics.*',
             'ai.*', 'settings.allgemein', 'settings.team', 'settings.recht', 'audit.view',
         ],
 
         'head_pro' => [
             'modul.dashboard', 'modul.customers', 'modul.leads', 'modul.calendar', 'modul.bookings',
-            'modul.training', 'modul.video', 'modul.courses', 'modul.events', 'modul.community',
+            'modul.training', 'modul.video', 'modul.courses', 'modul.events', 'modul.travel', 'modul.community',
             'modul.analytics', 'modul.ai', 'modul.products', 'modul.website', 'modul.content', 'modul.settings',
             'customers.*', 'leads.*', 'bookings.*', 'training.*', 'video.*', 'courses.*',
-            'events.*', 'community.*', 'analytics.view', 'ai.use', 'products.view',
+            'events.*', 'travel.*', 'community.*', 'analytics.view', 'ai.use', 'products.view',
             'settings.allgemein', 'settings.team',
         ],
 
@@ -59,8 +59,10 @@ final class Auth
         ],
 
         'assistant' => [
-            'modul.dashboard', 'modul.customers', 'modul.leads', 'modul.calendar', 'modul.bookings', 'modul.events',
-            'customers.view', 'customers.write', 'leads.*', 'bookings.view', 'bookings.write', 'events.view',
+            'modul.dashboard', 'modul.customers', 'modul.leads', 'modul.calendar', 'modul.bookings',
+            'modul.events', 'modul.travel',
+            'customers.view', 'customers.write', 'leads.*', 'bookings.view', 'bookings.write',
+            'events.view', 'travel.view',
         ],
 
         'accountant' => [
@@ -70,9 +72,10 @@ final class Auth
 
         'marketing' => [
             'modul.dashboard', 'modul.website', 'modul.content', 'modul.marketing', 'modul.newsletter',
-            'modul.automations', 'modul.leads', 'modul.analytics', 'modul.ai', 'modul.community', 'modul.events',
+            'modul.automations', 'modul.leads', 'modul.analytics', 'modul.ai', 'modul.community',
+            'modul.events', 'modul.travel',
             'website.*', 'content.*', 'marketing.*', 'newsletter.*', 'automations.*',
-            'leads.view', 'leads.write', 'analytics.view', 'ai.use', 'community.*', 'events.view',
+            'leads.view', 'leads.write', 'analytics.view', 'ai.use', 'community.*', 'events.view', 'travel.view',
         ],
     ];
 

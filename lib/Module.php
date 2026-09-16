@@ -79,7 +79,11 @@ final class Module
         ],
         'events' => [
             'name' => 'Events', 'icon' => 'events', 'gruppe' => 'web', 'plan' => 'pro',
-            'beschreibung' => 'Workshops, Camps, Turniere und Golfreisen.',
+            'beschreibung' => 'Workshops, Camps, Turniere und Gruppentrainings.',
+        ],
+        'travel' => [
+            'name' => 'Reisen', 'en' => 'Trips', 'icon' => 'globe', 'gruppe' => 'web', 'plan' => 'pro',
+            'beschreibung' => 'Golfreisen mit Hotel, Zimmerwahl, Anzahlung und Anmeldung.',
         ],
 
         'marketing' => [
@@ -208,7 +212,8 @@ final class Module
             }
         }
         if ($plan === 'business' || $plan === 'academy') {
-            foreach (['payments', 'analytics', 'ai', 'courses', 'events', 'newsletter', 'marketing', 'video', 'automations'] as $key) {
+            foreach (['payments', 'analytics', 'ai', 'courses', 'events', 'travel',
+                      'newsletter', 'marketing', 'video', 'automations'] as $key) {
                 $an[] = $key;
             }
         }

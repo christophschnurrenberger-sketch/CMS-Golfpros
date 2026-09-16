@@ -380,6 +380,27 @@ final class Bloecke
             'standard' => ['titel' => 'Aus dem Blog', 'anzahl' => 3],
         ],
 
+        /*
+         * Golfreisen als Kacheln.
+         *
+         * Nur die Kachel, nicht die ganze Reise: Programm, Leistungen und
+         * Preise sind zwei Bildschirme voll: Die stehen auf der eigenen
+         * Seite, hier stehen Ziel, Zeitraum, Preis und freie Plätze –
+         * genug, um zu entscheiden, ob man weiterliest.
+         */
+        'reisen' => [
+            'name' => 'Golfreisen', 'icon' => 'globe', 'gruppe' => 'Überzeugung',
+            'felder' => [
+                'obertitel' => ['Kleine Zeile darüber', 'text'],
+                'titel'     => ['Überschrift', 'text'],
+                'text'      => ['Text', 'mehrzeilig'],
+                'anzahl'    => ['Wie viele zeigen', 'zahl'],
+            ],
+            'standard' => ['titel' => 'Golfreisen',
+                           'text' => 'Eine Woche spielen, wo andere Urlaub machen – in kleiner Gruppe.',
+                           'anzahl' => 3],
+        ],
+
         'kontakt' => [
             'name' => 'Kontakt & Anfahrt', 'icon' => 'pin', 'gruppe' => 'Handlung',
             'felder' => [

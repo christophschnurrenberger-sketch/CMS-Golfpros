@@ -481,6 +481,119 @@
 .seite .zeit-zeile__zeit { font-size: clamp(20px, 2vw, 26px); font-weight: 500; letter-spacing: -0.02em; }
 .seite .zeit-zeile__art { flex: 1 1 200px; font-size: 15px; color: inherit; opacity: .72; }
 
+/* ------------------------------------------------------- Golfreisen ---- */
+
+/*
+ * Die Kacheln im Baustein.
+ *
+ * Kacheln statt der sonst üblichen Liste: Eine Reise verkauft sich über
+ * das Bild und das Ziel, nicht über eine Zeile Text. Drei nebeneinander,
+ * auf dem Telefon untereinander.
+ */
+.seite .reisekacheln {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: clamp(18px, 3vw, 30px);
+}
+.seite .reisekachel {
+  display: flex; flex-direction: column;
+  background: var(--flaeche);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) 6px;
+  overflow: hidden;
+  color: inherit;
+  transition: transform .18s, box-shadow .18s;
+}
+.seite .reisekachel:hover { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(23, 39, 28, .1); }
+.seite .reisekachel__bild { display: block; aspect-ratio: 3 / 2; overflow: hidden; }
+.seite .reisekachel__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.seite .reisekachel__koerper {
+  display: flex; flex-direction: column; gap: 6px; flex: 1;
+  padding: clamp(20px, 3vw, 26px);
+}
+.seite .reisekachel__ort {
+  font-size: 13px; letter-spacing: .07em; text-transform: uppercase; color: var(--marke);
+}
+.seite .reisekachel__titel {
+  font-size: clamp(20px, 2.2vw, 24px); font-weight: 500;
+  letter-spacing: -0.025em; line-height: 1.15;
+}
+.seite .reisekachel__zeit { font-size: 15px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.seite .reisekachel__text { font-size: 15.5px; color: var(--text-2); margin-top: 4px; }
+/* Preis und Plätze ganz unten, damit sie bei unterschiedlich langen
+   Texten trotzdem auf einer Linie stehen. */
+.seite .reisekachel__fuss {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  margin-top: auto; padding-top: 16px;
+  border-top: 1px solid var(--rand);
+}
+.seite .reisekachel__preis { font-size: 17.5px; font-weight: 500; }
+.seite .reisekachel__frei { font-size: 14px; color: var(--text-3); }
+
+/* ------------------------------------------------ Eine Reise im Ganzen */
+
+.seite .reise__bild {
+  border-radius: var(--ecke) var(--ecke) var(--ecke) 6px;
+  overflow: hidden; margin-bottom: clamp(22px, 3vw, 32px);
+}
+.seite .reise__bild img { width: 100%; display: block; aspect-ratio: 16 / 9; object-fit: cover; }
+.seite .reise__kurz {
+  font-size: clamp(18px, 2vw, 21px); line-height: 1.45;
+  margin: 0 0 clamp(22px, 3vw, 30px);
+}
+
+/*
+ * Die Eckdaten als Definitionsliste: Hotel, Reisezeit, Anreise, Preis,
+ * Anzahlung, Plätze. Zwei Spalten, damit sechs Punkte nicht zu einer
+ * langen Leiter werden.
+ */
+.seite .reise__eck {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 2px 26px;
+  margin: 0 0 clamp(26px, 4vw, 36px);
+  border-top: 1px solid var(--rand);
+}
+.seite .reise__eck-teil { padding: 14px 0; border-bottom: 1px solid var(--rand); }
+.seite .reise__eck dt {
+  font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: 3px;
+}
+.seite .reise__eck dd { margin: 0; font-size: 16.5px; }
+
+.seite .reise__text p { margin: 0 0 1em; }
+.seite .reise__untertitel {
+  font-size: clamp(20px, 2.4vw, 25px); font-weight: 500; letter-spacing: -0.025em;
+  margin: clamp(30px, 4vw, 44px) 0 16px;
+}
+.seite .reise__spalten {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: clamp(18px, 3vw, 36px);
+}
+.seite .reise__liste { list-style: none; margin: 0; padding: 0; }
+.seite .reise__liste li {
+  position: relative; padding-left: 26px; margin-bottom: 9px; font-size: 16.5px;
+}
+/* Haken für „enthalten", Strich für „nicht enthalten" – das unterscheidet
+   die beiden Listen auch dann, wenn nur eine im Bild ist. */
+.seite .reise__liste li::before {
+  content: "✓"; position: absolute; left: 0; top: 0; color: var(--marke); font-weight: 600;
+}
+.seite .reise__liste--ohne li { color: var(--text-2); }
+.seite .reise__liste--ohne li::before { content: "–"; color: var(--text-3); }
+
+.seite .reise__programm { list-style: none; margin: 0; padding: 0; }
+.seite .reise__tag {
+  display: flex; gap: clamp(14px, 2.4vw, 26px);
+  padding: 18px 0; border-top: 1px solid var(--rand);
+}
+.seite .reise__tag:last-child { border-bottom: 1px solid var(--rand); }
+.seite .reise__tag-nr {
+  flex: 0 0 68px;
+  font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-3); padding-top: 3px;
+}
+.seite .reise__tag p { margin: 4px 0 0; color: var(--text-2); font-size: 16px; }
+
 /* ------------------------------------------------ Buchungskalender ---- */
 
 /*

@@ -965,6 +965,58 @@ final class Renderer
              . '<div class="liste">' . $liste . '</div></div>';
     }
 
+    /**
+     * Golfreisen als Kacheln, jede ein Weg auf ihre eigene Seite.
+     *
+     * Was auf der Kachel steht, ist die Entscheidungshilfe: wohin, wann,
+     * wie lange, was es kostet und ob noch etwas frei ist. Alles Weitere –
+     * Hotel, Programm, Leistungen – steht auf reise.php. Eine Reise in
+     * eine Kachel zu quetschen hiesse, sie unlesbar zu machen; sie hier
+     * ganz auszubreiten hiesse, drei Bildschirme Startseite.
+     *
+     * Ausgebuchte Reisen verschwinden nicht: „ausgebucht" ist eine
+     * Empfehlung fuers naechste Mal, und wer eine Warteliste fuehrt, will
+     * genau dann gefunden werden.
+     */
+    private static function blockReisen(array $d): string
+    {
+        $reisen = Trips::kommende(max(1, (int) ($d['anzahl'] ?? 3)));
+        if ($reisen === []) {
+            return '';
+        }
+
+        $kacheln = '';
+        foreach ($reisen as $r) {
+            $frei = Trips::freiePlaetze($r);
+            $ziel = Oeffentlich::url('/reise.php', ['r' => (string) $r['slug']]);
+            $ort  = trim((string) $r['ziel'] . ' · ' . (string) $r['land'], ' ·');
+
+            $kacheln .= '<a class="reisekachel" href="' . Util::attr($ziel) . '">'
+                      . ((string) $r['bild'] !== ''
+                         ? '<span class="reisekachel__bild"><img src="'
+                           . Util::attr(App::url((string) $r['bild'])) . '" alt="" loading="lazy"></span>'
+                         : '')
+                      . '<span class="reisekachel__koerper">'
+                      . ($ort !== '' ? '<span class="reisekachel__ort">' . Util::h($ort) . '</span>' : '')
+                      . '<span class="reisekachel__titel">' . Util::h((string) $r['titel']) . '</span>'
+                      . '<span class="reisekachel__zeit">'
+                      . Util::h(Util::datum((string) $r['start'])) . ' – '
+                      . Util::h(Util::datum((string) $r['ende'])) . ' · '
+                      . (int) $r['naechte'] . ' Nächte</span>'
+                      . ((string) $r['kurztext'] !== ''
+                         ? '<span class="reisekachel__text">' . Util::h((string) $r['kurztext']) . '</span>' : '')
+                      . '<span class="reisekachel__fuss">'
+                      . '<span class="reisekachel__preis">ab ' . Util::h(Util::geldKurz((int) $r['preis_cent']))
+                      . '</span>'
+                      . '<span class="reisekachel__frei">'
+                      . ($frei > 0 ? 'noch ' . $frei . ' Plätze' : 'ausgebucht') . '</span>'
+                      . '</span></span></a>';
+        }
+
+        return '<div class="inhalt-breite" id="reisen">' . self::kopfzeile($d)
+             . '<div class="reisekacheln">' . $kacheln . '</div></div>';
+    }
+
     /** Beiträge als abwechselnd eingerückte Zeilen mit Bild und Text. */
     private static function blockBlog(array $d): string
     {

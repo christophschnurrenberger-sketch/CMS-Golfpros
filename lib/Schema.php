@@ -46,8 +46,9 @@ final class Schema
      *   2  bookings.invoice_id - Termine auf Rechnungen
      *   3  customers.portal_token_bis und .abmelde_token - befristeter
      *      Zugangslink, dauerhafter Abmeldelink
+     *   4  trips und trip_signups - das Reisemodul
      */
-    public const VERSION = 3;
+    public const VERSION = 4;
 
     public static function migrate(): void
     {
@@ -100,6 +101,40 @@ final class Schema
         self::spalteSicherstellen('customers', 'abmelde_token', '%STR(64)% NOT NULL DEFAULT ""');
         self::tokenNachruesten();
         self::videosWegraeumen();
+        self::modulNachruesten('travel', 'events');
+    }
+
+    /**
+     * Ein neues Modul bei bestehenden Anlagen dazuschalten.
+     *
+     * Welche Module an sind, steht je Workspace als Liste in den
+     * Einstellungen. Ein neu ausgeliefertes Modul steht dort nicht – es
+     * bliebe also unsichtbar, und der Pro müsste erst ahnen, dass es
+     * etwas Neues gibt, um es im Tarifbildschirm zu suchen.
+     *
+     * Angeschaltet wird nur, wo das verwandte Modul schon an ist: Wer
+     * keine Events führt, will nicht plötzlich Reisen im Menü haben.
+     * Wer die Liste nie angefasst hat, bekommt ohnehin den Standard
+     * seines Tarifs und wird hier nicht angerührt.
+     */
+    private static function modulNachruesten(string $neu, string $wenn): void
+    {
+        foreach (DB::all('SELECT id FROM settings WHERE schluessel = :s', ['s' => 'module']) as $zeile) {
+            $satz = DB::one('SELECT * FROM settings WHERE id = :i', ['i' => (int) $zeile['id']]);
+            if ($satz === null) {
+                continue;
+            }
+            $liste = Util::ausJson((string) $satz['wert'], []);
+            if (!is_array($liste) || $liste === []) {
+                continue;
+            }
+            if (!in_array($wenn, $liste, true) || in_array($neu, $liste, true)) {
+                continue;
+            }
+            $liste[] = $neu;
+            DB::update('settings', ['wert' => Util::json(array_values($liste))],
+                'id = :i', ['i' => (int) $satz['id']]);
+        }
     }
 
     /**
@@ -1092,6 +1127,82 @@ final class Schema
                 erstellt %DT%
             )%ENGINE%',
 
+            /* ============================================= Reisen ======= */
+
+            /*
+             * Eine Golfreise ist kein Event mit langem Datum.
+             *
+             * Sie hat ein Ziel und ein Hotel, Nächte statt Stunden, einen
+             * Preis pro Person im Doppelzimmer und einen Zuschlag fürs
+             * Einzelzimmer, eine Anzahlung, eine Mindestteilnehmerzahl,
+             * eine Liste dessen, was enthalten ist, und einen Ablauf über
+             * mehrere Tage. Nichts davon passt in die Eventtabelle, ohne
+             * dass dort zehn Spalten stünden, die für Workshops immer leer
+             * bleiben.
+             *
+             * `leistungen`, `nicht_enthalten`, `programm` und `bilder`
+             * stehen als JSON: Es sind Listen ohne eigene Bedeutung für
+             * Abfragen - niemand sucht Reisen danach, dass Halbpension
+             * enthalten ist. Eigene Tabellen dafür wären vier Joins für
+             * eine Aufzählung.
+             */
+            'CREATE TABLE IF NOT EXISTS trips (
+                id %PK%,
+                workspace_id %INT% NOT NULL,
+                titel %STR(200)% NOT NULL DEFAULT "",
+                slug %STR(200)% NOT NULL DEFAULT "",
+                ziel %STR(160)% NOT NULL DEFAULT "",
+                land %STR(120)% NOT NULL DEFAULT "",
+                hotel %STR(200)% NOT NULL DEFAULT "",
+                kurztext %STR(255)% NOT NULL DEFAULT "",
+                beschreibung %TEXT%,
+                leistungen %TEXT%,                            -- JSON: was enthalten ist
+                nicht_enthalten %TEXT%,                       -- JSON: was nicht
+                programm %TEXT%,                              -- JSON: [{titel, text}] je Tag
+                bild %STR(255)% NOT NULL DEFAULT "",
+                bilder %TEXT%,                                -- JSON: weitere Bilder
+                start %DT%,
+                ende %DT%,
+                naechte %INT% NOT NULL DEFAULT 7,
+                anreise %STR(32)% NOT NULL DEFAULT "eigen",   -- eigen|flug|bus
+                abflug_ort %STR(120)% NOT NULL DEFAULT "",
+                preis_cent %INT% NOT NULL DEFAULT 0,          -- pro Person im Doppelzimmer
+                ez_zuschlag_cent %INT% NOT NULL DEFAULT 0,
+                anzahlung_cent %INT% NOT NULL DEFAULT 0,
+                plaetze %INT% NOT NULL DEFAULT 12,
+                mindest_teilnehmer %INT% NOT NULL DEFAULT 0,
+                trainer_id %INT% NOT NULL DEFAULT 0,
+                warteliste %INT% NOT NULL DEFAULT 1,
+                status %STR(24)% NOT NULL DEFAULT "geplant",  -- geplant|veroeffentlicht|abgeschlossen|abgesagt
+                position %INT% NOT NULL DEFAULT 0,
+                erstellt %DT%
+            )%ENGINE%',
+
+            /*
+             * Die Anmeldung steht auch ohne Kundendatensatz: Wer über die
+             * Website bucht, ist beim Absenden noch niemand. customer_id
+             * wird nachgetragen, sobald der Kunde angelegt ist.
+             */
+            'CREATE TABLE IF NOT EXISTS trip_signups (
+                id %PK%,
+                workspace_id %INT% NOT NULL,
+                trip_id %INT% NOT NULL,
+                customer_id %INT% NOT NULL DEFAULT 0,
+                name %STR(160)% NOT NULL DEFAULT "",
+                email %STR(190)% NOT NULL DEFAULT "",
+                telefon %STR(60)% NOT NULL DEFAULT "",
+                zimmer %STR(16)% NOT NULL DEFAULT "dz",       -- dz|ez
+                mitreisender %STR(160)% NOT NULL DEFAULT "",
+                hcp %STR(16)% NOT NULL DEFAULT "",
+                notiz %TEXT%,
+                preis_cent %INT% NOT NULL DEFAULT 0,
+                anzahlung_bezahlt %INT% NOT NULL DEFAULT 0,
+                bezahlt %INT% NOT NULL DEFAULT 0,
+                status %STR(24)% NOT NULL DEFAULT "angemeldet",-- angemeldet|bestaetigt|warteliste|storniert
+                order_id %INT% NOT NULL DEFAULT 0,
+                erstellt %DT%
+            )%ENGINE%',
+
             /* ============================================= Community ==== */
 
             'CREATE TABLE IF NOT EXISTS community_groups (
@@ -1288,6 +1399,8 @@ final class Schema
             'documents' => ['workspace_id', 'customer_id'],
             'events' => ['workspace_id', 'start'],
             'event_registrations' => ['event_id', 'customer_id'],
+            'trips' => ['workspace_id', 'slug', 'start'],
+            'trip_signups' => ['trip_id', 'customer_id'],
             'community_groups' => ['workspace_id'],
             'community_posts' => ['workspace_id', 'group_id'],
             'community_comments' => ['post_id'],

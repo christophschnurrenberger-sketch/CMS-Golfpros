@@ -104,6 +104,7 @@ final class Demo
             self::videos();
             self::kurse();
             self::events();
+            self::reisen();
             self::leads();
             self::inhalte();
             self::website();
@@ -1009,9 +1010,6 @@ final class Demo
             ['Kurzspiel-Workshop', 'workshop', '+9 days', '+9 days', 8, 8900,
              "Ein Vormittag ausschließlich um das Grün herum: Chippen, Pitchen, Bunker. "
              . "Am Ende weißt du für jede Lage, welcher Schläger der richtige ist."],
-            ['Golfreise Mallorca', 'reise', '+95 days', '+102 days', 14, 189000,
-             "Sieben Tage, vier Plätze, täglich Training am Morgen und Spiel am Nachmittag. "
-             . "Flug und Halbpension inklusive, Greenfees enthalten."],
             ['Clubmeisterschaft Vorbereitung', 'workshop', '-30 days', '-30 days', 10, 6900,
              'Platzstrategie und Umgang mit Turnierdruck – direkt vor der Clubmeisterschaft.'],
         ];
@@ -1041,6 +1039,101 @@ final class Demo
                     'eingecheckt' => strtotime($bis) < time() && $n < $kapazitaet
                         ? date('Y-m-d H:i:s', strtotime($von)) : null,
                     'erstellt' => date('Y-m-d H:i:s', strtotime('-' . mt_rand(5, 60) . ' days')),
+                ]);
+            }
+        }
+    }
+
+    private static function reisen(): void
+    {
+        $reisen = [
+            [
+                'Golfwoche Mallorca', 'Son Servera', 'Spanien', 'Hotel Son Vida Golf ****',
+                '+95 days', '+102 days', 14, 189000, 29000, 50000, 8, 'flug', 'Stuttgart',
+                'Sieben Nächte direkt am Platz, vier Greenfees und jeden Morgen Training.',
+                "Eine Woche, in der Golf nicht das Beiprogramm ist, sondern der Tag.\n\n"
+                . "Morgens eine Stunde Training in kleiner Gruppe, nachmittags Spiel auf einem "
+                . "der vier Plätze in der Umgebung. Dazwischen bleibt Zeit für alles, was eine "
+                . "Insel im Frühjahr sonst noch hergibt.\n\n"
+                . "Die Gruppe bleibt klein – vierzehn Plätze, damit auf dem Platz niemand wartet "
+                . "und im Training jeder drankommt.",
+                ['7 Nächte im Doppelzimmer mit Halbpension', '4 Greenfees', 'Flug ab Stuttgart',
+                 'Transfers vor Ort', 'Tägliches Training in der Gruppe', 'Turnier am letzten Tag'],
+                ['Leihschläger', 'Getränke außerhalb der Halbpension', 'Reiserücktrittsversicherung'],
+                [['Anreise und Einspielen', 'Transfer zum Hotel, nachmittags 9 Löcher zum Ankommen'],
+                 ['Technik am Morgen', 'Training an der Range, danach 18 Löcher'],
+                 ['Kurzspieltag', 'Vormittags Chippen und Bunker, nachmittags frei'],
+                 ['Der große Platz', 'Ganztags auf dem Meisterschaftsplatz'],
+                 ['Strategie', 'Platzbegehung, danach Spiel mit Coaching auf der Runde'],
+                 ['Turnier', 'Stableford über 18 Löcher, abends Siegerehrung'],
+                 ['Abreise', 'Vormittags frei, mittags Transfer zum Flughafen']],
+            ],
+            [
+                'Herbstreise Algarve', 'Lagos', 'Portugal', 'Quinta da Praia Resort',
+                '+150 days', '+156 days', 12, 154000, 24000, 40000, 6, 'eigen', '',
+                'Sechs Nächte an der Algarve, drei Plätze, viel Wind und noch mehr Sonne.',
+                "Die Algarve im Herbst ist das, was Mallorca im Frühjahr ist: warm genug für "
+                . "kurze Hosen, leer genug für zügige Runden.\n\n"
+                . "Wir spielen drei verschiedene Plätze, und wer mag, nimmt jeden Morgen eine "
+                . "halbe Stunde am Putting Green mit.",
+                ['6 Nächte im Doppelzimmer mit Frühstück', '3 Greenfees', 'Leihwagen für die Gruppe',
+                 'Training am Putting Green'],
+                ['Anreise', 'Abendessen', 'Buggys'],
+                [['Anreise', 'Eigene Anreise bis zum Nachmittag, abends gemeinsames Essen'],
+                 ['Erster Platz', 'Runde am Meer, danach Zeit in Lagos'],
+                 ['Kurzspiel', 'Vormittags Training, nachmittags frei'],
+                 ['Zweiter Platz', 'Runde im Landesinneren'],
+                 ['Dritter Platz', 'Abschlussrunde mit kleinem Wettspiel'],
+                 ['Abreise', 'Frühstück und eigene Abreise']],
+            ],
+        ];
+
+        foreach ($reisen as $i => [$titel, $ziel, $land, $hotel, $von, $bis, $plaetze, $preis,
+                                   $ez, $anzahlung, $mindest, $anreise, $abflug, $kurz, $text,
+                                   $enthalten, $nicht, $programm]) {
+            $tage = [];
+            foreach ($programm as [$tTitel, $tText]) {
+                $tage[] = ['titel' => $tTitel, 'text' => $tText];
+            }
+
+            $reiseId = Tenant::insert('trips', [
+                'titel' => $titel, 'slug' => Util::slug($titel),
+                'ziel' => $ziel, 'land' => $land, 'hotel' => $hotel,
+                'kurztext' => $kurz, 'beschreibung' => $text,
+                'leistungen' => Util::json($enthalten),
+                'nicht_enthalten' => Util::json($nicht),
+                'programm' => Util::json($tage),
+                'start' => date('Y-m-d 00:00:00', strtotime($von)),
+                'ende' => date('Y-m-d 00:00:00', strtotime($bis)),
+                'naechte' => (int) round((strtotime($bis) - strtotime($von)) / 86400),
+                'anreise' => $anreise, 'abflug_ort' => $abflug,
+                'preis_cent' => $preis, 'ez_zuschlag_cent' => $ez, 'anzahlung_cent' => $anzahlung,
+                'plaetze' => $plaetze, 'mindest_teilnehmer' => $mindest,
+                'trainer_id' => self::$trainer['owner'],
+                'warteliste' => 1, 'status' => 'veroeffentlicht', 'position' => $i,
+                'erstellt' => date('Y-m-d H:i:s', strtotime('-' . mt_rand(20, 60) . ' days')),
+            ]);
+
+            /* Nicht voll und nicht leer: Die erste Reise ist gut gebucht,
+               die zweite braucht noch Teilnehmer – beide Zustände sollen
+               in der Demo zu sehen sein. */
+            $wieViele = $i === 0 ? $plaetze - 2 : max(1, $mindest - 2);
+            $gemischt = self::$kunden;
+            shuffle($gemischt);
+            foreach (array_slice($gemischt, 0, $wieViele) as $n => $k) {
+                $zimmer = $n % 4 === 0 ? 'ez' : 'dz';
+                /* self::$kunden fuehrt nur die Kennung – Name und Adresse
+                   stehen am Datensatz. */
+                $kunde = Tenant::find('customers', (int) $k['id']);
+                Tenant::insert('trip_signups', [
+                    'trip_id' => $reiseId, 'customer_id' => $k['id'],
+                    'name' => $kunde !== null ? Customers::name($kunde) : 'Teilnehmer',
+                    'email' => (string) ($kunde['email'] ?? ''), 'telefon' => '',
+                    'zimmer' => $zimmer, 'hcp' => '',
+                    'preis_cent' => $preis + ($zimmer === 'ez' ? $ez : 0),
+                    'anzahlung_bezahlt' => $n % 3 === 0 ? 0 : 1,
+                    'status' => $n % 5 === 0 ? 'angemeldet' : 'bestaetigt',
+                    'erstellt' => date('Y-m-d H:i:s', strtotime('-' . mt_rand(3, 40) . ' days')),
                 ]);
             }
         }

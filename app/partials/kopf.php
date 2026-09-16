@@ -97,6 +97,7 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
                 'products' => '/app/produkte.php', 'payments' => '/app/zahlungen.php',
                 'invoices' => '/app/rechnungen.php', 'website' => '/app/website.php',
                 'content' => '/app/inhalte.php', 'events' => '/app/events.php',
+                'travel' => '/app/reisen.php',
                 'marketing' => '/app/marketing.php', 'newsletter' => '/app/newsletter.php',
                 'automations' => '/app/automationen.php', 'community' => '/app/community.php',
                 'analytics' => '/app/auswertung.php', 'ai' => '/app/ki.php',

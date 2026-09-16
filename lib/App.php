@@ -327,6 +327,7 @@ final class App
             'leistungsdaten' => 'training',
             'videoanalyse' => 'video', 'videos' => 'video',
             'kurs' => 'courses', 'kurse' => 'courses',
+            'reise' => 'travel', 'reisen' => 'travel',
             'produkte' => 'products', 'produkt' => 'products', 'gutscheine' => 'products',
             'zahlungen' => 'payments', 'rechnungen' => 'invoices', 'rechnung' => 'invoices',
             'marketing' => 'marketing', 'newsletter' => 'newsletter', 'kampagne' => 'newsletter',
