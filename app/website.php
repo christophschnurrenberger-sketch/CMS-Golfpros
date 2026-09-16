@@ -57,7 +57,7 @@ require __DIR__ . '/partials/kopf.php';
     <div class="karte__koerper">
       <?= leerzustand('website', 'Deine Website beginnt hier',
             'Beschreib in einem Satz, was du anbietest – daraus entsteht eine vollständige '
-            . 'Startseite mit Texten, Leistungen, Stimmen, FAQ und Buchungsfenster. '
+            . 'Startseite mit Texten, Leistungen, Stimmen, FAQ und Buchungskalender. '
             . 'Jeder Baustein bleibt bearbeitbar.', []) ?>
     </div>
   </div>

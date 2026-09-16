@@ -481,6 +481,116 @@
 .seite .zeit-zeile__zeit { font-size: clamp(20px, 2vw, 26px); font-weight: 500; letter-spacing: -0.02em; }
 .seite .zeit-zeile__art { flex: 1 1 200px; font-size: 15px; color: inherit; opacity: .72; }
 
+/* ------------------------------------------------ Buchungskalender ---- */
+
+/*
+ * Vier Wochen am Stück, sieben Spalten.
+ *
+ * Kein Monatsgitter mit leeren Anfangszellen: Wer buchen will, denkt in
+ * „diese und die nächsten Wochen", nicht in Kalendermonaten. Der erste
+ * Tag ist immer der Montag dieser Woche, damit die Spalten fluchten.
+ */
+.seite .buchkal { margin: 4px 0 26px; }
+.seite .buchkal__kopf {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.seite .buchkal__spanne {
+  font-size: clamp(18px, 2vw, 22px); font-weight: 500; letter-spacing: -0.02em;
+}
+.seite .buchkal__hinweis { font-size: 15px; color: var(--text-3); }
+
+.seite .buchkal__wochentage,
+.seite .buchkal__gitter {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;
+}
+.seite .buchkal__wochentage {
+  margin-bottom: 6px;
+  font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-3); text-align: center;
+}
+
+/*
+ * Eine Tageszelle ist quadratisch – sonst springt die Zeile in der Höhe,
+ * je nachdem ob eine Zahl darunter steht.
+ */
+.seite .buchkal__tag {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  aspect-ratio: 1;
+  padding: 4px;
+  /* Die kleine Ecke, nicht die Pille: Eine quadratische Zelle mit
+     Pillenradius sieht aus wie ein Knopf, der nicht ins Gitter passt. */
+  border: 1px solid transparent; border-radius: var(--ecke-klein);
+  background: transparent; color: var(--text);
+  font-family: var(--schrift); font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.seite .buchkal__zahl { line-height: 1; }
+.seite .buchkal__monat {
+  font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-3); line-height: 1;
+}
+
+/* Vorbei und belegt sehen verschieden aus: „war nie möglich" ist etwas
+   anderes als „ist voll", und beides soll man unterscheiden können. */
+.seite .buchkal__tag.ist-vorbei { color: var(--rand-stark); }
+.seite .buchkal__tag.ist-zu { color: var(--text-3); opacity: .55; }
+
+.seite .buchkal__tag.ist-frei {
+  background: var(--flaeche);
+  border-color: transparent;
+  cursor: pointer;
+  font-weight: 500;
+}
+.seite .buchkal__tag.ist-frei:hover { border-color: var(--marke); }
+.seite .buchkal__tag.ist-frei:focus-visible { outline: 2px solid var(--marke); outline-offset: 2px; }
+.seite .buchkal__tag.ist-gewaehlt {
+  background: var(--marke); color: var(--grund); border-color: var(--marke);
+}
+/* Wie viele Zeiten der Tag hat – die Zahl beantwortet „lohnt das Klicken?"
+   schon vorher. */
+.seite .buchkal__anzahl {
+  font-size: 11px; line-height: 1;
+  color: var(--marke); opacity: .85;
+}
+.seite .buchkal__tag.ist-gewaehlt .buchkal__anzahl,
+.seite .buchkal__tag.ist-gewaehlt .buchkal__monat { color: inherit; opacity: .8; }
+
+/* Heute: ein Strich unter der Zahl. Kein Rahmen – der ist für „frei"
+   reserviert, und beides gleichzeitig wäre nicht mehr zu unterscheiden. */
+.seite .buchkal__tag.ist-heute .buchkal__zahl {
+  border-bottom: 2px solid currentColor; padding-bottom: 2px;
+}
+
+.seite .buchkal__zeiten { margin-top: clamp(20px, 3vw, 30px); }
+.seite .buchkal__tagzeiten + .buchkal__tagzeiten { margin-top: 22px; }
+.seite .buchkal__datum {
+  font-size: clamp(17px, 1.6vw, 20px); font-weight: 500;
+  letter-spacing: -0.015em; margin: 0 0 12px;
+}
+.seite .buchkal__reihe { display: flex; flex-wrap: wrap; gap: 8px; }
+.seite .buchkal__reihe .zeitknopf { text-decoration: none; display: inline-block; }
+
+.seite .buchkal__wahl { margin-bottom: clamp(18px, 3vw, 26px); }
+.seite .buchkal__wahl .feld { margin-bottom: 0; }
+.seite .buchkal__alle { margin: 0; font-size: 15px; }
+.seite .buchkal__alle a { border-bottom: 1px solid var(--rand); }
+.seite .buchkal__leer { color: var(--text-2); }
+
+@media (max-width: 560px) {
+  .seite .buchkal__wochentage, .seite .buchkal__gitter { gap: 4px; }
+  .seite .buchkal__tag { font-size: 15px; }
+  .seite .buchkal__anzahl { font-size: 10px; }
+  /* Auf dem Telefon ist die Zelle rund 45 Pixel breit – da passt die Zahl,
+     aber kein Wort mehr daneben. Vorgelesen wird ohnehin die volle
+     Beschriftung am Knopf. */
+  .seite .buchkal__frei-wort { display: none; }
+}
+
 /* Der alte Name bleibt benutzbar – die Buchung verwendet beide. */
 .seite .zeitwahl { margin: 4px 0 30px; }
 .seite .zeitwahl__tag + .zeitwahl__tag { margin-top: 26px; padding-top: 26px; border-top: 1px solid var(--rand); }

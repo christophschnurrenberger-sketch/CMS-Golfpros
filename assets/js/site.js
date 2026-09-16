@@ -32,6 +32,38 @@
     k.parentElement.classList.toggle('ist-offen');
   });
 
+  /*
+   * Der Buchungskalender.
+   *
+   * Ohne dieses Skript stehen alle freien Tage mit ihren Uhrzeiten
+   * untereinander – vollständig, nur lang. Erst hier wird daraus ein
+   * Kalender, in dem immer ein Tag offen ist: der erste freie beim Laden,
+   * danach der angeklickte. Deshalb steht auch hier die Klasse im Skript
+   * und nicht im HTML.
+   */
+  document.querySelectorAll('[data-buchkal]').forEach(function (kal) {
+    var listen = Array.prototype.slice.call(kal.querySelectorAll('.buchkal__tagzeiten'));
+    var tage   = Array.prototype.slice.call(kal.querySelectorAll('.buchkal__tag[data-tag]'));
+    if (!listen.length) return;
+
+    function zeigen(tag) {
+      listen.forEach(function (l) { l.hidden = l.dataset.tag !== tag; });
+      tage.forEach(function (t) {
+        var ist = t.dataset.tag === tag;
+        t.classList.toggle('ist-gewaehlt', ist);
+        t.setAttribute('aria-expanded', ist ? 'true' : 'false');
+      });
+    }
+
+    zeigen(listen[0].dataset.tag);
+
+    kal.addEventListener('click', function (e) {
+      var t = e.target.closest('.buchkal__tag[data-tag]');
+      if (!t) return;
+      zeigen(t.dataset.tag);
+    });
+  });
+
   /* OpenStreetMap braucht eine Bounding-Box; die rechnen wir aus der Suche */
   document.querySelectorAll('.kartenrahmen iframe[data-suche]').forEach(function (rahmen) {
     var suche = rahmen.dataset.suche;

@@ -79,7 +79,9 @@ final class Bloecke
         'spalten' => [
             'name' => 'Spalten', 'icon' => 'grid', 'gruppe' => 'Aufbau',
             'felder' => [
+                'obertitel'=> ['Kleine Zeile darüber', 'text'],
                 'titel'    => ['Überschrift', 'text'],
+                'text'     => ['Text unter der Überschrift', 'mehrzeilig'],
                 'eintraege'=> ['Spalten', 'liste', [
                     'icon'  => ['Symbol', 'auswahl', 'icons'],
                     'titel' => ['Titel', 'text'],
@@ -177,6 +179,7 @@ final class Bloecke
         'leistungen' => [
             'name' => 'Leistungen', 'icon' => 'list', 'gruppe' => 'Überzeugung',
             'felder' => [
+                'obertitel'=> ['Kleine Zeile darüber', 'text'],
                 'titel'    => ['Überschrift', 'text'],
                 'text'     => ['Text', 'mehrzeilig'],
                 'automatisch' => ['Leistungen aus dem System übernehmen', 'schalter'],
@@ -274,14 +277,25 @@ final class Bloecke
             ],
         ],
 
+        /*
+         * Zeigt einen Kalender, keine Maske: freie Tage zum Anklicken,
+         * darunter die Uhrzeiten des gewählten Tages. `wochen` bestimmt,
+         * wie weit er reicht – vier ist der Standard, acht das Höchste.
+         * Weiter vorauszuschauen kostet Rechenzeit für Tage, die ohnehin
+         * kaum jemand anklickt.
+         */
         'buchung' => [
-            'name' => 'Buchungsfenster', 'icon' => 'calendar', 'gruppe' => 'Handlung',
+            'name' => 'Buchungskalender', 'icon' => 'calendar', 'gruppe' => 'Handlung',
             'felder' => [
+                'obertitel'  => ['Kleine Zeile darüber', 'text'],
                 'titel'      => ['Überschrift', 'text'],
                 'text'       => ['Text', 'mehrzeilig'],
                 'service_id' => ['Nur diese Leistung (0 = alle)', 'zahl'],
+                'wochen'     => ['Wie viele Wochen zeigen (1–8, leer = 4)', 'zahl'],
             ],
-            'standard' => ['titel' => 'Termin buchen', 'text' => 'Wähle eine Leistung und einen freien Termin.', 'service_id' => 0],
+            'standard' => ['titel' => 'Termin buchen',
+                           'text' => 'Such dir einen freien Tag aus – die Zeiten kommen direkt aus meinem Kalender.',
+                           'service_id' => 0, 'wochen' => 4],
         ],
 
         /*
@@ -369,6 +383,7 @@ final class Bloecke
         'kontakt' => [
             'name' => 'Kontakt & Anfahrt', 'icon' => 'pin', 'gruppe' => 'Handlung',
             'felder' => [
+                'obertitel' => ['Kleine Zeile darüber', 'text'],
                 'titel'   => ['Überschrift', 'text'],
                 'text'    => ['Text', 'mehrzeilig'],
                 'karte'   => ['Karte einbetten', 'schalter'],

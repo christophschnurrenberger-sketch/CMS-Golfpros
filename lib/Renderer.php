@@ -600,6 +600,30 @@ final class Renderer
              . '</div></div></div>';
     }
 
+    /**
+     * Das Buchungsfenster auf der Website: ein Kalender, keine Maske.
+     *
+     * Vorher standen hier zwei Felder und ein Knopf „Freie Zeiten
+     * anzeigen". Wer buchen wollte, musste also erst raten, ob überhaupt
+     * etwas frei ist, dann eine Seite weiter, und erst dort sah er es.
+     * Zwei Schritte, bevor die eigentliche Frage beantwortet war: Wann
+     * kann ich?
+     *
+     * Jetzt beantwortet der Baustein sie sofort. Vier Wochen am Stück,
+     * freie Tage hervorgehoben, ein Klick öffnet die Uhrzeiten dieses
+     * Tages, ein zweiter führt mit gewählter Zeit direkt in die Buchung.
+     *
+     * Ohne JavaScript stehen alle Tage mit ihren Zeiten untereinander –
+     * dieselbe Entscheidung wie bei den Fragen und Antworten: Die Seite
+     * ist vollständig, das Skript macht sie nur kompakter. Suchmaschinen
+     * und Vorleseprogramme sehen so jede einzelne freie Zeit.
+     *
+     * Gerechnet wird gegen denselben Kalender wie überall sonst. Vier
+     * Wochen einer Leistung kosten rund zwanzig Millisekunden; deshalb
+     * wird nicht zwischengespeichert, was sonst veralten könnte – eine
+     * angezeigte Zeit, die längst vergeben ist, ärgert mehr als eine
+     * Seite, die zwanzig Millisekunden später kommt.
+     */
     private static function blockBuchung(array $d): string
     {
         $serviceId = (int) ($d['service_id'] ?? 0);
@@ -610,28 +634,158 @@ final class Renderer
             $p['id'] = $serviceId;
         }
         $leistungen = Tenant::all('services', $wo, $p, 'position, name');
-
-        $auswahl = '';
-        foreach ($leistungen as $s) {
-            $auswahl .= '<option value="' . (int) $s['id'] . '">' . Util::h((string) $s['name'])
-                      . ' · ' . Util::geldKurz((int) $s['preis_cent']) . '</option>';
-        }
-        if ($auswahl === '') {
+        if ($leistungen === []) {
             return '';
         }
 
+        /* Welche Leistung der Kalender zeigt. `bl` kommt vom Auswahlfeld
+           weiter unten; ohne Angabe die erste. */
+        $gewaehlteId = App::getInt('bl');
+        $service = null;
+        foreach ($leistungen as $l) {
+            if ((int) $l['id'] === $gewaehlteId) {
+                $service = $l;
+                break;
+            }
+        }
+        $service ??= $leistungen[0];
+        $sid = (int) $service['id'];
+
+        $wochen = max(1, min(8, (int) ($d['wochen'] ?? 4)));
+        /* Dasselbe Raster wie in der Buchung selbst: Viertelstunden bei
+           kurzen Einheiten, halbe bei langen. Ein leerer Tag im
+           Viertelstundentakt wäre eine Wand aus vierzig Knöpfen. */
+        $raster = (int) $service['dauer_min'] >= 60 ? 30 : 15;
+
+        $heute = Util::heute();
+        /* Ab dem Montag dieser Woche, damit das Gitter fluchtet. Nicht
+           über strtotime('monday this week') – das liefert am Sonntag den
+           Montag der Folgewoche. */
+        $wochentag = (int) date('N', strtotime($heute));
+        $ersterTag = date('Y-m-d', strtotime($heute . ' -' . ($wochentag - 1) . ' days'));
+
+        $slug   = (string) (Tenant::workspace()['slug'] ?? '');
+        $zellen = '';
+        $listen = '';
+        $frei   = 0;
+        $tage   = 7 * $wochen;
+
+        for ($i = 0; $i < $tage; $i++) {
+            $tag  = date('Y-m-d', strtotime($ersterTag . ' +' . $i . ' days'));
+            $zahl = (int) date('j', strtotime($tag));
+            /* Der Erste eines Monats nennt ihn mit, sonst wüsste man beim
+               Übergang nicht, in welchem Monat man klickt. */
+            $marke = $zahl === 1
+                ? '<span class="buchkal__monat">' . Util::h(mb_substr(Util::monatName((int) date('n', strtotime($tag))), 0, 3)) . '</span>'
+                : '';
+
+            /* Heute bekommt eine Marke, egal ob frei oder nicht – ohne
+               sie sucht man im Gitter erst, wo man gerade steht. */
+            $istHeute = $tag === $heute ? ' ist-heute' : '';
+
+            if ($tag < $heute) {
+                $zellen .= '<span class="buchkal__tag ist-vorbei" aria-hidden="true">'
+                         . '<span class="buchkal__zahl">' . $zahl . '</span></span>';
+                continue;
+            }
+
+            $zeiten = Bookings::freieZeiten($sid, $tag, 0, $raster);
+            if ($zeiten === []) {
+                $zellen .= '<span class="buchkal__tag ist-zu' . $istHeute . '">'
+                         . $marke . '<span class="buchkal__zahl">' . $zahl . '</span></span>';
+                continue;
+            }
+            $frei++;
+
+            $knoepfe = '';
+            foreach ($zeiten as $z) {
+                $ziel = App::url('/buchen.php') . '?' . http_build_query(array_filter([
+                    'w'          => $slug,
+                    'service_id' => $sid,
+                    'start'      => (string) $z['start'],
+                    'trainer_id' => (int) $z['trainer_id'],
+                ]));
+                $knoepfe .= '<a class="zeitknopf" href="' . Util::attr($ziel) . '">'
+                          . Util::h(Util::uhrzeit((string) $z['start'])) . '</a>';
+            }
+
+            /* Die Beschriftung fuer Vorleseprogramme nennt den ganzen Tag:
+               Eine Zahl im Gitter allein sagt ihnen nichts. */
+            $vorlesen = Util::datumLang($tag) . ', ' . count($zeiten)
+                      . (count($zeiten) === 1 ? ' freie Zeit' : ' freie Zeiten');
+            $zellen .= '<button type="button" class="buchkal__tag ist-frei' . $istHeute . '"'
+                     . ' data-tag="' . Util::attr($tag) . '"'
+                     . ' aria-controls="' . Util::attr('bk' . $sid . '-' . $tag) . '"'
+                     . ' aria-label="' . Util::attr($vorlesen) . '">'
+                     . $marke . '<span class="buchkal__zahl">' . $zahl . '</span>'
+                     . '<span class="buchkal__anzahl">' . count($zeiten)
+                     . '<span class="buchkal__frei-wort"> frei</span></span></button>';
+
+            $listen .= '<div class="buchkal__tagzeiten" id="' . Util::attr('bk' . $sid . '-' . $tag) . '"'
+                     . ' data-tag="' . Util::attr($tag) . '">'
+                     . '<p class="buchkal__datum">' . Util::h(Util::datumLang($tag)) . '</p>'
+                     . '<div class="buchkal__reihe">' . $knoepfe . '</div></div>';
+        }
+
+        /* Die Leistung wechseln: ein Formular an dieselbe Adresse. Die
+           übrigen Werte der Adresszeile müssen mit, sonst landet ein
+           Wechsel auf der Startseite statt auf der Seite, auf der man
+           gerade steht. */
+        $mitnehmen = '';
+        foreach (['w', 's', 'beitrag'] as $name) {
+            $wert = App::get($name);
+            if ($wert !== '') {
+                $mitnehmen .= '<input type="hidden" name="' . $name . '" value="' . Util::attr($wert) . '">';
+            }
+        }
+        $auswahl = '';
+        if (count($leistungen) > 1) {
+            $optionen = '';
+            foreach ($leistungen as $l) {
+                $optionen .= '<option value="' . (int) $l['id'] . '"' . ((int) $l['id'] === $sid ? ' selected' : '') . '>'
+                           . Util::h((string) $l['name']) . ' · ' . Util::geldKurz((int) $l['preis_cent'])
+                           . '</option>';
+            }
+            $auswahl = '<form method="get" action="" class="buchkal__wahl">' . $mitnehmen
+                     . '<div class="feld"><label for="bk-leistung-' . $sid . '">Leistung</label>'
+                     . '<select id="bk-leistung-' . $sid . '" name="bl" onchange="this.form.submit()">'
+                     . $optionen . '</select></div>'
+                     . '<noscript><button class="knopf knopf--klein" type="submit">Kalender zeigen</button></noscript>'
+                     . '</form>';
+        }
+
+        $spanne = Util::h(Util::monatName((int) date('n', strtotime($ersterTag))));
+        $letzter = date('Y-m-d', strtotime($ersterTag . ' +' . ($tage - 1) . ' days'));
+        if (date('n', strtotime($letzter)) !== date('n', strtotime($ersterTag))) {
+            $spanne .= ' – ' . Util::h(Util::monatName((int) date('n', strtotime($letzter))));
+        }
+        $spanne .= ' ' . date('Y', strtotime($letzter));
+
+        $wochentage = '';
+        foreach (['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as $wt) {
+            $wochentage .= '<span>' . $wt . '</span>';
+        }
+
+        $alle = App::url('/buchen.php') . '?' . http_build_query(array_filter([
+            'w' => $slug, 'service_id' => $sid,
+        ]));
+
+        $kalender = $frei === 0
+            ? '<p class="buchkal__leer">In den nächsten ' . $wochen . ' Wochen ist für diese Leistung '
+              . 'nichts mehr frei. <a href="' . Util::attr($alle) . '">Weitere Zeiten ansehen</a> '
+              . 'oder kurz Kontakt aufnehmen – oft lässt sich doch etwas einrichten.</p>'
+            : '<div class="buchkal" data-buchkal>'
+              . '<div class="buchkal__kopf"><span class="buchkal__spanne">' . $spanne . '</span>'
+              . '<span class="buchkal__hinweis">' . (int) $service['dauer_min'] . ' Minuten · '
+              . Util::h(Util::geldKurz((int) $service['preis_cent'])) . '</span></div>'
+              . '<div class="buchkal__wochentage">' . $wochentage . '</div>'
+              . '<div class="buchkal__gitter">' . $zellen . '</div>'
+              . '<div class="buchkal__zeiten">' . $listen . '</div>'
+              . '</div>'
+              . '<p class="buchkal__alle"><a href="' . Util::attr($alle) . '">Alle freien Zeiten ansehen</a></p>';
+
         return '<div class="inhalt-breite inhalt-breite--schmal" id="buchung">' . self::kopfzeile($d)
-             . '<form method="get" action="' . Util::attr(App::url('/buchen.php')) . '" class="vorgang__form">'
-             . '<input type="hidden" name="w" value="' . Util::attr((string) (Tenant::workspace()['slug'] ?? '')) . '">'
-             . '<div class="feld-paar">'
-             . '<div class="feld"><label for="bf-leistung">Leistung</label>'
-             . '<select id="bf-leistung" name="leistung">' . $auswahl . '</select></div>'
-             . '<div class="feld"><label for="bf-datum">Ab wann</label>'
-             . '<input id="bf-datum" type="date" name="datum" value="' . Util::attr(Util::heute()) . '" min="'
-             . Util::attr(Util::heute()) . '"></div>'
-             . '</div>'
-             . '<button class="knopf" type="submit">Freie Zeiten anzeigen</button>'
-             . '</form></div>';
+             . $auswahl . $kalender . '</div>';
     }
 
     /**
