@@ -18,9 +18,39 @@ if (App::istPost()) {
             'preis_cent' => Util::centAus(App::post('preis')),
             'vergleichspreis_cent' => Util::centAus(App::post('vergleichspreis')),
             'bestand' => App::post('bestand') === '' ? -1 : App::postInt('bestand'),
-            'ref_id' => App::postInt('ref_id'),
             'aktiv' => App::postBool('aktiv') ? 1 : 0,
         ];
+
+        /*
+         * Woran das Produkt hängt.
+         *
+         * Ein Paketprodukt allein weiss nichts von Einheiten – die stehen
+         * am Paket, und ref_id ist die Verbindung dorthin. Fehlt sie,
+         * bucht der Kauf still nichts: Der Kunde zahlt und bekommt kein
+         * Guthaben. Dasselbe gilt fuer Kurse und Events.
+         *
+         * Vorher stand hier `App::postInt('ref_id')`, obwohl das Formular
+         * gar kein solches Feld hatte. Damit war die Verbindung immer 0 –
+         * neu angelegt hing kein Produkt je an einem Paket, und wer ein
+         * funktionierendes Paketprodukt nur oeffnete und speicherte,
+         * trennte dabei dessen Verbindung. Kein Fehler, keine Meldung,
+         * erst beim naechsten Kauf fiel es auf.
+         *
+         * Uebertragen wird "art:id" statt nur der Zahl: Paket 3 und Kurs 3
+         * sind verschiedene Dinge, und die Zahl allein sagt nicht welches.
+         * Angenommen wird sie nur, wenn die Art zur gewaehlten passt und
+         * der Datensatz wirklich existiert – sonst zeigt das Produkt beim
+         * Kauf ins Leere. Und geschrieben wird nur, wenn das Formular das
+         * Feld ueberhaupt mitschickt; was nicht gefragt wurde, darf nichts
+         * ueberschreiben.
+         */
+        if (isset($_POST['ref_id'])) {
+            $tabelle = Commerce::BEZUG[(string) $daten['art']] ?? '';
+            [$bezugArt, $bezugId] = array_pad(explode(':', App::post('ref_id'), 2), 2, '');
+            $daten['ref_id'] = ($tabelle !== '' && $bezugArt === $daten['art'] && (int) $bezugId > 0
+                                && Tenant::find($tabelle, (int) $bezugId) !== null)
+                ? (int) $bezugId : 0;
+        }
         if ($daten['name'] === '') {
             App::melden('Das Produkt braucht einen Namen.', 'fehler');
         } elseif ($id > 0) {
@@ -56,6 +86,29 @@ $produkte = Tenant::all('products', $art !== '' ? 'art = :a' : '', $art !== '' ?
     'aktiv DESC, position, id');
 $rabatte = Tenant::all('discounts', '', [], 'aktiv DESC, id DESC');
 $bestseller = Commerce::bestseller(5, 180);
+
+/*
+ * Woran sich ein Produkt hängen lässt.
+ *
+ * Reihenfolge und Beschriftung stehen hier, die Zuordnung Art → Tabelle
+ * in Commerce::BEZUG – damit Formular und Kaufabwicklung dieselbe Liste
+ * benutzen und nicht auseinanderlaufen.
+ */
+$bezuege = [
+    'paket' => ['Trainingspakete', 'name',
+        Tenant::all('packages', 'aktiv = 1', [], 'position, name'),
+        'Legt fest, wie viele Einheiten der Kauf gutschreibt. Die Einheiten stehen am Paket, '
+        . 'nicht am Produkt – neue Pakete legst du unter Pakete an.'],
+    'kurs' => ['Online-Kurse', 'titel',
+        Tenant::all('courses', '', [], 'position, titel'),
+        'Der Kauf schreibt den Käufer in diesen Kurs ein.'],
+    'workshop' => ['Workshops', 'titel',
+        Tenant::all('events', '', [], 'start DESC'),
+        'Der Kauf meldet den Käufer zu diesem Termin an.'],
+    'event' => ['Events', 'titel',
+        Tenant::all('events', '', [], 'start DESC'),
+        'Der Kauf meldet den Käufer zu diesem Termin an.'],
+];
 
 $titel = 'Produkte';
 $unter = count($produkte) . ' Produkte · ' . Tenant::count('orders', "status = 'bezahlt'") . ' Bestellungen';
@@ -123,6 +176,11 @@ require __DIR__ . '/partials/kopf.php';
                             data-setzbeschreibung="<?= Util::attr((string) $p['beschreibung']) ?>"
                             data-setzpreis="<?= Util::attr(number_format((int) $p['preis_cent'] / 100, 2, ',', '')) ?>"
                             data-setzvergleichspreis="<?= Util::attr(number_format((int) $p['vergleichspreis_cent'] / 100, 2, ',', '')) ?>"
+                            <?php /* Ohne diese Zeile stünde das Auswahlfeld beim Bearbeiten
+                                     wieder auf „noch nichts" – und Speichern träfe genau den
+                                     Fehler, der hier behoben wird. */ ?>
+                            data-setzref_id="<?= (int) $p['ref_id'] > 0
+                                ? Util::attr((string) $p['art'] . ':' . (int) $p['ref_id']) : '' ?>"
                             data-modal-titel="Produkt bearbeiten">
                       <?= Icon::svg('edit', 14) ?></button>
                   <?php endif; ?>
@@ -223,6 +281,26 @@ require __DIR__ . '/partials/kopf.php';
             <?php endforeach; ?>
           </select></div>
       </div>
+      <div class="feld" id="pr-bezug-feld" hidden>
+        <label class="feld__label" for="pr-ref">Gehört zu</label>
+        <select class="eingabe" id="pr-ref" name="ref_id">
+          <option value="">— noch nichts —</option>
+          <?php foreach ($bezuege as $bArt => [$bTitel, $bSpalte, $bZeilen, $bHinweis]): ?>
+            <optgroup label="<?= Util::attr($bTitel) ?>" data-art="<?= Util::attr($bArt) ?>">
+              <?php foreach ($bZeilen as $bZ): ?>
+                <option value="<?= Util::attr($bArt . ':' . (int) $bZ['id']) ?>">
+                  <?= Util::h((string) $bZ[$bSpalte]) ?><?php
+                    if ($bArt === 'paket'): ?> · <?= (int) $bZ['einheiten'] ?> Einheiten<?php endif;
+                    if (isset($bZ['start']) && (string) $bZ['start'] !== ''): ?> · <?= Util::h(Util::datum((string) $bZ['start'])) ?><?php endif; ?>
+                </option>
+              <?php endforeach; ?>
+            </optgroup>
+          <?php endforeach; ?>
+        </select>
+        <?php foreach ($bezuege as $bArt => [, , , $bHinweis]): ?>
+          <div class="feld__hinweis" data-bezughinweis="<?= Util::attr($bArt) ?>" hidden><?= Util::h($bHinweis) ?></div>
+        <?php endforeach; ?>
+      </div>
       <div class="feld"><label class="feld__label" for="pr-kurz">Kurztext</label>
         <input class="eingabe" id="pr-kurz" name="kurztext" placeholder="5 Einheiten à 60 Minuten"></div>
       <div class="feld"><label class="feld__label" for="pr-text">Beschreibung</label>
@@ -284,5 +362,55 @@ require __DIR__ . '/partials/kopf.php';
   </form>
 </dialog>
 <?php endif; ?>
+
+<script>
+/*
+ * Das Auswahlfeld „Gehört zu" folgt der gewählten Art.
+ *
+ * Sichtbar ist immer nur die Gruppe, die zur Art passt – wer ein
+ * Trainingspaket anlegt, soll nicht zwischen Kursen und Events suchen.
+ * Arten ohne Bezug (Gutschein, Ausrüstung, Einzeltraining) blenden das
+ * Feld ganz aus.
+ *
+ * Das ist Bequemlichkeit, keine Absicherung: Der Wert steht als „art:id"
+ * im Formular, und der Server nimmt ihn nur an, wenn die Art passt und
+ * der Datensatz existiert. Ohne Skript funktioniert das Feld deshalb
+ * weiter, man sieht dann nur alle Gruppen auf einmal.
+ */
+(function () {
+  var art  = document.getElementById('pr-art');
+  var feld = document.getElementById('pr-bezug-feld');
+  var wahl = document.getElementById('pr-ref');
+  if (!art || !feld || !wahl) { return; }
+
+  function anpassen() {
+    var gewaehlt = art.value;
+    var passt = false;
+
+    Array.prototype.forEach.call(wahl.querySelectorAll('optgroup'), function (g) {
+      var gilt = g.dataset.art === gewaehlt;
+      g.hidden = !gilt;
+      g.disabled = !gilt;
+      if (gilt) { passt = true; }
+    });
+    Array.prototype.forEach.call(feld.querySelectorAll('[data-bezughinweis]'), function (h) {
+      h.hidden = h.dataset.bezughinweis !== gewaehlt;
+    });
+
+    feld.hidden = !passt;
+    /* Die Art gewechselt: Eine Auswahl aus der alten Gruppe wäre jetzt
+       falsch – der Server würde sie ohnehin verwerfen, aber sie soll auch
+       nicht stehen bleiben, als wäre sie gültig. */
+    if (wahl.value && wahl.value.split(':')[0] !== gewaehlt) { wahl.value = ''; }
+  }
+
+  art.addEventListener('change', anpassen);
+  /* Beim Öffnen des Fensters sind die Werte gerade erst gesetzt worden. */
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-modal-auf="modal-produkt"]')) { setTimeout(anpassen, 0); }
+  });
+  anpassen();
+})();
+</script>
 
 <?php require __DIR__ . '/partials/fuss.php'; ?>

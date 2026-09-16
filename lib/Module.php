@@ -126,26 +126,57 @@ final class Module
 
     private const PLAN_RANG = ['starter' => 1, 'pro' => 2, 'business' => 3, 'academy' => 4];
 
+    /**
+     * Unterpunkte: eigener Eintrag im Menü, aber kein eigenes Modul.
+     *
+     * „Pakete" gehört zu den Buchungen – es teilt deren Recht, deren
+     * Tarifstufe und deren Ein-/Ausschalter. Ein eigenes Modul daraus zu
+     * machen hieße, es einzeln abschaltbar zu machen; Pakete ohne
+     * Buchungen ergeben aber keinen Sinn, und der Tarifbildschirm bekäme
+     * einen Schalter, den niemand versteht.
+     *
+     * Der Grund für den eigenen Eintrag: Die Seite gab es längst, sie war
+     * nur über einen Knopf in der Buchungsliste zu erreichen. Wer dort
+     * nie hinsieht, sucht das Feld „Einheiten" vergeblich unter Produkte
+     * – und findet es dort nicht, weil es dort keins gibt.
+     *
+     * `nach` nennt den Hauptpunkt: hinter ihm steht der Eintrag im Menü,
+     * von ihm erbt er Modul und Recht.
+     */
+    private const UNTERPUNKTE = [
+        'packages' => [
+            'name' => 'Pakete', 'en' => 'Packages', 'icon' => 'ticket',
+            'gruppe' => 'kunden', 'plan' => 'starter', 'nach' => 'bookings',
+            'beschreibung' => 'Zehnerkarten und Guthaben: anlegen, verkaufen, verbrauchen.',
+        ],
+    ];
+
     /** @return array<string,array<string,mixed>> */
     public static function alle(): array
     {
         return self::LISTE;
     }
 
-    /** @return array<string,mixed>|null */
+    /**
+     * @return array<string,mixed>|null
+     *
+     * Findet auch Unterpunkte. `alle()` dagegen bleibt bei den Modulen –
+     * der Tarifbildschirm zählt damit ab, was sich ein- und ausschalten
+     * lässt, und ein Unterpunkt gehört dort nicht hinein.
+     */
     public static function info(string $key): ?array
     {
-        return self::LISTE[$key] ?? null;
+        return self::LISTE[$key] ?? self::UNTERPUNKTE[$key] ?? null;
     }
 
     public static function name(string $key): string
     {
-        return (string) (self::LISTE[$key]['name'] ?? ucfirst($key));
+        return (string) (self::info($key)['name'] ?? ucfirst($key));
     }
 
     public static function icon(string $key): string
     {
-        return (string) (self::LISTE[$key]['icon'] ?? 'info');
+        return (string) (self::info($key)['icon'] ?? 'info');
     }
 
     public static function gruppenname(string $gruppe): string
@@ -201,6 +232,15 @@ final class Module
                 continue;
             }
             $menue[$info['gruppe']][] = ['key' => $key] + $info;
+
+            /* Unterpunkte stehen direkt hinter ihrem Hauptpunkt und sind
+               genau dann da, wenn er da ist – geprüft wurde das eine Zeile
+               weiter oben, für beide zusammen. */
+            foreach (self::UNTERPUNKTE as $unterKey => $unter) {
+                if ($unter['nach'] === $key) {
+                    $menue[$unter['gruppe']][] = ['key' => $unterKey] + $unter;
+                }
+            }
         }
         return $menue;
     }

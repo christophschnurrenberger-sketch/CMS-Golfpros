@@ -74,12 +74,40 @@
 
   /* ---------------------------------------------------------- Dialoge - */
 
+  /*
+   * Die Vorgaben jedes Fensters, einmal beim Laden gemerkt.
+   *
+   * Ein Fenster bedient alle Zeilen einer Seite. Bisher blieb nach einem
+   * „Bearbeiten" alles stehen, was der naechste Oeffner nicht ausdruecklich
+   * ueberschreibt - beim Anlegen also auch das versteckte Feld `id`. „Neu"
+   * hiess dann in Wahrheit „den zuletzt geoeffneten Datensatz
+   * ueberschreiben", ohne dass etwas darauf hindeutete.
+   *
+   * `form.reset()` genuegt dafuer nicht: Bei einem versteckten Feld ist
+   * `value` dasselbe wie das Attribut im Markup. Das Vorbelegen aendert
+   * also die Vorgabe selbst, und reset() stellt hinterher genau den
+   * ueberschriebenen Wert wieder her. Deshalb eine eigene Aufnahme,
+   * gemacht bevor irgendein Oeffner etwas hineinschreiben konnte.
+   */
+  const modalVorgaben = new WeakMap();
+  $$('dialog').forEach(d => {
+    modalVorgaben.set(d, $$('input, select, textarea', d).map(f => [
+      f, (f.type === 'checkbox' || f.type === 'radio') ? f.checked : f.value,
+    ]));
+  });
+
   document.addEventListener('click', (e) => {
     const auf = e.target.closest('[data-modal-auf]');
     if (auf) {
       e.preventDefault();
       const d = document.getElementById(auf.dataset.modalAuf);
       if (d && typeof d.showModal === 'function') {
+        // Erst auf die Vorgaben zurueck, dann vorbelegen.
+        (modalVorgaben.get(d) || []).forEach(([f, wert]) => {
+          if (f.type === 'checkbox' || f.type === 'radio') { f.checked = wert; }
+          else { f.value = wert; }
+        });
+
         // Werte vorbelegen: data-setz-<feldname>
         Object.keys(auf.dataset).forEach(k => {
           if (k.indexOf('setz') === 0 && k.length > 4) {

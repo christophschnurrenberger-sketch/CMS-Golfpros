@@ -20,6 +20,24 @@ final class Commerce
         'merch'     => ['Ausrüstung', 'products'],
     ];
 
+    /**
+     * Welche Produktart woran hängt.
+     *
+     * `ref_id` am Produkt ist die Verbindung zu dem, was der Kauf auslöst:
+     * ein Paket gutschreiben, in einen Kurs einschreiben, zu einem Event
+     * anmelden – siehe positionEinloesen(). Ohne diese Verbindung kauft
+     * jemand ein Paket und bekommt kein Guthaben, und niemand merkt es.
+     *
+     * Die übrigen Arten stehen für sich: Ein Gutschein entsteht aus dem
+     * Preis, ein Ball ist ein Ball.
+     */
+    public const BEZUG = [
+        'paket'    => 'packages',
+        'kurs'     => 'courses',
+        'workshop' => 'events',
+        'event'    => 'events',
+    ];
+
     /* ------------------------------------------------------- Bestellung */
 
     /**

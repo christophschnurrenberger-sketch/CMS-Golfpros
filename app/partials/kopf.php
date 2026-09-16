@@ -92,6 +92,7 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
             $ziel = [
                 'dashboard' => '/app/', 'customers' => '/app/kunden.php', 'leads' => '/app/leads.php',
                 'calendar' => '/app/kalender.php', 'bookings' => '/app/buchungen.php',
+                'packages' => '/app/pakete.php',
                 'training' => '/app/training.php', 'video' => '/app/videos.php', 'courses' => '/app/kurse.php',
                 'products' => '/app/produkte.php', 'payments' => '/app/zahlungen.php',
                 'invoices' => '/app/rechnungen.php', 'website' => '/app/website.php',

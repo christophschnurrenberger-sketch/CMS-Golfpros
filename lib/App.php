@@ -306,7 +306,7 @@ final class App
         $karte = [
             'index' => 'dashboard', 'kunde' => 'customers', 'kunden' => 'customers',
             'lead' => 'leads', 'kalender' => 'calendar', 'buchungen' => 'bookings',
-            'buchung' => 'bookings', 'leistungen' => 'bookings', 'pakete' => 'bookings',
+            'buchung' => 'bookings', 'leistungen' => 'bookings', 'pakete' => 'packages',
             'verfuegbarkeit' => 'bookings',
             'training' => 'training', 'trainingsplan' => 'training', 'uebungen' => 'training',
             'leistungsdaten' => 'training',
