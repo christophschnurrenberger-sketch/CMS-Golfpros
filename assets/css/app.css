@@ -1508,6 +1508,85 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
 .termin__titel { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .termin--abgesagt { opacity: .5; text-decoration: line-through; }
 
+/* ------------------------------------------- Vorschaukarte ----------- */
+
+/*
+ * Schwebt am Fenster, nicht im Kalender.
+ *
+ * Im Rollbereich haette sie dessen Kante als Grenze – bei einem Termin am
+ * rechten Rand waere die halbe Karte ab. `position: fixed` kennt nur den
+ * Fensterrand, und um den kuemmert sich das Skript.
+ *
+ * pointer-events: none ist Absicht: Die Karte soll nicht selbst unter dem
+ * Zeiger liegen, sonst verliert der Termin darunter das Daraufzeigen und
+ * die Karte flackert sich zu Tode.
+ */
+.vorschau {
+  position: fixed;
+  z-index: 60;
+  width: min(300px, calc(100vw - 20px));
+  padding: 13px 15px 12px;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  box-shadow: var(--schatten-3, 0 14px 34px rgba(0, 0, 0, .18));
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+.vorschau.ist-da { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .vorschau { transition: none; }
+}
+
+.vorschau__kopf {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 5px;
+}
+.vorschau__zeit {
+  font-size: 14px; font-weight: 640; color: var(--marke);
+  font-variant-numeric: tabular-nums;
+}
+.vorschau__tag { font-size: 11.5px; color: var(--text-4); }
+
+.vorschau__name { display: block; font-size: 16px; font-weight: 640; line-height: 1.3; }
+.vorschau__was  { display: block; font-size: 13px; color: var(--text-3); margin-top: 1px; }
+
+.vorschau__zeilen {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-top: 11px; padding-top: 11px;
+  border-top: 1px solid var(--rand);
+}
+.vorschau__zeile {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text-2);
+}
+.vorschau__zeile .ico { color: var(--text-4); flex: none; }
+.vorschau__zeile--notiz { align-items: flex-start; color: var(--text-3); font-style: italic; }
+.vorschau__zeile--notiz .ico { margin-top: 2px; }
+
+.vorschau__merk {
+  font-style: normal; font-size: 11px; font-weight: 600;
+  padding: 1px 6px; border-radius: 999px;
+  background: var(--flaeche-2); color: var(--text-3);
+}
+.vorschau__merk--gut   { background: var(--erfolg-hell); color: var(--erfolg); }
+.vorschau__merk--offen { background: var(--warnung-hell); color: var(--warnung); }
+
+.vorschau__fuss {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  margin-top: 11px; padding-top: 10px;
+  border-top: 1px solid var(--rand);
+}
+.vorschau__hinweis { font-size: 11px; color: var(--text-4); }
+
+/* Auf dem Telefon gibt es kein Daraufzeigen – dort fuehrt der Fingertipp
+   direkt auf die Terminseite, und die Karte waere nur im Weg. */
+@media (hover: none) {
+  .vorschau { display: none; }
+}
+
 /* ------------------------------------------- Liste des Tages --------- */
 
 /*

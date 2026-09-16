@@ -414,9 +414,9 @@ require __DIR__ . '/partials/kopf.php';
                data-wer="<?= Util::attr($kunde !== '' ? $kunde : (string) $t['titel']) ?>"
                data-hat-kunde="<?= (int) $t['customer_id'] > 0 ? '1' : '0' ?>"
                <?php endif; ?>
-               href="<?= Util::attr(App::url('/app/buchung.php?id=' . (int) $t['id'])) ?>"
-               title="<?= Util::attr(Util::uhrzeit((string) $t['start']) . '–' . Util::uhrzeit((string) $t['ende'])
-                       . ' · ' . $t['titel'] . ($kunde !== '' ? ' · ' . $kunde : '')) ?>">
+               <?php /* Kein title-Attribut: Der Browser blendet sonst seine
+                        eigene Sprechblase ueber die Karte. */ ?>
+               href="<?= Util::attr(App::url('/app/buchung.php?id=' . (int) $t['id'])) ?>">
               <span class="termin__kopf">
                 <span class="termin__zeit"><?= Util::h(Util::uhrzeit((string) $t['start'])) ?></span>
                 <span class="termin__name"><?= Util::h($kunde !== '' ? $kunde : (string) $t['titel']) ?></span>
@@ -424,6 +424,58 @@ require __DIR__ . '/partials/kopf.php';
               <?php if ($hoehe >= 52): ?>
                 <span class="termin__was"><?= Util::h((string) $t['titel']) ?></span>
               <?php endif; ?>
+
+              <?php
+              /*
+               * Was auf der Flaeche keinen Platz hat, steht hier - fertig
+               * gesetzt, aber versteckt. Beim Daraufzeigen hebt das Skript
+               * genau diesen Block in eine schwebende Karte.
+               *
+               * Fertig statt als Daten: Preise, Datumsangaben und Namen
+               * werden hier von denselben Helfern formatiert wie ueberall
+               * sonst. Im Skript nachzubauen hiesse, dieselbe Formatierung
+               * ein zweites Mal zu pflegen - und beim naechsten Sonderfall
+               * weichen die beiden voneinander ab.
+               */
+              $ort     = (int) $t['location_id'] > 0 ? Tenant::find('locations', (int) $t['location_id']) : null;
+              $trainer = (int) $t['trainer_id'] > 0 ? Auth::trainerName((int) $t['trainer_id']) : '';
+              ?>
+              <span class="termin__mehr" hidden>
+                <span class="vorschau__kopf">
+                  <span class="vorschau__zeit"><?= Util::h(Util::uhrzeit((string) $t['start'])) ?>–<?= Util::h(Util::uhrzeit((string) $t['ende'])) ?></span>
+                  <span class="vorschau__tag"><?= Util::h(Util::datumLang((string) $t['start'])) ?></span>
+                </span>
+                <span class="vorschau__name"><?= Util::h($kunde !== '' ? $kunde : (string) $t['titel']) ?></span>
+                <span class="vorschau__was"><?= Util::h((string) $t['titel']) ?><?php
+                  if ((int) $t['teilnehmer'] > 1): ?> · <?= (int) $t['teilnehmer'] ?> Teilnehmer<?php endif; ?></span>
+
+                <span class="vorschau__zeilen">
+                  <?php if ($trainer !== ''): ?>
+                    <span class="vorschau__zeile"><?= Icon::svg('customers', 14) ?><?= Util::h($trainer) ?></span>
+                  <?php endif; ?>
+                  <?php if ($ort !== null): ?>
+                    <span class="vorschau__zeile"><?= Icon::svg('pin', 14) ?><?= Util::h((string) $ort['name']) ?></span>
+                  <?php endif; ?>
+                  <?php if ((int) $t['preis_cent'] > 0): ?>
+                    <span class="vorschau__zeile"><?= Icon::svg('euro', 14) ?><?= Util::h(Util::geld((int) $t['preis_cent'])) ?>
+                      <?php if ((int) $t['customer_package_id'] > 0): ?>
+                        <em class="vorschau__merk">aus dem Paket</em>
+                      <?php elseif ((int) $t['bezahlt'] === 1): ?>
+                        <em class="vorschau__merk vorschau__merk--gut">bezahlt</em>
+                      <?php else: ?>
+                        <em class="vorschau__merk vorschau__merk--offen">offen</em>
+                      <?php endif; ?></span>
+                  <?php endif; ?>
+                  <?php if (trim((string) $t['interne_notiz']) !== ''): ?>
+                    <span class="vorschau__zeile vorschau__zeile--notiz"><?= Icon::svg('message', 14) ?><?= Util::h(Util::kuerzen((string) $t['interne_notiz'], 90)) ?></span>
+                  <?php endif; ?>
+                </span>
+
+                <span class="vorschau__fuss">
+                  <?= pille(Bookings::statusName((string) $t['status']), Bookings::statusFarbe((string) $t['status'])) ?>
+                  <span class="vorschau__hinweis"><?= $verschiebbar ? 'Klicken zum Öffnen · Ziehen zum Verschieben' : 'Klicken zum Öffnen' ?></span>
+                </span>
+              </span>
             </a>
           <?php endforeach; ?>
         </div>

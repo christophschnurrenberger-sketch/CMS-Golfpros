@@ -860,6 +860,95 @@
       d.showModal();
     });
 
+    /* ------------------------------------------- Vorschaukarte ------- */
+
+    /*
+     * Beim Daraufzeigen die ganze Auskunft.
+     *
+     * Auf der Flaeche steht nur, was hineinpasst – bei einem halbstuendigen
+     * Termin in einer Wochenspalte sind das Uhrzeit und Name. Trainer, Ort,
+     * Preis, Zahlungsstand und die interne Notiz haetten dort nie Platz,
+     * sind aber genau das, was man wissen will, bevor man klickt.
+     *
+     * Die Karte schwebt frei am Fenster, nicht im Kalender: Sonst schnitte
+     * der Rollbereich sie an seiner Kante ab – und angeschnitten ist eine
+     * Vorschau wertlos.
+     */
+    const VERZOEGERUNG = 180;
+    let karte = null, karteFuer = null, warten = null;
+
+    function karteWeg() {
+      clearTimeout(warten);
+      if (karte) { karte.remove(); karte = null; }
+      karteFuer = null;
+    }
+
+    function karteZeigen(el) {
+      const quelle = el.querySelector('.termin__mehr');
+      if (!quelle) return;
+
+      karteWeg();
+      karte = document.createElement('div');
+      karte.className = 'vorschau';
+      karte.setAttribute('role', 'tooltip');
+      karte.innerHTML = quelle.innerHTML;
+      document.body.appendChild(karte);
+      karteFuer = el;
+
+      /* Erst messen, dann setzen: Die Hoehe steht erst fest, wenn der
+         Inhalt im Dokument haengt. */
+      const k = el.getBoundingClientRect();
+      const v = karte.getBoundingClientRect();
+      const luft = 10;
+
+      let links = k.right + luft;
+      if (links + v.width > window.innerWidth - luft) {
+        links = k.left - v.width - luft;               // dann nach links
+      }
+      if (links < luft) {
+        links = Math.max(luft, Math.min(k.left, window.innerWidth - v.width - luft));
+      }
+
+      let oben = k.top - 4;
+      if (oben + v.height > window.innerHeight - luft) {
+        oben = window.innerHeight - v.height - luft;   // am unteren Rand anheben
+      }
+      if (oben < luft) { oben = luft; }
+
+      karte.style.left = Math.round(links) + 'px';
+      karte.style.top  = Math.round(oben) + 'px';
+      requestAnimationFrame(() => karte && karte.classList.add('ist-da'));
+    }
+
+    gitter.addEventListener('mouseover', (e) => {
+      const el = e.target.closest('.termin');
+      if (!el || el === karteFuer || zug) return;
+      clearTimeout(warten);
+      warten = setTimeout(() => karteZeigen(el), VERZOEGERUNG);
+    });
+
+    gitter.addEventListener('mouseout', (e) => {
+      const el = e.target.closest('.termin');
+      if (!el) return;
+      // Innerhalb desselben Termins von Kind zu Kind: nichts tun.
+      if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+      karteWeg();
+    });
+
+    /* Tastatur: Wer sich durchtabbt, bekommt dieselbe Auskunft. */
+    gitter.addEventListener('focusin', (e) => {
+      const el = e.target.closest('.termin');
+      if (el) karteZeigen(el);
+    });
+    gitter.addEventListener('focusout', karteWeg);
+
+    /* Sobald etwas anderes passiert, ist die Karte im Weg. */
+    gitter.addEventListener('mousedown', karteWeg);
+    gitter.addEventListener('scroll', karteWeg, { passive: true });
+    window.addEventListener('scroll', karteWeg, { passive: true });
+    window.addEventListener('resize', karteWeg);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') karteWeg(); });
+
     // Mitten im Zug abgebrochen: Escape räumt auf wie der Dialog.
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape' || !zug || !zug.aktiv) return;

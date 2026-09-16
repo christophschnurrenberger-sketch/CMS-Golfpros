@@ -390,6 +390,32 @@ Dazu eine **Jetzt-Linie** im heutigen Tag und, in der Tagesansicht, die
 und wie lange; die Liste zeigt, was und mit wem und für wie viel. Beides
 zusammen ist der Tag.
 
+**Beim Daraufzeigen die ganze Auskunft.** Auf der Fläche steht nur, was
+hineinpasst – bei einem halbstündigen Termin in einer Wochenspalte sind
+das Uhrzeit und Name. Trainer, Ort, Preis, Zahlungsstand und die interne
+Notiz hätten dort nie Platz und sind genau das, was man wissen will,
+bevor man klickt. Nach einem kurzen Moment erscheint deshalb eine
+Vorschaukarte.
+
+Drei Festlegungen daran:
+
+* Sie wird **serverseitig fertig gesetzt** und liegt versteckt im Termin;
+  das Skript hebt sie nur heraus. Preise und Datumsangaben formatieren
+  dieselben Helfer wie überall sonst – im Skript nachgebaut wären es zwei
+  Fassungen derselben Formatierung, die beim nächsten Sonderfall
+  auseinanderlaufen.
+* Sie schwebt am Fenster (`position: fixed`), nicht im Kalender. Im
+  Rollbereich hätte sie dessen Kante als Grenze, und eine angeschnittene
+  Vorschau ist wertlos. Das Skript kippt sie nach links, wenn rechts kein
+  Platz ist, und hebt sie an, wenn sie unten anstößt.
+* Sie fängt den Zeiger nicht ab (`pointer-events: none`) und verschwindet,
+  sobald etwas anderes passiert: Ziehen, Rollen, Escape. Läge sie selbst
+  unter dem Zeiger, verlöre der Termin darunter das Daraufzeigen und die
+  Karte flackerte sich zu Tode.
+
+Auf dem Telefon gibt es kein Daraufzeigen – dort führt der Tipp direkt auf
+die Terminseite, und die Karte ist ausgeblendet.
+
 ## Im Kalender wird gezogen, nicht getippt
 
 Zwei Gesten, beide aus Outlook bekannt, beide mit Maus-Ereignissen gebaut
