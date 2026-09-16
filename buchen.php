@@ -276,8 +276,21 @@ if ($gewaehlt !== '') {
  * Formular, und einundzwanzig Tage durchzurechnen waere Arbeit fuer eine
  * Liste, die niemand zu sehen bekommt.
  */
+/*
+ * Kalender oder Liste?
+ *
+ * Der Kalender ist der Weg: Er beantwortet „wann kann ich?" auf einen
+ * Blick, und von der Website kommt man ohnehin schon aus einem. Wer eine
+ * Leistung anklickt, soll hier nicht wieder vor einer Aufzählung stehen.
+ *
+ * Die Liste bleibt trotzdem erreichbar – über einen Weg unter dem
+ * Kalender. Sie zeigt die nächsten fünf Tage mit allem, was frei ist,
+ * ohne Klicken; wer lieber scrollt als tippt, ist damit schneller.
+ */
+$liste = App::get('liste') !== '' || App::post('liste') !== '';
+
 $tage = [];
-if ($gewaehlt === '') {
+if ($gewaehlt === '' && $liste) {
     $gefunden = 0;
     for ($i = 0; $i < 21 && $gefunden < 5; $i++) {
         $tag  = date('Y-m-d', strtotime($datum . ' +' . $i . ' days'));
@@ -313,6 +326,7 @@ if ($gewaehlt === ''):
 /* Schritt 1: Leistung und Zeit */
 $inhalt .= '<form method="post" class="vorgang__form">'
          . '<input type="hidden" name="w" value="' . Util::attr((string) (Tenant::workspace()['slug'] ?? '')) . '">'
+         . ($liste ? '<input type="hidden" name="liste" value="1">' : '')
          . '<div class="feld"><label for="leistung">Leistung</label>'
          . '<select id="leistung" name="service_id" onchange="this.form.submit()">';
 foreach ($leistungen as $l) {
@@ -321,9 +335,14 @@ foreach ($leistungen as $l) {
              . '</option>';
 }
 $inhalt .= '</select></div>'
-         . '<div class="feld"><label for="datum">Ab wann</label>'
-         . '<input id="datum" type="date" name="datum" value="' . Util::attr($datum) . '" min="'
-         . Util::attr(Util::heute()) . '" onchange="this.form.submit()"></div>'
+         /* „Ab wann" gehört zur Liste: Die zeigt fünf Tage ab einem
+            Stichtag. Der Kalender zeigt acht Wochen ab heute – ein
+            Datumsfeld daneben täte dort nichts. */
+         . ($liste
+            ? '<div class="feld"><label for="datum">Ab wann</label>'
+              . '<input id="datum" type="date" name="datum" value="' . Util::attr($datum) . '" min="'
+              . Util::attr(Util::heute()) . '" onchange="this.form.submit()"></div>'
+            : '')
          . '<noscript><button class="knopf knopf--klein" type="submit">Zeiten anzeigen</button></noscript>'
          . '</form>';
 
@@ -331,20 +350,41 @@ if ((string) $service['beschreibung'] !== '') {
     $inhalt .= '<p class="vorgang__text">' . Util::h((string) $service['beschreibung']) . '</p>';
 }
 
-if ($tage === []) {
-    $inhalt .= Oeffentlich::meldung(
-        'In den nächsten drei Wochen ist hier nichts frei. Schreib mir gern kurz – '
-      . 'oft lässt sich doch etwas einrichten.', 'warnung')
-      . '<p class="vorgang__zurueck"><a href="' . Util::attr(Oeffentlich::url('/', ['s' => 'kontakt']))
-      . '">Zum Kontaktformular</a></p>';
+$nichtsFrei = Oeffentlich::meldung(
+    'In den nächsten Wochen ist hier nichts frei. Schreib mir gern kurz – '
+  . 'oft lässt sich doch etwas einrichten.', 'warnung')
+  . '<p class="vorgang__zurueck"><a href="' . Util::attr(Oeffentlich::url('/', ['s' => 'kontakt']))
+  . '">Zum Kontaktformular</a></p>';
+
+$umschalten = static function (bool $zurListe) use ($serviceId): string {
+    $ziel = App::url('/buchen.php') . '?' . http_build_query(array_filter([
+        'w'          => (string) (Tenant::workspace()['slug'] ?? ''),
+        'service_id' => $serviceId,
+        'liste'      => $zurListe ? '1' : '',
+    ]));
+    return '<p class="buchkal__alle"><a href="' . Util::attr($ziel) . '">'
+         . ($zurListe ? 'Alle freien Zeiten als Liste' : 'Zurück zum Kalender') . '</a></p>';
+};
+
+if (!$liste) {
+    /*
+     * Der Kalender – acht Wochen, also doppelt so weit wie der Baustein
+     * auf der Website. Wer hier landet, hat sich für eine Leistung
+     * entschieden und sucht einen Termin; da lohnt der weitere Blick.
+     */
+    $kal = Oeffentlich::kalender($service, 8);
+    $inhalt .= $kal['frei'] === 0
+        ? $nichtsFrei
+        : $kal['html'] . $umschalten(true);
+} elseif ($tage === []) {
+    $inhalt .= $nichtsFrei;
 } else {
     /*
      * Die freien Zeiten als Liste, nicht als Knopfwolke.
      *
      * Eine Wolke aus dreißig gleich aussehenden Uhrzeiten zwingt zum
      * Suchen; untereinander liest man Tag, Uhrzeit und Leistung in einer
-     * Zeile. Der wechselnde Einzug nimmt der Liste die Strenge, und die
-     * gewählte Zeile wird dunkel – das sieht man auch aus dem Augenwinkel.
+     * Zeile. Der wechselnde Einzug nimmt der Liste die Strenge.
      */
     $inhalt .= '<div class="zeitliste">';
     foreach ($tage as $tag => $frei) {
@@ -355,14 +395,17 @@ if ($tage === []) {
          */
         $ersteDesTages = true;
         foreach ($frei as $z) {
-            $aktiv = (string) $z['start'] === $gewaehlt;
             $inhalt .= '<form method="post" style="display:contents">'
                      . '<input type="hidden" name="w" value="' . Util::attr((string) (Tenant::workspace()['slug'] ?? '')) . '">'
                      . '<input type="hidden" name="service_id" value="' . $serviceId . '">'
                      . '<input type="hidden" name="datum" value="' . Util::attr($datum) . '">'
+                     /* Damit „Andere Zeit wählen" dorthin zurückführt, wo
+                        man hergekommen ist – in die Liste, nicht in den
+                        Kalender. */
+                     . '<input type="hidden" name="liste" value="1">'
                      . '<input type="hidden" name="start" value="' . Util::attr((string) $z['start']) . '">'
                      . '<input type="hidden" name="trainer_id" value="' . (int) $z['trainer_id'] . '">'
-                     . '<button class="zeit-zeile' . ($aktiv ? ' ist-gewaehlt' : '') . '" type="submit">'
+                     . '<button class="zeit-zeile" type="submit">'
                      . '<span class="zeit-zeile__tag">'
                      . ($ersteDesTages ? Util::h(Util::datumLang($tag)) : '') . '</span>'
                      . '<span class="zeit-zeile__zeit">' . Util::h(Util::uhrzeit((string) $z['start'])) . '</span>'
@@ -372,7 +415,7 @@ if ($tage === []) {
             $ersteDesTages = false;
         }
     }
-    $inhalt .= '</div>';
+    $inhalt .= '</div>' . $umschalten(false);
 }
 
 /* Schritt 2: Angaben – erst wenn eine Zeit gewählt ist */
@@ -381,6 +424,7 @@ else:
         'w'          => (string) (Tenant::workspace()['slug'] ?? ''),
         'service_id' => $serviceId,
         'datum'      => substr($gewaehlt, 0, 10),
+        'liste'      => $liste ? '1' : '',
     ]));
     $inhalt .= '<div class="vorgang__gewaehlt">'
              . '<strong>' . Util::h(Util::datumLang($gewaehlt)) . ', '
