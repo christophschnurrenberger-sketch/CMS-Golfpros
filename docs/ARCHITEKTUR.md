@@ -383,7 +383,16 @@ die Parallele sofort, statt sie unter dem Nachbarn zu suchen.
 
 Was dabei gelten muss und geprüft wird: **kein Termin darf vollständig
 verdeckt sein.** Jeder behält einen sichtbaren, anklickbaren Streifen –
-sonst wäre ausgerechnet eine Doppelbuchung unsichtbar.
+sonst wäre ausgerechnet eine Doppelbuchung unsichtbar. Und wer auf diesen
+Streifen zeigt, holt den Termin nach vorn: Weil jeder bis zum rechten
+Spaltenrand reicht, steht damit sofort sein ganzer Inhalt da, ohne dass
+sich etwas verschiebt.
+
+Dafür steht die Stapelhöhe in der Stilregel und nicht im `style`-Attribut.
+Dort stand sie zuerst – und ein `style`-Attribut schlägt jede Stilregel,
+also kam `.termin:hover { z-index: 15 }` nie zum Zug: Der verdeckte Termin
+blieb beim Daraufzeigen verdeckt. Jetzt reicht das Markup nur die Spur als
+`--spur` weiter, die Regel rechnet selbst, und Hover kann sie überstimmen.
 
 Dazu eine **Jetzt-Linie** im heutigen Tag und, in der Tagesansicht, die
 **Liste des Tages** neben der Zeitleiste: Die Fläche zeigt, wann etwas ist

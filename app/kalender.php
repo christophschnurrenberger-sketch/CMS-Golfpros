@@ -404,7 +404,7 @@ require __DIR__ . '/partials/kopf.php';
                style="top:<?= round($oben, 1) ?>px;height:<?= round($hoehe, 1) ?>px;<?php
                  if ($breit): ?>left:calc(<?= round($spur * $spurBreite, 4) ?>% + 3px);width:calc(<?= round($spurBreite, 4) ?>% - 6px);right:auto<?php
                  else: ?>left:<?= $versatz + 3 ?>px;right:3px;width:auto<?php
-                 endif; ?>;z-index:<?= 4 + $spur ?>"
+                 endif; ?>;--spur:<?= $spur ?>"
                <?php if ($verschiebbar): ?>
                data-verschiebbar
                data-id="<?= (int) $t['id'] ?>"

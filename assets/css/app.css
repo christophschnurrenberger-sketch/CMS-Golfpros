@@ -1473,7 +1473,16 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
   background: var(--marke-hell);
   color: var(--marke);
   transition: box-shadow var(--tempo), transform var(--tempo);
-  z-index: 2;
+  /*
+   * Die Stapelhoehe gehoert hierher, nicht ins style-Attribut.
+   *
+   * Vorher stand sie dort - und ein style-Attribut schlaegt jede
+   * Stilregel. Damit kam `.termin:hover { z-index: 15 }` nie zum Zug: Der
+   * verdeckte Termin blieb beim Daraufzeigen verdeckt, egal was hier
+   * stand. Als Variable uebergeben rechnet die Regel selbst, und die
+   * Hover-Regel kann sie ueberstimmen.
+   */
+  z-index: calc(4 + var(--spur, 0));
 }
 /*
  * Versetzte Termine: der angefasste kommt nach vorn.
@@ -1482,7 +1491,17 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
  * ersten. Ohne diese Zeile bliebe der unterste fuer immer halb verdeckt -
  * mit ihr genuegt das Daraufzeigen, um ihn ganz zu sehen.
  */
-.termin:hover, .termin:focus-visible { box-shadow: var(--schatten-2); z-index: 15; }
+/*
+ * Daraufzeigen holt nach vorn - und zwar ganz.
+ *
+ * Jeder versetzte Termin reicht bis zum rechten Spaltenrand; verdeckt ist
+ * er nur von seinen Nachbarn. Kommt er nach vorn, steht damit sofort sein
+ * ganzer Inhalt da, ohne dass sich irgendetwas verschiebt.
+ */
+.termin:hover, .termin:focus-visible {
+  box-shadow: var(--schatten-2);
+  z-index: 15;
+}
 .termin:focus-visible { outline: 2px solid var(--marke); outline-offset: 1px; }
 
 /* Ein Termin ueber dem anderen braucht eine sichtbare Kante, sonst
