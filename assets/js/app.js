@@ -726,6 +726,147 @@
     // Verlässt die Maus das Fenster mitten im Zug, bleibt sonst ein
     // Rechteck stehen, das auf nichts mehr reagiert.
     document.addEventListener('mouseleave', () => { if (spalte) aufraeumen(); });
+
+    /* ------------------------------------------- Termin verschieben --- */
+
+    /*
+     * Einen bestehenden Termin an eine andere Stelle ziehen.
+     *
+     * Bewusst mit Maus-Ereignissen statt mit der Zieh-und-Ablege-Technik
+     * des Browsers: Die hängt an einem Bild, das der Browser malt, lässt
+     * sich nicht rastern und sieht auf keinem zwei Geräten gleich aus.
+     * Hier wandert der Termin selbst mit – auf die Viertelstunde genau,
+     * über Tagesgrenzen hinweg, und man sieht die ganze Zeit, wo er
+     * landen wird.
+     *
+     * Der Termin ist ein Link. Ein Klick soll ihn weiter öffnen, also
+     * beginnt das Ziehen erst nach ein paar Pixeln – und nur dann wird
+     * der Klick danach unterdrückt.
+     */
+    const SCHWELLE = 4;
+    let zug = null;
+
+    /** Die Spalte unter dem Zeiger – auch über Tagesgrenzen hinweg. */
+    function spalteUnter(x, y) {
+      const unten = document.elementsFromPoint(x, y) || [];
+      for (const el of unten) {
+        const sp = el.closest && el.closest('.kalender__spalte[data-tag]');
+        if (sp) return sp;
+      }
+      return null;
+    }
+
+    gitter.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      const el = e.target.closest('.termin[data-verschiebbar]');
+      if (!el) return;
+      e.preventDefault();
+
+      const k = el.getBoundingClientRect();
+      zug = {
+        el,
+        heimat: el.parentElement,
+        griff: e.clientY - k.top,          // wo im Termin man angefasst hat
+        startX: e.clientX, startY: e.clientY,
+        stil: el.getAttribute('style'),
+        dauer: parseInt(el.dataset.dauer, 10) || 60,
+        aktiv: false,
+        zielTag: el.dataset.tag,
+        zielMin: null,
+      };
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!zug) return;
+      if (!zug.aktiv) {
+        if (Math.abs(e.clientX - zug.startX) < SCHWELLE
+         && Math.abs(e.clientY - zug.startY) < SCHWELLE) return;
+        zug.aktiv = true;
+        zug.el.classList.add('ist-zug');
+        document.body.classList.add('zieht-termin');
+      }
+
+      const sp = spalteUnter(e.clientX, e.clientY) || zug.el.parentElement;
+      if (sp !== zug.el.parentElement) {
+        sp.appendChild(zug.el);          // in den anderen Tag umhängen
+      }
+      zug.zielTag = sp.dataset.tag;
+      zug.zielMin = minuten(sp, e.clientY - zug.griff);
+
+      const oben = (zug.zielMin - vonStunde * 60) / 60 * hoehe;
+      zug.el.style.top    = oben + 'px';
+      zug.el.style.left   = '3px';
+      zug.el.style.width  = 'calc(100% - 6px)';
+      zug.el.style.height = (zug.dauer / 60 * hoehe - 3) + 'px';
+      zug.el.dataset.zielzeit = alsUhrzeit(zug.zielMin);
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!zug) return;
+      const z = zug;
+      zug = null;
+      if (!z.aktiv) return;              // war doch nur ein Klick
+
+      document.body.classList.remove('zieht-termin');
+      z.el.classList.remove('ist-zug');
+      delete z.el.dataset.zielzeit;
+
+      /* Zurück an den alten Platz. Verschoben wird erst, wenn der Dialog
+         bestätigt ist – sonst zeigt der Kalender einen Termin an einer
+         Stelle, an der er in der Datenbank nicht steht. */
+      const zurueck = () => {
+        z.heimat.appendChild(z.el);
+        z.el.setAttribute('style', z.stil);
+      };
+
+      const gleich = z.zielTag === z.el.dataset.tag
+                  && alsUhrzeit(z.zielMin) === z.el.dataset.von;
+      const d = document.getElementById('modal-verschieben');
+      if (gleich || z.zielMin === null || !d || typeof d.showModal !== 'function') {
+        zurueck();
+        return;
+      }
+
+      // Der Klick, der auf das Loslassen folgt, darf den Termin nicht öffnen.
+      z.el.addEventListener('click', (ev) => ev.preventDefault(), { once: true, capture: true });
+
+      const langesDatum = (tag) => new Date(tag + 'T00:00:00')
+        .toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+
+      d.querySelector('#vs-id').value  = z.el.dataset.id;
+      d.querySelector('#vs-tag').value = z.zielTag;
+      d.querySelector('#vs-von').value = alsUhrzeit(z.zielMin);
+      d.querySelector('#vs-wer').textContent = z.el.dataset.wer || 'Termin';
+      d.querySelector('#vs-alt').textContent =
+        langesDatum(z.el.dataset.tag) + ', ' + z.el.dataset.von + ' Uhr';
+      d.querySelector('#vs-neu').textContent =
+        langesDatum(z.zielTag) + ', ' + alsUhrzeit(z.zielMin) + ' Uhr';
+
+      /* Ohne Kunde gibt es niemanden zu benachrichtigen – dann weg damit,
+         statt ein Kästchen anzubieten, das nichts tut. */
+      const zeile = d.querySelector('#vs-melden-zeile');
+      const haken = d.querySelector('#vs-melden');
+      if (zeile && haken) {
+        const hatKunde = z.el.dataset.hatKunde === '1';
+        zeile.hidden = !hatKunde;
+        haken.checked = hatKunde;
+      }
+
+      // Abbrechen oder Wegklicken bringt den Termin zurück.
+      d.addEventListener('close', zurueck, { once: true });
+      d.showModal();
+    });
+
+    // Mitten im Zug abgebrochen: Escape räumt auf wie der Dialog.
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || !zug || !zug.aktiv) return;
+      const z = zug;
+      zug = null;
+      document.body.classList.remove('zieht-termin');
+      z.el.classList.remove('ist-zug');
+      z.heimat.appendChild(z.el);
+      z.el.setAttribute('style', z.stil);
+    });
   }
 
   /* ------------------------------------------------------ Kleinkram --- */

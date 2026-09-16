@@ -349,6 +349,41 @@ buchen. Und weil er den Einwilligungshaken gar nicht sieht, wird für ihn
 auch keine Einwilligung protokolliert: Ein Eintrag über eine Erklärung,
 die niemand abgegeben hat, ist als Nachweis wertlos.
 
+## Im Kalender wird gezogen, nicht getippt
+
+Zwei Gesten, beide aus Outlook bekannt, beide mit Maus-Ereignissen gebaut
+statt mit der Zieh-und-Ablege-Technik des Browsers. Die hängt an einem
+Bild, das der Browser malt: nicht rasterbar, auf keinem zwei Geräten
+gleich, und mit Maus-Ereignissen ohnehin nicht auslösbar – was sie auch
+für automatische Prüfungen unbrauchbar macht.
+
+* **Freie Zeit aufziehen** legt einen Termin an. Gerastert auf 15 Minuten;
+  ein einzelner Klick meint eine Stunde ab dieser Stelle.
+* **Einen Termin ziehen** verschiebt ihn – über Tagesgrenzen hinweg, mit
+  der Zielzeit als Fähnchen am oberen Rand.
+
+Der Termin ist ein Link, und ein Klick soll ihn weiter öffnen. Deshalb
+beginnt das Ziehen erst nach vier Pixeln, und nur dann wird der folgende
+Klick unterdrückt.
+
+**Verschoben wird erst nach dem Dialog, nicht beim Loslassen.** Bis dahin
+liegt der Termin optisch am neuen Platz, in der Datenbank aber am alten;
+Abbrechen, Escape und das Wegklicken des Dialogs legen ihn zurück. Ein
+Kalender, der etwas an einer Stelle zeigt, an der es nicht steht, ist
+schlimmer als einer, der eine Rückfrage stellt.
+
+Der Dialog fragt nicht „wirklich?" – das wäre eine Rücknahme der Geste und
+nervt beim zehnten Mal. Er zeigt alt und neu nebeneinander und stellt die
+eine Frage, die beim Verschieben wirklich zu beantworten ist: Weiß der
+Kunde Bescheid? Die Benachrichtigung ist voreingestellt und verschwindet,
+wenn am Termin kein Kunde hängt. Ein Termin, der stillschweigend eine
+Stunde weiterwandert, ist der zuverlässigste Weg, jemanden umsonst auf den
+Platz fahren zu lassen.
+
+Die Prüfung macht `Bookings::umbuchen()` – dieselbe Funktion wie auf der
+Terminseite, mit derselben Kollisionsprüfung. Liegt am Ziel schon etwas,
+bleibt der Termin, wo er war, und die Meldung sagt es.
+
 ## Persönliche Dateien gehen durch eine Tür
 
 Schwungvideos und Unterlagen lagen bis zum Sicherheitsdurchgang unter

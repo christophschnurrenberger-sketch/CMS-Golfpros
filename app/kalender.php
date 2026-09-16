@@ -59,6 +59,64 @@ if (App::istPost() && App::aktion() === 'schnellbuchung') {
     App::weiter($zurueck);
 }
 
+/*
+ * Einen Termin an eine andere Stelle ziehen.
+ *
+ * Die Arbeit macht Bookings::umbuchen() - dieselbe Funktion wie auf der
+ * Terminseite, mit derselben Kollisionspruefung. Hier steht nur die
+ * Uebergabe und die Frage, ob der Kunde davon erfahren soll.
+ *
+ * Die Benachrichtigung ist der eigentliche Grund fuer den Dialog. Ein
+ * Termin, der stillschweigend eine Stunde weiterwandert, ist der
+ * zuverlaessigste Weg, jemanden umsonst auf den Platz fahren zu lassen.
+ */
+if (App::istPost() && App::aktion() === 'verschieben') {
+    Auth::csrfFordern();
+    Auth::fordern('bookings.write');
+
+    $id      = App::postInt('id');
+    $start   = Util::zeitpunkt(App::post('tag'), App::post('von'));
+    $zurueck = '/app/kalender.php?ansicht=' . App::post('ansicht', 'woche')
+             . '&datum=' . App::post('tag');
+
+    $termin = $id > 0 ? Tenant::find('bookings', $id) : null;
+    if ($termin === null) {
+        App::melden('Dieser Termin wurde nicht gefunden.', 'fehler');
+        App::weiter($zurueck);
+    }
+    if ($start === '') {
+        App::melden('Die neue Zeit war nicht lesbar. Bitte noch einmal ziehen.', 'fehler');
+        App::weiter($zurueck);
+    }
+
+    $alt = (string) $termin['start'];
+    [$okay, $fehler] = Bookings::umbuchen($id, $start, App::postInt('trainer_id'));
+    if (!$okay) {
+        App::melden($fehler, 'fehler');
+        App::weiter($zurueck);
+    }
+
+    $kundeId = (int) $termin['customer_id'];
+    $kunde   = $kundeId > 0 ? Tenant::find('customers', $kundeId) : null;
+    if (App::postBool('benachrichtigen') && $kunde !== null) {
+        $ort = (int) $termin['location_id'] > 0 ? Tenant::find('locations', (int) $termin['location_id']) : null;
+        Mail::anKunden($kunde, 'Dein Termin wurde verschoben',
+            "Hallo " . (string) $kunde['vorname'] . ",\n\n"
+            . "dein Termin hat eine neue Zeit:\n\n"
+            . "bisher: " . Util::datumLang($alt) . ", " . Util::uhrzeit($alt) . " Uhr\n"
+            . "neu:    " . Util::datumLang($start) . ", " . Util::uhrzeit($start) . " Uhr\n\n"
+            . (string) $termin['titel'] . "\n"
+            . ($ort !== null ? (string) $ort['name'] . "\n" : '')
+            . "\nPasst die neue Zeit nicht, melde dich einfach - dann finden wir\n"
+            . "eine andere.\n\n"
+            . Tenant::name());
+    }
+
+    App::melden('Termin verschoben auf ' . Util::datum($start) . ', ' . Util::uhrzeit($start) . ' Uhr.'
+              . ($kunde !== null && App::postBool('benachrichtigen') ? ' Der Kunde wurde benachrichtigt.' : ''));
+    App::weiter($zurueck);
+}
+
 $ansicht   = App::get('ansicht', 'woche');
 $datum     = App::get('datum', Util::heute());
 $trainerId = App::getInt('trainer', Auth::rolle() === 'trainer' ? Auth::id() : 0);
@@ -274,8 +332,29 @@ require __DIR__ . '/partials/kopf.php';
             $service = $leistungen[(int) $t['service_id']] ?? null;
             $farbe = $farben[(string) ($service['art'] ?? 'einzel')] ?? '';
             $kunde = (int) $t['customer_id'] > 0 ? Customers::nameVonId((int) $t['customer_id']) : ''; ?>
-            <a class="termin<?= $farbe !== '' ? ' termin--' . $farbe : '' ?><?= (string) $t['status'] === 'abgesagt' ? ' termin--abgesagt' : '' ?>"
+            <?php
+            /*
+             * Die Kennzeichen unten sagen dem Skript alles, was es zum
+             * Verschieben braucht - Dauer, jetzige Zeit, wer dahintersteckt.
+             * Rechnen muss es dann nichts, und der Dialog kann den Termin
+             * beim Namen nennen, statt „dieser Termin" zu sagen.
+             *
+             * Abgesagte Termine bleiben liegen: Eine Absage verschiebt man
+             * nicht, man legt einen neuen Termin an.
+             */
+            $verschiebbar = Auth::darf('bookings.write') && (string) $t['status'] !== 'abgesagt';
+            ?>
+            <a class="termin<?= $farbe !== '' ? ' termin--' . $farbe : '' ?><?= (string) $t['status'] === 'abgesagt' ? ' termin--abgesagt' : '' ?><?= $verschiebbar ? ' termin--ziehbar' : '' ?>"
                style="top:<?= round($oben, 1) ?>px;height:<?= round($hoehe, 1) ?>px;left:calc(<?= round($spur * $breite, 4) ?>% + 3px);width:calc(<?= round($breite, 4) ?>% - 6px);right:auto"
+               <?php if ($verschiebbar): ?>
+               data-verschiebbar
+               data-id="<?= (int) $t['id'] ?>"
+               data-dauer="<?= (int) $dauer ?>"
+               data-tag="<?= Util::attr(substr((string) $t['start'], 0, 10)) ?>"
+               data-von="<?= Util::attr(Util::uhrzeit((string) $t['start'])) ?>"
+               data-wer="<?= Util::attr($kunde !== '' ? $kunde : (string) $t['titel']) ?>"
+               data-hat-kunde="<?= (int) $t['customer_id'] > 0 ? '1' : '0' ?>"
+               <?php endif; ?>
                href="<?= Util::attr(App::url('/app/buchung.php?id=' . (int) $t['id'])) ?>"
                title="<?= Util::attr(Util::uhrzeit((string) $t['start']) . '–' . Util::uhrzeit((string) $t['ende'])
                        . ' · ' . $t['titel'] . ($kunde !== '' ? ' · ' . $kunde : '')) ?>">
@@ -320,6 +399,71 @@ require __DIR__ . '/partials/kopf.php';
  * steht danach auf der Terminseite. Die Zeit steht oben als Text und in
  * versteckten Feldern; wer sie aendern will, zieht neu.
  */ ?>
+<?php /*
+ * Der Dialog nach dem Ziehen.
+ *
+ * Er fragt nicht „wirklich?" - das waere eine Ruecknahme des Ziehens und
+ * nervt beim zehnten Mal. Er zeigt, was passieren wird, und stellt die
+ * eine Frage, die man beim Verschieben wirklich beantworten muss: Weiss
+ * der Kunde schon Bescheid?
+ */ ?>
+<dialog class="modal modal--schmal" id="modal-verschieben">
+  <form method="post">
+    <?= Auth::csrfFeld() ?>
+    <input type="hidden" name="aktion" value="verschieben">
+    <input type="hidden" name="ansicht" value="<?= Util::attr($ansicht) ?>">
+    <input type="hidden" name="id"  id="vs-id">
+    <input type="hidden" name="tag" id="vs-tag">
+    <input type="hidden" name="von" id="vs-von">
+
+    <div class="modal__kopf">
+      <h2>Termin verschieben</h2>
+      <button type="button" class="rundknopf" data-modal-zu aria-label="Schließen">
+        <?= Icon::svg('x', 17) ?></button>
+    </div>
+
+    <div class="modal__koerper">
+      <p class="verschieben__wer" id="vs-wer">–</p>
+      <div class="verschieben__zeiten">
+        <div class="verschieben__zeit verschieben__zeit--alt">
+          <span class="verschieben__label">bisher</span>
+          <span id="vs-alt">–</span>
+        </div>
+        <span class="verschieben__pfeil" aria-hidden="true"><?= Icon::svg('arrow-right', 18) ?></span>
+        <div class="verschieben__zeit verschieben__zeit--neu">
+          <span class="verschieben__label">neu</span>
+          <span id="vs-neu">–</span>
+        </div>
+      </div>
+
+      <?php if (count(Auth::trainer()) > 1): ?>
+        <div class="feld mt-4">
+          <label class="feld__label" for="vs-trainer">Trainer</label>
+          <select id="vs-trainer" name="trainer_id">
+            <option value="0">unverändert</option>
+            <?php foreach (Auth::trainer() as $tr): ?>
+              <option value="<?= (int) $tr['id'] ?>"><?= Util::h((string) $tr['name']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      <?php endif; ?>
+
+      <label class="haken mt-4" id="vs-melden-zeile">
+        <input type="checkbox" name="benachrichtigen" value="1" id="vs-melden" checked>
+        <span class="haken__text">Kunde per E-Mail benachrichtigen
+          <span class="haken__hinweis">Mit alter und neuer Zeit. Ohne das erfährt er es erst,
+            wenn er zur alten Zeit dasteht.</span></span>
+      </label>
+    </div>
+
+    <div class="modal__fuss">
+      <button type="button" class="btn" data-modal-zu>Abbrechen</button>
+      <div class="fueller"></div>
+      <button class="btn btn--primaer" type="submit">Verschieben</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog class="modal" id="modal-schnellbuchung">
   <form method="post">
     <?= Auth::csrfFeld() ?>
