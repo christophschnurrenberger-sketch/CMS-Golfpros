@@ -218,6 +218,13 @@ require __DIR__ . '/partials/kopf.php';
   </div>
   <h2 style="font-size:15px"><?= Util::h($ueberschrift) ?></h2>
   <div class="fueller"></div>
+  <?php /* Die Legende gehoert neben den Kalender, nicht unter ihn: Wer
+           die Farben nachschlagen will, schaut nicht ans Seitenende. */ ?>
+  <div class="farblegende">
+    <?php foreach (['' => 'Einzeln', 'lila' => 'Gruppe', 'info' => 'Video', 'akzent' => 'Kurs'] as $k => $n): ?>
+      <span class="farblegende__teil"><i class="farblegende__punkt<?= $k !== '' ? ' farblegende__punkt--' . $k : '' ?>"></i><?= Util::h($n) ?></span>
+    <?php endforeach; ?>
+  </div>
   <form method="get" class="reihe reihe--eng">
     <input type="hidden" name="ansicht" value="<?= Util::attr($ansicht) ?>">
     <input type="hidden" name="datum" value="<?= Util::attr($datum) ?>">
@@ -249,8 +256,11 @@ require __DIR__ . '/partials/kopf.php';
   $startTag  = strtotime('monday this week', $ersterTag);
   if (date('N', $ersterTag) === '1') { $startTag = $ersterTag; }
   ?>
-  <div class="kalender">
-    <div class="kalender__kopf" style="grid-template-columns:repeat(7,minmax(0,1fr))">
+  <?php /* Die Wochentage stehen ueber dem Raster, nicht darin. Vorher
+           hafteten sie am Fenster und schoben sich beim Scrollen ueber die
+           erste Woche - dann stand „MO DI MI" mitten zwischen den Tagen. */ ?>
+  <div class="kalender kalender--monat">
+    <div class="kalender__kopf">
       <?php foreach (['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as $wt): ?>
         <div class="kalender__tag-kopf"><span class="kalender__wochentag"><?= $wt ?></span></div>
       <?php endforeach; ?>
@@ -283,10 +293,31 @@ require __DIR__ . '/partials/kopf.php';
   </div>
 
 <?php else: ?>
-  <?php $spalten = count($tage); ?>
-  <div class="kalender" style="--spalten:<?= $spalten ?>">
-    <div class="kalender__kopf">
-      <div class="kalender__tag-kopf"></div>
+  <?php
+  /*
+   * Zeitleiste fuer Tag und Woche.
+   *
+   * Ein Rollbereich, nicht zwei. Vorher war die Kopfzeile am Fenster
+   * festgemacht, das Gitter rollte in einem eigenen Kasten - beim
+   * Scrollen liefen sie auseinander, und die Wochentage landeten mitten
+   * im Gitter. Jetzt steckt beides im selben Raster, die Kopfzeile haftet
+   * oben daran, die Zeitspalte links. Damit koennen sie gar nicht mehr
+   * verrutschen.
+   *
+   * Die Spalten haben eine Mindestbreite. Sieben Tage auf einem Telefon
+   * ergeben sonst 45 Pixel je Tag, und darauf steht von „Miriam Seidel"
+   * noch „M". Lieber seitlich rollen und lesen koennen.
+   */
+  $stundeHoehe = 64;
+  $spaltenMin  = $ansicht === 'tag' ? 0 : 132;
+  $jetztMin    = (int) date('G') * 60 + (int) date('i');
+  $zeigtHeute  = in_array(Util::heute(), $tage, true);
+  ?>
+  <div class="kalender kalender--zeit" style="--spalten:<?= count($tage) ?>;--stunde:<?= $stundeHoehe ?>px;--spalte-min:<?= $spaltenMin ?>px">
+    <div class="kalender__gitter" data-von-stunde="<?= (int) $vonStunde ?>"
+         data-stundenhoehe="<?= $stundeHoehe ?>" data-raster="15">
+
+      <div class="kalender__ecke"></div>
       <?php foreach ($tage as $tag):
         $heute = $tag === Util::heute(); ?>
         <div class="kalender__tag-kopf<?= $heute ? ' ist-heute' : '' ?>">
@@ -294,14 +325,15 @@ require __DIR__ . '/partials/kopf.php';
           <span class="kalender__tag-zahl"><?= (int) date('j', strtotime($tag)) ?></span>
         </div>
       <?php endforeach; ?>
-    </div>
-    <div class="kalender__gitter" data-von-stunde="<?= (int) $vonStunde ?>"
-         data-stundenhoehe="52" data-raster="15">
+
+      <?php /* Die Uhrzeit steht auf der Linie, nicht darunter - deshalb
+               sitzt die Beschriftung leicht darueber. */ ?>
       <div class="kalender__stunden">
         <?php for ($h = $vonStunde; $h < $bisStunde; $h++): ?>
           <div class="kalender__stunde"><span><?= sprintf('%02d:00', $h) ?></span></div>
         <?php endfor; ?>
       </div>
+
       <?php foreach ($tage as $tag):
         $heute = $tag === Util::heute(); ?>
         <?php /* data-tag und die Eckstunden sagen dem Skript, welche Zeit
@@ -310,14 +342,25 @@ require __DIR__ . '/partials/kopf.php';
         <div class="kalender__spalte<?= $heute ? ' ist-heute' : '' ?>"
              data-tag="<?= Util::attr($tag) ?>"
              <?= Auth::darf('bookings.write') ? 'data-aufziehbar' : '' ?>>
-          <?php for ($h = $vonStunde; $h < $bisStunde; $h++): ?>
-            <div class="kalender__zelle"></div>
-          <?php endfor; ?>
+
+          <?php if ($heute && $jetztMin >= $vonStunde * 60 && $jetztMin <= $bisStunde * 60): ?>
+            <?php /* Wo stehen wir gerade? Die Frage stellt sich beim Blick
+                     auf den Kalender als erste. */ ?>
+            <div class="kalender__jetzt" aria-hidden="true"
+                 style="top:<?= round(($jetztMin - $vonStunde * 60) / 60 * $stundeHoehe, 1) ?>px">
+              <span class="kalender__jetzt-zeit"><?= date('H:i') ?></span>
+            </div>
+          <?php endif; ?>
+
           <?php
           /*
-           * Gleichzeitige Termine nebeneinander statt uebereinander. Ohne
-           * das verdeckt der obere den unteren - und ausgerechnet eine
-           * Doppelbuchung, die man sehen muss, waere unsichtbar.
+           * Gleichzeitige Termine versetzt statt geteilt.
+           *
+           * Geteilt bekam jeder bei drei Parallelen ein Drittel der Breite
+           * - auf einer Wochenspalte 40 Pixel, auf denen nichts mehr steht.
+           * Versetzt behaelt jeder fast die volle Breite, liegt ein Stueck
+           * weiter rechts und ueber dem vorigen. Man sieht, dass es mehrere
+           * sind, und kann jeden einzeln treffen.
            */
           $desTages = array_values($nachTag[$tag] ?? []);
           $spalten  = Bookings::spalten($desTages);
@@ -325,27 +368,43 @@ require __DIR__ . '/partials/kopf.php';
             $startMin = (int) date('G', strtotime((string) $t['start'])) * 60
                       + (int) date('i', strtotime((string) $t['start']));
             $dauer = max(20, (strtotime((string) $t['ende']) - strtotime((string) $t['start'])) / 60);
-            $oben  = ($startMin - $vonStunde * 60) / 60 * 52;
-            $hoehe = $dauer / 60 * 52 - 3;
+            $oben  = ($startMin - $vonStunde * 60) / 60 * $stundeHoehe;
+            $hoehe = $dauer / 60 * $stundeHoehe - 3;
             [$spur, $spurenGesamt] = $spalten[$nr] ?? [0, 1];
-            $breite = 100 / $spurenGesamt;
+            /*
+             * Parallele Termine liegen versetzt uebereinander, nicht
+             * nebeneinander.
+             *
+             * Geteilt bekam jeder bei drei Parallelen ein Drittel der
+             * Spalte - rund 40 Pixel, auf denen kein Name mehr steht.
+             * Anteilig ueberlappt waren es immer noch zwei Drittel, und
+             * „Miriam Seidel" wurde zu „Miriam …". Versetzt behaelt der
+             * oberste die volle Breite und ist ganz zu lesen; die darunter
+             * schauen links hervor, sind anklickbar und kommen beim
+             * Daraufzeigen nach vorn.
+             *
+             * Das ist eine Entscheidung gegen Gleichbehandlung und fuer
+             * Lesbarkeit: Drei halb lesbare Namen helfen niemandem, einer
+             * ganzer und zwei erreichbare schon.
+             *
+             * In der Tagesansicht gilt das Gegenteil: Dort ist die Spalte
+             * ueber tausend Pixel breit, geteilt bleibt jedem reichlich
+             * Platz - und nebeneinander sieht man die Parallele sofort,
+             * statt sie unter dem Nachbarn zu suchen.
+             */
+            $breit = $ansicht === 'tag';
+            $spurBreite = 100 / $spurenGesamt;
+            $versatz = $spur * 16;
             $service = $leistungen[(int) $t['service_id']] ?? null;
             $farbe = $farben[(string) ($service['art'] ?? 'einzel')] ?? '';
-            $kunde = (int) $t['customer_id'] > 0 ? Customers::nameVonId((int) $t['customer_id']) : ''; ?>
-            <?php
-            /*
-             * Die Kennzeichen unten sagen dem Skript alles, was es zum
-             * Verschieben braucht - Dauer, jetzige Zeit, wer dahintersteckt.
-             * Rechnen muss es dann nichts, und der Dialog kann den Termin
-             * beim Namen nennen, statt „dieser Termin" zu sagen.
-             *
-             * Abgesagte Termine bleiben liegen: Eine Absage verschiebt man
-             * nicht, man legt einen neuen Termin an.
-             */
+            $kunde = (int) $t['customer_id'] > 0 ? Customers::nameVonId((int) $t['customer_id']) : '';
             $verschiebbar = Auth::darf('bookings.write') && (string) $t['status'] !== 'abgesagt';
             ?>
-            <a class="termin<?= $farbe !== '' ? ' termin--' . $farbe : '' ?><?= (string) $t['status'] === 'abgesagt' ? ' termin--abgesagt' : '' ?><?= $verschiebbar ? ' termin--ziehbar' : '' ?>"
-               style="top:<?= round($oben, 1) ?>px;height:<?= round($hoehe, 1) ?>px;left:calc(<?= round($spur * $breite, 4) ?>% + 3px);width:calc(<?= round($breite, 4) ?>% - 6px);right:auto"
+            <a class="termin<?= $farbe !== '' ? ' termin--' . $farbe : '' ?><?= (string) $t['status'] === 'abgesagt' ? ' termin--abgesagt' : '' ?><?= $verschiebbar ? ' termin--ziehbar' : '' ?><?= $hoehe < 34 ? ' termin--flach' : '' ?>"
+               style="top:<?= round($oben, 1) ?>px;height:<?= round($hoehe, 1) ?>px;<?php
+                 if ($breit): ?>left:calc(<?= round($spur * $spurBreite, 4) ?>% + 3px);width:calc(<?= round($spurBreite, 4) ?>% - 6px);right:auto<?php
+                 else: ?>left:<?= $versatz + 3 ?>px;right:3px;width:auto<?php
+                 endif; ?>;z-index:<?= 4 + $spur ?>"
                <?php if ($verschiebbar): ?>
                data-verschiebbar
                data-id="<?= (int) $t['id'] ?>"
@@ -358,10 +417,12 @@ require __DIR__ . '/partials/kopf.php';
                href="<?= Util::attr(App::url('/app/buchung.php?id=' . (int) $t['id'])) ?>"
                title="<?= Util::attr(Util::uhrzeit((string) $t['start']) . '–' . Util::uhrzeit((string) $t['ende'])
                        . ' · ' . $t['titel'] . ($kunde !== '' ? ' · ' . $kunde : '')) ?>">
-              <span class="termin__zeit"><?= Util::h(Util::uhrzeit((string) $t['start'])) ?></span>
-              <span class="termin__titel"><?= Util::h($kunde !== '' ? $kunde : (string) $t['titel']) ?></span>
-              <?php if ($hoehe > 44 && $spurenGesamt < 3): ?>
-                <span class="termin__zeit"><?= Util::h(Util::kuerzen((string) $t['titel'], 28)) ?></span>
+              <span class="termin__kopf">
+                <span class="termin__zeit"><?= Util::h(Util::uhrzeit((string) $t['start'])) ?></span>
+                <span class="termin__name"><?= Util::h($kunde !== '' ? $kunde : (string) $t['titel']) ?></span>
+              </span>
+              <?php if ($hoehe >= 52): ?>
+                <span class="termin__was"><?= Util::h((string) $t['titel']) ?></span>
               <?php endif; ?>
             </a>
           <?php endforeach; ?>
@@ -369,6 +430,53 @@ require __DIR__ . '/partials/kopf.php';
       <?php endforeach; ?>
     </div>
   </div>
+
+  <?php if ($ansicht === 'tag'): ?>
+    <?php
+    /*
+     * Neben der Zeitleiste die Liste des Tages.
+     *
+     * Ein Tag auf 1200 Pixel Breite war vorher eine Spalte mit viel Luft
+     * rechts daneben. Die Liste nutzt den Platz fuer das, was auf der
+     * Flaeche keinen Platz hat: Leistung, Preis, Status - und laesst sich
+     * auf dem Telefon einfach untereinander lesen.
+     */
+    $desTages = array_values($nachTag[$datum] ?? []);
+    ?>
+    <?php if ($desTages !== []): ?>
+      <div class="karte mt-4">
+        <div class="karte__kopf"><h2 class="karte__titel">Der Tag in der Reihe</h2>
+          <span class="pille"><?= count($desTages) ?></span></div>
+        <div class="tagesliste">
+          <?php foreach ($desTages as $t):
+            $service = $leistungen[(int) $t['service_id']] ?? null;
+            $farbe = $farben[(string) ($service['art'] ?? 'einzel')] ?? '';
+            $kunde = (int) $t['customer_id'] > 0 ? Customers::nameVonId((int) $t['customer_id']) : '';
+            ?>
+            <a class="tagesliste__zeile<?= (string) $t['status'] === 'abgesagt' ? ' ist-abgesagt' : '' ?>"
+               href="<?= Util::attr(App::url('/app/buchung.php?id=' . (int) $t['id'])) ?>">
+              <span class="tagesliste__zeit">
+                <strong><?= Util::h(Util::uhrzeit((string) $t['start'])) ?></strong>
+                <span><?= Util::h(Util::uhrzeit((string) $t['ende'])) ?></span>
+              </span>
+              <span class="tagesliste__strich termin--<?= Util::attr($farbe !== '' ? $farbe : 'marke') ?>"></span>
+              <span class="tagesliste__wer">
+                <strong><?= Util::h($kunde !== '' ? $kunde : (string) $t['titel']) ?></strong>
+                <span class="tagesliste__was"><?= Util::h((string) $t['titel']) ?>
+                  <?php if ((int) $t['preis_cent'] > 0): ?>
+                    · <?= Util::h(Util::geldKurz((int) $t['preis_cent'])) ?>
+                  <?php endif; ?></span>
+              </span>
+              <span class="tagesliste__status">
+                <?= pille(Bookings::statusName((string) $t['status']),
+                          Bookings::statusFarbe((string) $t['status'])) ?>
+              </span>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      </div>
+    <?php endif; ?>
+  <?php endif; ?>
 
   <?php if ($termine === []): ?>
     <div class="karte mt-4"><div class="karte__koerper">
@@ -382,13 +490,6 @@ require __DIR__ . '/partials/kopf.php';
     </div></div>
   <?php endif; ?>
 <?php endif; ?>
-
-<div class="reihe reihe--umbruch mt-4 klein gedimmt">
-  <span class="legende__teil"><span class="legende__farbe" style="background:var(--marke)"></span> Einzeltraining</span>
-  <span class="legende__teil"><span class="legende__farbe" style="background:var(--lila)"></span> Gruppe</span>
-  <span class="legende__teil"><span class="legende__farbe" style="background:var(--info)"></span> Videoanalyse</span>
-  <span class="legende__teil"><span class="legende__farbe" style="background:var(--akzent)"></span> Kurs</span>
-</div>
 
 <?php if (Auth::darf('bookings.write')): ?>
 <?php /*

@@ -794,9 +794,12 @@
       zug.zielMin = minuten(sp, e.clientY - zug.griff);
 
       const oben = (zug.zielMin - vonStunde * 60) / 60 * hoehe;
+      /* Im Zug die volle Spaltenbreite: Der Versatz gilt nur fuer
+         Parallelen am alten Platz, am neuen weiss man sie noch nicht. */
       zug.el.style.top    = oben + 'px';
       zug.el.style.left   = '3px';
-      zug.el.style.width  = 'calc(100% - 6px)';
+      zug.el.style.right  = '3px';
+      zug.el.style.width  = 'auto';
       zug.el.style.height = (zug.dauer / 60 * hoehe - 3) + 'px';
       zug.el.dataset.zielzeit = alsUhrzeit(zug.zielMin);
     });

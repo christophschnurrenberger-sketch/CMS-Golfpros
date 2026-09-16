@@ -349,6 +349,47 @@ buchen. Und weil er den Einwilligungshaken gar nicht sieht, wird für ihn
 auch keine Einwilligung protokolliert: Ein Eintrag über eine Erklärung,
 die niemand abgegeben hat, ist als Nachweis wertlos.
 
+## Der Kalender: ein Rollbereich, ein Raster
+
+Kopfzeile, Zeitspalte und Tage sitzen im selben Raster. Die Kopfzeile
+haftet oben daran, die Zeitspalte links – beide über `position: sticky`
+**innerhalb** des Rollbereichs.
+
+Vorher waren es zwei Bereiche: die Kopfzeile am Fenster festgemacht, das
+Gitter in einem eigenen Kasten mit eigener Rolle. Beim Scrollen liefen sie
+auseinander; dann standen die Wochentage mitten im Gitter und die erste
+Stunde dahinter. Das war die Ursache dafür, dass sich der Kalender „nicht
+rund" anfühlte – kein Detail, sondern die Struktur.
+
+**Die Spalten haben eine Mindestbreite** (132 px in der Woche). Sieben
+Tage auf einem Telefon ergeben sonst 45 Pixel je Tag, und darauf steht von
+„Miriam Seidel" noch „M". Jetzt rollt man seitlich und liest; die
+Zeitspalte bleibt dabei stehen, sonst weiß man nicht mehr, welche Stunde
+man ansieht.
+
+**Die Stundenlinien sind ein Hintergrundverlauf**, keine Zellen. Vorher lag
+in jeder Spalte je Stunde ein leeres `div` mit Rahmen – bei einer Woche
+über hundert Knoten, die nichts tun, außer sich beim Runden um halbe Pixel
+zu streiten. Als Verlauf sitzt jede Linie dort, wo die Rechnung sie
+hinlegt, und die halbe Stunde gibt es gratis dazu.
+
+**Parallele Termine, zwei Antworten für zwei Breiten.** In der Woche liegen
+sie um 16 Pixel versetzt übereinander: Der oberste behält die volle Breite
+und ist ganz zu lesen, die darunter schauen links hervor, sind anklickbar
+und kommen beim Daraufzeigen nach vorn. Geteilt blieben bei drei Parallelen
+40 Pixel je Termin – darauf steht kein Name mehr. Im Tag ist die Spalte
+über tausend Pixel breit; dort wird geteilt, denn nebeneinander sieht man
+die Parallele sofort, statt sie unter dem Nachbarn zu suchen.
+
+Was dabei gelten muss und geprüft wird: **kein Termin darf vollständig
+verdeckt sein.** Jeder behält einen sichtbaren, anklickbaren Streifen –
+sonst wäre ausgerechnet eine Doppelbuchung unsichtbar.
+
+Dazu eine **Jetzt-Linie** im heutigen Tag und, in der Tagesansicht, die
+**Liste des Tages** neben der Zeitleiste: Die Fläche zeigt, wann etwas ist
+und wie lange; die Liste zeigt, was und mit wem und für wie viel. Beides
+zusammen ist der Tag.
+
 ## Im Kalender wird gezogen, nicht getippt
 
 Zwei Gesten, beide aus Outlook bekannt, beide mit Maus-Ereignissen gebaut

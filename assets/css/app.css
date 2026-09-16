@@ -1269,50 +1269,144 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
 .kalender {
   border: 1px solid var(--rand);
   border-radius: var(--radius-m);
-  overflow: hidden;
   background: var(--flaeche);
-}
-.kalender__kopf {
-  display: grid;
-  grid-template-columns: 56px repeat(var(--spalten, 7), minmax(0, 1fr));
-  border-bottom: 1px solid var(--rand);
-  background: var(--flaeche-2);
-  position: sticky; top: var(--kopf-hoehe); z-index: 5;
-}
-.kalender__tag-kopf {
-  padding: 8px 6px; text-align: center;
-  border-left: 1px solid var(--rand);
-  font-size: 12px;
-}
-.kalender__tag-kopf:first-child { border-left: 0; }
-.kalender__wochentag { color: var(--text-4); font-size: 10.5px; font-weight: 620; text-transform: uppercase; letter-spacing: .05em; }
-.kalender__tag-zahl { font-size: 15px; font-weight: 620; color: var(--text); margin-top: 1px; }
-.kalender__tag-kopf.ist-heute .kalender__tag-zahl {
-  background: var(--marke); color: var(--auf-marke);
-  width: 26px; height: 26px; border-radius: 50%;
-  display: inline-grid; place-items: center; font-size: 13px;
-  margin: 1px auto 0;
+  overflow: hidden;
 }
 
-.kalender__gitter {
+/* ============================================ Tag und Woche ========= */
+
+/*
+ * Ein Rollbereich, ein Raster.
+ *
+ * Vorher waren es zwei: die Kopfzeile am Fenster festgemacht, das Gitter
+ * in einem eigenen Kasten mit eigener Rolle. Beim Scrollen liefen sie
+ * auseinander - die Wochentage standen dann mitten im Gitter und die
+ * erste Stunde dahinter. Jetzt sitzen Kopfzeile, Zeitspalte und Tage im
+ * selben Raster; die Kopfzeile haftet oben daran, die Zeitspalte links.
+ * Verrutschen koennen sie damit nicht mehr.
+ */
+.kalender--zeit .kalender__gitter {
   display: grid;
-  grid-template-columns: 56px repeat(var(--spalten, 7), minmax(0, 1fr));
-  position: relative;
-  max-height: 66vh;
-  overflow-y: auto;
+  grid-template-columns: 58px repeat(var(--spalten, 7), minmax(var(--spalte-min, 132px), 1fr));
+  max-height: min(70vh, 760px);
+  overflow: auto;
+  overscroll-behavior: contain;
 }
-.kalender__stunden { border-right: 1px solid var(--rand); }
+
+.kalender__ecke {
+  position: sticky; top: 0; left: 0; z-index: 7;
+  background: var(--flaeche-2);
+  border-right: 1px solid var(--rand);
+  border-bottom: 1px solid var(--rand);
+}
+.kalender__tag-kopf {
+  position: sticky; top: 0; z-index: 6;
+  background: var(--flaeche-2);
+  border-bottom: 1px solid var(--rand);
+  border-left: 1px solid var(--rand);
+  padding: 7px 6px 8px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.kalender__wochentag {
+  color: var(--text-4); font-size: 10.5px; font-weight: 620;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.kalender__tag-zahl { font-size: 15.5px; font-weight: 640; color: var(--text); line-height: 1.2; }
+.kalender__tag-kopf.ist-heute .kalender__tag-zahl {
+  background: var(--marke); color: var(--auf-marke);
+  min-width: 25px; height: 25px; border-radius: 999px;
+  display: inline-grid; place-items: center; font-size: 13px;
+  padding: 0 6px;
+}
+
+/* Die Zeitspalte bleibt beim seitlichen Rollen stehen – ohne sie weiss
+   man auf einem Telefon nicht mehr, welche Stunde man gerade ansieht. */
+.kalender__stunden {
+  position: sticky; left: 0; z-index: 3;
+  background: var(--flaeche);
+  border-right: 1px solid var(--rand);
+}
 .kalender__stunde {
-  height: 52px; position: relative;
+  height: var(--stunde, 64px);
   font-size: 10.5px; color: var(--text-4);
   text-align: right; padding-right: 7px;
 }
-.kalender__stunde span { position: relative; top: -7px; }
-.kalender__spalte { border-left: 1px solid var(--rand); position: relative; }
-.kalender__spalte:first-of-type { border-left: 0; }
-.kalender__zelle { height: 52px; border-bottom: 1px solid var(--rand); }
-.kalender__zelle:hover { background: var(--flaeche-2); }
-.kalender__spalte.ist-heute { background: color-mix(in srgb, var(--marke) 3%, transparent); }
+/* Die Uhrzeit sitzt auf der Linie, nicht darunter – nur die erste nicht:
+   Die haette ueber dem Rollbereich gestanden und waere abgeschnitten. */
+.kalender__stunde span { position: relative; top: -6px; }
+.kalender__stunde:first-child span { top: 0; }
+
+/* ------------------------------------------- Farblegende ------------ */
+
+.farblegende { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.farblegende__teil {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-3);
+}
+.farblegende__punkt {
+  width: 9px; height: 9px; border-radius: 3px; flex: none;
+  background: var(--marke);
+}
+.farblegende__punkt--lila   { background: var(--lila); }
+.farblegende__punkt--info   { background: var(--info); }
+.farblegende__punkt--akzent { background: var(--akzent); }
+
+/*
+ * Stundenlinien als Hintergrund statt als Zellen.
+ *
+ * Vorher lag in jeder Spalte je Stunde ein leeres div mit Rahmen. Das
+ * sind bei einer Woche ueber hundert Knoten, die nichts tun, ausser sich
+ * beim Runden um halbe Pixel zu streiten. Als Verlauf gezeichnet sitzt
+ * jede Linie genau dort, wo die Rechnung sie hinlegt – und die halbe
+ * Stunde gibt es gratis dazu.
+ */
+.kalender__spalte {
+  position: relative;
+  border-left: 1px solid var(--rand);
+  background-image:
+    repeating-linear-gradient(to bottom,
+      var(--rand) 0, var(--rand) 1px,
+      transparent 1px, transparent var(--stunde, 64px)),
+    repeating-linear-gradient(to bottom,
+      transparent 0, transparent calc(var(--stunde, 64px) / 2 - 1px),
+      var(--rand-2) calc(var(--stunde, 64px) / 2 - 1px), var(--rand-2) calc(var(--stunde, 64px) / 2),
+      transparent calc(var(--stunde, 64px) / 2), transparent var(--stunde, 64px));
+  background-position: 0 -1px, 0 0;
+}
+.kalender__spalte.ist-heute { background-color: color-mix(in srgb, var(--marke) 4%, transparent); }
+.kalender__spalte[data-aufziehbar] { cursor: cell; }
+
+/* Wo stehen wir gerade? Die erste Frage beim Blick auf den Kalender. */
+.kalender__jetzt {
+  position: absolute; left: 0; right: 0; height: 0;
+  border-top: 2px solid var(--gefahr);
+  z-index: 8; pointer-events: none;
+}
+.kalender__jetzt::before {
+  content: ''; position: absolute; left: -4px; top: -5px;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--gefahr);
+}
+.kalender__jetzt-zeit {
+  position: absolute; right: 3px; top: -8px;
+  background: var(--gefahr); color: #fff;
+  font-size: 9.5px; font-weight: 640;
+  padding: 1px 5px; border-radius: 999px;
+}
+
+/* ============================================ Monat ================= */
+
+.kalender--monat .kalender__kopf {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  background: var(--flaeche-2);
+  border-bottom: 1px solid var(--rand);
+}
+.kalender--monat .kalender__tag-kopf {
+  position: static;
+  padding: 7px 6px;
+  border-bottom: 0;
+}
 
 /*
  * Die aufgezogene Zeit.
@@ -1381,10 +1475,91 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
   transition: box-shadow var(--tempo), transform var(--tempo);
   z-index: 2;
 }
-.termin:hover { box-shadow: var(--schatten-2); z-index: 3; }
-.termin__zeit { font-size: 10.5px; opacity: .85; }
+/*
+ * Versetzte Termine: der angefasste kommt nach vorn.
+ *
+ * Bei drei Parallelen liegt der dritte ueber dem zweiten ueber dem
+ * ersten. Ohne diese Zeile bliebe der unterste fuer immer halb verdeckt -
+ * mit ihr genuegt das Daraufzeigen, um ihn ganz zu sehen.
+ */
+.termin:hover, .termin:focus-visible { box-shadow: var(--schatten-2); z-index: 15; }
+.termin:focus-visible { outline: 2px solid var(--marke); outline-offset: 1px; }
+
+/* Ein Termin ueber dem anderen braucht eine sichtbare Kante, sonst
+   verschwimmen zwei gleichfarbige zu einem Block. */
+.termin { box-shadow: -1px 0 0 0 color-mix(in srgb, var(--flaeche) 70%, transparent); }
+
+.termin__kopf { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.termin__zeit { font-size: 10.5px; opacity: .85; flex: none; font-variant-numeric: tabular-nums; }
+.termin__name {
+  font-weight: 640; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.termin__was {
+  display: block; margin-top: 1px;
+  font-size: 10.5px; opacity: .8;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Kurze Termine haben nur eine Zeile Platz – dann Zeit und Name nebeneinander
+   und nichts, was darunter noch abgeschnitten wird. */
+.termin--flach { padding-top: 2px; padding-bottom: 2px; }
+.termin--flach .termin__was { display: none; }
+
 .termin__titel { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .termin--abgesagt { opacity: .5; text-decoration: line-through; }
+
+/* ------------------------------------------- Liste des Tages --------- */
+
+/*
+ * Neben der Zeitleiste, nicht statt ihr.
+ *
+ * Die Flaeche zeigt, wann etwas ist und wie lange – das kann eine Liste
+ * nicht. Die Liste zeigt, was und mit wem und fuer wie viel – das hat auf
+ * der Flaeche keinen Platz. Beides zusammen ist der Tag.
+ */
+.tagesliste { display: flex; flex-direction: column; }
+.tagesliste__zeile {
+  display: grid;
+  grid-template-columns: 58px 3px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px var(--r5, 18px);
+  border-top: 1px solid var(--rand);
+  color: inherit;
+}
+.tagesliste__zeile:first-child { border-top: 0; }
+.tagesliste__zeile:hover { background: var(--flaeche-2); }
+.tagesliste__zeile.ist-abgesagt { opacity: .55; }
+.tagesliste__zeile.ist-abgesagt .tagesliste__wer strong { text-decoration: line-through; }
+
+.tagesliste__zeit {
+  display: flex; flex-direction: column; line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.tagesliste__zeit strong { font-size: 14px; font-weight: 640; }
+.tagesliste__zeit span { font-size: 11.5px; color: var(--text-4); }
+
+/* Der Farbstrich ist dieselbe Auskunft wie auf der Flaeche – so findet
+   man eine Zeile der Liste auf der Zeitleiste ohne Suchen wieder. */
+.tagesliste__strich { align-self: stretch; border-radius: 999px; background: var(--marke); }
+.tagesliste__strich.termin--info    { background: var(--info); }
+.tagesliste__strich.termin--lila    { background: var(--lila); }
+.tagesliste__strich.termin--akzent  { background: var(--akzent); }
+.tagesliste__strich.termin--warnung { background: var(--warnung); }
+
+.tagesliste__wer { min-width: 0; display: flex; flex-direction: column; }
+.tagesliste__wer strong { font-size: 14.5px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tagesliste__was { font-size: 12.5px; color: var(--text-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tagesliste__status { flex: none; }
+
+@media (max-width: 620px) {
+  /* Auf dem Telefon faellt der Status in die zweite Zeile, statt den
+     Namen auf drei Buchstaben zu drucken. */
+  .tagesliste__zeile { grid-template-columns: 52px 3px 1fr; gap: 10px; }
+  .tagesliste__status { grid-column: 3; margin-top: 2px; }
+}
 
 /* ------------------------------------------- Termin verschieben ------ */
 
