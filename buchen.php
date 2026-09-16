@@ -241,17 +241,51 @@ if ($gewaehlt !== '' && App::post('datum') === '' && App::get('datum') === '') {
 $raster = (int) $service['dauer_min'] >= 60 ? 30 : 15;
 
 /*
+ * Gilt die gewaehlte Zeit noch?
+ *
+ * Sie kann aus dem Kalender der Website kommen, aus einem verschickten
+ * Link oder aus einem lange offenen Tab. Zwischen dem Anzeigen und dem
+ * Klick koennen Minuten liegen, und in dieser Zeit kann jemand anders
+ * denselben Platz genommen haben. Wer das erst nach dem Ausfuellen des
+ * Formulars erfaehrt, hat umsonst getippt.
+ *
+ * Der Trainer kommt aus derselben Pruefung und nicht aus der Adresse:
+ * Sonst liesse sich mit einem veraenderten Wert ein Termin bei jemandem
+ * buchen, der zu dieser Zeit gar nicht arbeitet.
+ */
+$trainerId = 0;
+$abgelaufen = false;
+if ($gewaehlt !== '') {
+    foreach (Bookings::freieZeiten($serviceId, substr($gewaehlt, 0, 10), 0, $raster) as $z) {
+        if ((string) $z['start'] === $gewaehlt) {
+            $trainerId = (int) $z['trainer_id'];
+            break;
+        }
+    }
+    if ($trainerId === 0) {
+        $gewaehlt   = '';
+        $abgelaufen = true;
+    }
+}
+
+/*
  * Die nächsten Tage mit freien Zeiten – höchstens fünf, damit die Seite
  * nicht endlos wird und die Abfrage nicht ausufert.
+ *
+ * Nur wenn noch keine Zeit feststeht. Steht sie fest, kommt gleich das
+ * Formular, und einundzwanzig Tage durchzurechnen waere Arbeit fuer eine
+ * Liste, die niemand zu sehen bekommt.
  */
 $tage = [];
-$gefunden = 0;
-for ($i = 0; $i < 21 && $gefunden < 5; $i++) {
-    $tag  = date('Y-m-d', strtotime($datum . ' +' . $i . ' days'));
-    $frei = Bookings::freieZeiten($serviceId, $tag, 0, $raster);
-    if ($frei !== []) {
-        $tage[$tag] = $frei;
-        $gefunden++;
+if ($gewaehlt === '') {
+    $gefunden = 0;
+    for ($i = 0; $i < 21 && $gefunden < 5; $i++) {
+        $tag  = date('Y-m-d', strtotime($datum . ' +' . $i . ' days'));
+        $frei = Bookings::freieZeiten($serviceId, $tag, 0, $raster);
+        if ($frei !== []) {
+            $tage[$tag] = $frei;
+            $gefunden++;
+        }
     }
 }
 
@@ -260,6 +294,21 @@ $inhalt = Oeffentlich::schritte($schritte, $gewaehlt !== '' ? 2 : 1);
 if (isset($fehler) && $fehler !== '') {
     $inhalt .= Oeffentlich::meldung($fehler, 'warnung');
 }
+if ($abgelaufen) {
+    $inhalt .= Oeffentlich::meldung(
+        'Diese Zeit ist inzwischen vergeben. Unten stehen die aktuell freien.', 'warnung');
+}
+
+/*
+ * Entweder die Liste oder das Formular – nie beides.
+ *
+ * Vorher stand unter der gewaehlten Zeit noch einmal die ganze Liste, aus
+ * der man gerade ausgewaehlt hatte. Wer aus dem Kalender der Website kam,
+ * landete also wieder vor derselben Auswahl und musste erst daran vorbei,
+ * um zum Formular zu kommen. Jetzt fuehrt eine gewaehlte Zeit direkt zu
+ * den Angaben; zurueck zur Liste geht es ueber einen Weg darunter.
+ */
+if ($gewaehlt === ''):
 
 /* Schritt 1: Leistung und Zeit */
 $inhalt .= '<form method="post" class="vorgang__form">'
@@ -327,8 +376,12 @@ if ($tage === []) {
 }
 
 /* Schritt 2: Angaben – erst wenn eine Zeit gewählt ist */
-if ($gewaehlt !== '') {
-    $trainerId = App::postInt('trainer_id') ?: App::getInt('trainer_id');
+else:
+    $zurueck = App::url('/buchen.php') . '?' . http_build_query(array_filter([
+        'w'          => (string) (Tenant::workspace()['slug'] ?? ''),
+        'service_id' => $serviceId,
+        'datum'      => substr($gewaehlt, 0, 10),
+    ]));
     $inhalt .= '<div class="vorgang__gewaehlt">'
              . '<strong>' . Util::h(Util::datumLang($gewaehlt)) . ', '
              . Util::h(Util::uhrzeit($gewaehlt)) . ' Uhr</strong> · '
@@ -385,8 +438,13 @@ if ($gewaehlt !== '') {
              . '<p class="vorgang__klein">Absage bis '
              . (int) Tenant::einstellung('stornofrist_stunden', 24) . ' Stunden vorher kostenfrei. '
              . 'Bezahlt wird vor Ort oder per Rechnung.</p>'
-             . '</form>';
-}
+             . '</form>'
+             /* Der Weg zurueck zur Liste – sichtbar, aber nicht im Weg. Wer
+                sich vertippt hat, soll nicht den Zurueck-Knopf des Browsers
+                suchen muessen. */
+             . '<p class="vorgang__zurueck"><a href="' . Util::attr($zurueck) . '">'
+             . 'Andere Zeit wählen</a></p>';
+endif;
 
 Oeffentlich::seite('Termin buchen · ' . Tenant::name(),
     Oeffentlich::kasten('Termin buchen',
