@@ -30,9 +30,17 @@ return [
     // Eigene Domains der Workspaces zählen automatisch mit.
     'erlaubte_hosts' => [],
 
-    // Anmeldung ohne Passwort über /demo.php – nur für öffentliche
-    // Vorführungen. Auf einem Produktivserver bleibt das aus; dort gehört
-    // demo.php ohnehin gelöscht.
+    // Anmeldung ohne Passwort über /demo.php – für öffentliche
+    // Vorführungen. Drei Abstufungen:
+    //
+    //   false              aus (Standard)
+    //   'ein-schluessel'   nur /demo.php?k=ein-schluessel
+    //   true               offen für jeden
+    //
+    // Der mittlere Weg ist der übliche: Der Schlüssel steht im Link auf
+    // der eigenen Website, und wer nur die nackte Adresse probiert,
+    // findet nichts. Auf einem Produktivserver ohne Vorführung gehört
+    // demo.php gelöscht – der Schalter ist die zweite Sicherung.
     'demo_zugang' => false,
 
     // Absender für Systemmails.

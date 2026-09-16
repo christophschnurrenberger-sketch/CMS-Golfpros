@@ -171,9 +171,20 @@ Türen schließen:
    nicht überraschen.
 2. **`demo.php` löschen**, falls kein öffentlicher Demo-Bereich betrieben
    wird. Die Datei meldet Besucher ohne Passwort als Eigentümer des
-   Demo-Workspace an; seit dem Sicherheitsdurchgang nur noch, wenn in der
-   `config.php` ausdrücklich `'demo_zugang' => true` steht. Gelöscht ist
-   gelöscht.
+   Demo-Workspace an. Seit dem Sicherheitsdurchgang ist sie standardmäßig
+   geschlossen und braucht einen Eintrag in der `config.php`:
+
+   ```php
+   'demo_zugang' => 'ein-eigener-schluessel',  // /demo.php?k=ein-eigener-schluessel
+   'demo_zugang' => true,                      // offen für jeden
+   'demo_zugang' => false,                     // aus (Standard)
+   ```
+
+   Wer eine Vorführung betreibt, nimmt den Schlüssel: Er steht im Link auf
+   der eigenen Website, und wer nur `/demo.php` probiert, findet nichts.
+   Das hält keinen Angreifer auf, der den Link hat – es nimmt die Seite
+   aber aus dem Blickfeld jedes Scanners, der bekannte Adressen
+   durchprobiert. Gelöscht ist trotzdem gelöscht.
 3. **`base_url` in der `config.php` prüfen.** Sie ist die Grundlage aller
    Links in E-Mails *und* die Liste der zulässigen Hostnamen: Steht sie
    dort vollständig, kann eine gefälschte Host-Kopfzeile die Links nicht
