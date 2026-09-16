@@ -140,9 +140,13 @@ require __DIR__ . '/partials/kopf.php';
             </td>
             <td class="nicht-mobil gedimmt"><?= Util::h(Auth::trainerName((int) $b['trainer_id'])) ?></td>
             <td class="nicht-mobil">
+              <?php /* Website und Kundenzugang sind beides Selbstbuchungen und
+                       beide in Ordnung. Amber hiesse „da stimmt etwas nicht" -
+                       das galt frueher nur deshalb auch fuer den Zugang, weil
+                       ihn nichts erzeugt hat. */ ?>
               <?= pille(['backend' => 'Backend', 'website' => 'Website', 'portal' => 'Zugang',
                          'automation' => 'Automation'][(string) $b['quelle']] ?? (string) $b['quelle'],
-                        (string) $b['quelle'] === 'website' ? 'info' : 'offen') ?>
+                        in_array((string) $b['quelle'], ['website', 'portal'], true) ? 'info' : 'offen') ?>
             </td>
             <td class="zahl tabnum">
               <?php if ((int) $b['customer_package_id'] > 0): ?>

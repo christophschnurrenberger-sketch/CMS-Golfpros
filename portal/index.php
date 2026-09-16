@@ -156,6 +156,102 @@ if (App::istPost()) {
         App::weiter('/portal/?ansicht=termine');
     }
 
+    /*
+     * Buchen aus dem Kundenbereich heraus.
+     *
+     * Bisher fuehrte der einzige Weg zu einem neuen Termin ueber die
+     * oeffentliche Website - der angemeldete Kunde musste sein Portal
+     * verlassen, um das zu tun, wofuer er gekommen ist. Das ist dieselbe
+     * Buchung wie in buchen.php, nur ohne alles, was dort dem Fremden
+     * gilt: kein Name, keine E-Mail, keine Einwilligung, keine
+     * Roboterfalle. Wer hier steht, ist angemeldet und bekannt.
+     *
+     * Was gleich bleibt, ist die Pruefung: Die Zeit wird gegen den echten
+     * Kalender gehalten, bevor gebucht wird. Zwischen dem Anzeigen der
+     * freien Zeiten und dem Klick koennen Minuten liegen, und in dieser
+     * Zeit kann jemand anders denselben Platz genommen haben.
+     */
+    if ($aktion === 'buchen') {
+        $serviceId = App::postInt('service_id');
+        $start     = App::post('start');
+        $trainerId = App::postInt('trainer_id');
+        $notiz     = trim(App::post('notiz'));
+        $service   = Tenant::find('services', $serviceId);
+        $zurueck   = '/portal/?ansicht=buchen' . ($serviceId > 0 ? '&service_id=' . $serviceId : '');
+
+        if ($service === null || (int) $service['aktiv'] !== 1 || (int) $service['online_buchbar'] !== 1) {
+            App::melden('Diese Leistung ist nicht mehr buchbar.', 'fehler');
+            App::weiter('/portal/?ansicht=buchen');
+        }
+
+        /*
+         * Der Trainer kommt aus der Verfuegbarkeit, nicht aus dem
+         * Formular: Sonst liesse sich mit einem veraenderten Feld ein
+         * Termin bei jemandem buchen, der zu dieser Zeit gar nicht
+         * arbeitet - und die Kollisionspruefung liefe ins Leere.
+         */
+        $passt = false;
+        foreach (Bookings::freieZeiten($serviceId, substr($start, 0, 10), 0,
+                     (int) $service['dauer_min'] >= 60 ? 30 : 15) as $z) {
+            if ((string) $z['start'] === $start) {
+                $passt     = true;
+                $trainerId = (int) $z['trainer_id'];
+                break;
+            }
+        }
+        if (!$passt) {
+            App::melden('Diese Zeit ist inzwischen vergeben. Bitte eine andere wählen.', 'fehler');
+            App::weiter($zurueck);
+        }
+
+        /* Ein offenes Paket wird zuerst verbraucht - der Kunde hat es
+           bezahlt. Welches es trifft, stand vor dem Buchen auf der
+           Bestaetigungsseite; ueberraschen soll es niemanden. */
+        $paketId = 0;
+        foreach (Commerce::offenePakete((int) $kunde['id']) as $p) {
+            $paketId = (int) $p['id'];
+            break;
+        }
+
+        [$id, $meldung] = Bookings::buchen([
+            'service_id'  => $serviceId,
+            'customer_id' => (int) $kunde['id'],
+            'trainer_id'  => $trainerId,
+            'start'       => $start,
+            'dauer_min'   => (int) $service['dauer_min'],
+            'titel'       => (string) $service['name'],
+            'preis_cent'  => (int) $service['preis_cent'],
+            'notiz'       => $notiz,
+            'customer_package_id' => $paketId,
+            'quelle'      => 'portal',
+        ]);
+
+        if ($id === 0) {
+            App::melden($meldung, 'fehler');
+            App::weiter($zurueck);
+        }
+
+        $ort = Tenant::find('locations', (int) $service['location_id']);
+        Mail::anKunden($kunde, 'Dein Termin am ' . Util::datum($start),
+            "Hallo " . (string) $kunde['vorname'] . ",\n\n"
+            . "dein Termin steht:\n\n"
+            . Util::datumLang($start) . ", " . Util::uhrzeit($start) . " Uhr\n"
+            . (string) $service['name'] . "\n"
+            . ($ort !== null ? (string) $ort['name'] . "\n" : '')
+            . "mit " . Auth::trainerName($trainerId) . "\n\n"
+            . ((string) Tenant::einstellung('buchung_bestaetigung', '') !== ''
+               ? Tenant::einstellung('buchung_bestaetigung') . "\n\n" : '')
+            . "Absagen kannst du bis "
+            . (int) Tenant::einstellung('stornofrist_stunden', 24) . " Stunden vorher kostenfrei –\n"
+            . "am einfachsten in deinem Bereich.\n\n"
+            . Tenant::name());
+
+        App::melden('Termin gebucht: ' . Util::datumLang($start) . ', '
+                  . Util::uhrzeit($start) . ' Uhr.'
+                  . ($paketId > 0 ? ' Die Einheit wurde von deinem Paket abgezogen.' : ''));
+        App::weiter('/portal/?ansicht=termine');
+    }
+
     if ($aktion === 'nachricht') {
         $text = trim(App::post('text'));
         if ($text !== '') {
@@ -267,6 +363,7 @@ $zahlen  = Customers::kennzahlen($kundeId);
 $naechster = $akte['kommend'][0] ?? null;
 
 $titel = match ($ansicht) {
+    'buchen'      => 'Termin buchen',
     'termine'     => 'Meine Termine',
     'training'    => 'Mein Training',
     'fortschritt' => 'Mein Fortschritt',
@@ -302,16 +399,22 @@ if ($ansicht === 'start'):
       <div class="naechster__knoepfe">
         <a class="btn btn--klein" href="<?= Util::attr(App::url('/portal/?ansicht=termine')) ?>">
           Alle Termine</a>
+        <a class="btn btn--klein" href="<?= Util::attr(App::url('/portal/?ansicht=buchen')) ?>">
+          Weiteren Termin buchen</a>
       </div>
     </div>
   <?php else: ?>
     <div class="karte mb-5"><div class="karte__koerper mitte">
       <div class="leerzustand__symbol" style="margin:0 auto 12px"><?= Icon::svg('calendar', 24) ?></div>
       <h3 class="mb-2">Kein Termin geplant</h3>
-      <p class="gedimmt klein mb-4">Schreib deinem Trainer kurz, wann es dir passt –
-        oder buche direkt auf der Website.</p>
-      <a class="btn btn--primaer" href="<?= Util::attr(App::url('/portal/?ansicht=nachrichten')) ?>">
-        <?= Icon::svg('message', 15) ?> Nachricht schreiben</a>
+      <p class="gedimmt klein mb-4">Such dir eine freie Zeit aus – oder schreib deinem
+        Trainer kurz, wann es dir passt.</p>
+      <div class="reihe reihe--umbruch" style="justify-content:center">
+        <a class="btn btn--primaer" href="<?= Util::attr(App::url('/portal/?ansicht=buchen')) ?>">
+          <?= Icon::svg('calendar', 15) ?> Termin buchen</a>
+        <a class="btn btn--rand" href="<?= Util::attr(App::url('/portal/?ansicht=nachrichten')) ?>">
+          <?= Icon::svg('message', 15) ?> Nachricht schreiben</a>
+      </div>
     </div></div>
   <?php endif; ?>
 
@@ -366,11 +469,257 @@ if ($ansicht === 'start'):
   </div>
 
 <?php
+/* =========================================================== Buchen === */
+/*
+ * Termin buchen, ohne den Kundenbereich zu verlassen.
+ *
+ * Zwei Schritte statt drei: Zeit waehlen, bestaetigen. Der dritte Schritt
+ * der oeffentlichen Buchung - Name, E-Mail, Einwilligung - faellt weg,
+ * weil hier niemand fremd ist. Genau das ist der Gewinn gegenueber dem
+ * Weg ueber die Website.
+ *
+ * Die Auswahl laeuft ueber Links, nicht ueber Formulare: Eine gewaehlte
+ * Zeit ist keine Aenderung, sie ist ein Ort. So laesst sie sich
+ * verschicken, der Zurueck-Knopf tut das Erwartete, und ein versehentlich
+ * neu geladener Schritt bucht nichts doppelt. Gebucht wird erst per POST,
+ * mit Merkmal gegen gefaelschte Anfragen.
+ */
+elseif ($ansicht === 'buchen'):
+  $leistungen = Tenant::all('services', 'aktiv = 1 AND online_buchbar = 1', [], 'position, name');
+
+  if ($leistungen === []):
+?>
+  <div class="karte"><div class="karte__koerper mitte">
+    <div class="leerzustand__symbol" style="margin:0 auto 12px"><?= Icon::svg('calendar', 24) ?></div>
+    <h3 class="mb-2">Online-Buchung ist nicht freigeschaltet</h3>
+    <p class="gedimmt klein mb-4">Schreib deinem Trainer kurz, wann es dir passt –
+      er tr&auml;gt den Termin dann f&uuml;r dich ein.</p>
+    <a class="btn btn--primaer" href="<?= Util::attr(App::url('/portal/?ansicht=nachrichten')) ?>">
+      <?= Icon::svg('message', 15) ?> Nachricht schreiben</a>
+  </div></div>
+<?php
+  else:
+    /* Gewaehlte Leistung – oder die erste, solange keine dasteht. */
+    $serviceId = App::getInt('service_id');
+    $service   = $serviceId > 0 ? Tenant::find('services', $serviceId) : null;
+    if ($service === null || (int) $service['online_buchbar'] !== 1 || (int) $service['aktiv'] !== 1) {
+        $service   = $leistungen[0];
+        $serviceId = (int) $service['id'];
+    }
+
+    /*
+     * Das Raster der angebotenen Startzeiten – dieselbe Ueberlegung wie
+     * auf der Website: Viertelstunden bei kurzen Einheiten, halbe bei
+     * langen. Ein leerer Tag im Viertelstundentakt waere eine Wand aus
+     * vierzig Knoepfen, und niemand faengt gern um 12:45 an.
+     */
+    $raster = (int) $service['dauer_min'] >= 60 ? 30 : 15;
+
+    $abTag = App::get('datum', Util::heute());
+    if (strtotime($abTag) === false || $abTag < Util::heute()) {
+        $abTag = Util::heute();
+    }
+
+    /* Die naechsten Tage mit freien Zeiten – hoechstens fuenf, damit die
+       Seite nicht endlos wird und die Abfrage nicht ausufert. */
+    $tage = [];
+    for ($i = 0; $i < 21 && count($tage) < 5; $i++) {
+        $tag  = date('Y-m-d', strtotime($abTag . ' +' . $i . ' days'));
+        $frei = Bookings::freieZeiten($serviceId, $tag, 0, $raster);
+        if ($frei !== []) {
+            $tage[$tag] = $frei;
+        }
+    }
+
+    /*
+     * Eine gewaehlte Zeit gilt nur, wenn sie in diesem Moment noch frei
+     * ist. Ein alter Link oder ein lange offener Tab zeigt sonst eine
+     * Bestaetigungsseite fuer einen Platz, den es nicht mehr gibt – und
+     * die Absage kaeme erst nach dem Klick auf „verbindlich buchen".
+     */
+    $gewaehlt  = App::get('start');
+    $trainerId = 0;
+    if ($gewaehlt !== '') {
+        $trainerId = 0;
+        foreach (Bookings::freieZeiten($serviceId, substr($gewaehlt, 0, 10), 0, $raster) as $z) {
+            if ((string) $z['start'] === $gewaehlt) {
+                $trainerId = (int) $z['trainer_id'];
+                break;
+            }
+        }
+        if ($trainerId === 0) {
+            $gewaehlt = '';
+            echo '<div class="hinweis hinweis--gefahr mb-4">' . Icon::svg('alert', 17)
+               . '<div class="hinweis__text">Diese Zeit ist inzwischen vergeben. '
+               . 'Unten stehen die aktuell freien.</div></div>';
+        }
+    }
+
+    $paket = Commerce::offenePakete((int) $kunde['id'])[0] ?? null;
+    $ort   = Tenant::find('locations', (int) $service['location_id']);
+    $frist = (int) Tenant::einstellung('stornofrist_stunden', 24);
+
+    $adresse = static fn (array $werte): string =>
+        Util::attr(App::url('/portal/?' . http_build_query(array_filter(
+            ['ansicht' => 'buchen'] + $werte,
+            static fn ($v) => $v !== '' && $v !== 0))));
+
+    /* ---------------------------------------- Schritt 2: bestaetigen -- */
+    if ($gewaehlt !== ''):
+?>
+  <div class="buchen-bestaetigung">
+    <div class="buchen-bestaetigung__tag"><?= Util::h(Util::datumLang($gewaehlt)) ?></div>
+    <div class="buchen-bestaetigung__zeit">
+      <?= Util::h(Util::uhrzeit($gewaehlt)) ?> Uhr · <?= (int) $service['dauer_min'] ?> Minuten
+    </div>
+    <div class="buchen-bestaetigung__was">
+      <strong><?= Util::h((string) $service['name']) ?></strong>
+      <?php if ($ort !== null): ?>
+        <div class="buchen-bestaetigung__reihe"><?= Icon::svg('pin', 14) ?>
+          <span><?= Util::h((string) $ort['name']) ?></span></div>
+      <?php endif; ?>
+      <div class="buchen-bestaetigung__reihe"><?= Icon::svg('user', 14) ?>
+        <span>mit <?= Util::h(Auth::trainerName($trainerId)) ?></span></div>
+    </div>
+  </div>
+
+  <form method="post" class="karte mb-4">
+    <?= Auth::csrfFeld() ?>
+    <input type="hidden" name="aktion" value="buchen">
+    <input type="hidden" name="service_id" value="<?= $serviceId ?>">
+    <input type="hidden" name="start" value="<?= Util::attr($gewaehlt) ?>">
+    <div class="karte__koerper">
+      <div class="feld">
+        <label class="feld__label" for="bnotiz">M&ouml;chtest du noch etwas dazusagen?</label>
+        <textarea class="eingabe" id="bnotiz" name="notiz" rows="2"
+                  placeholder="Woran du arbeiten m&ouml;chtest, Verletzungen, Sonstiges"></textarea>
+      </div>
+      <?php
+      /*
+       * Was das kostet, steht vor dem Klick da – und wenn ein Paket
+       * greift, steht auch das da. Eine Einheit, die erst hinterher vom
+       * Guthaben abgezogen erscheint, fuehlt sich wie ein Fehler an.
+       */
+      ?>
+      <div class="reihe reihe--zwischen mb-4">
+        <span class="gedimmt klein">Preis</span>
+        <span class="halbfett">
+          <?php if ($paket !== null): ?>
+            aus dem Paket
+          <?php else: ?>
+            <?= Util::h(Util::geld((int) $service['preis_cent'])) ?>
+          <?php endif; ?>
+        </span>
+      </div>
+      <?php if ($paket !== null): ?>
+        <div class="hinweis hinweis--still mb-4"><?= Icon::svg('ticket', 17) ?>
+          <div class="hinweis__text">Diese Einheit wird von deinem Paket
+            &bdquo;<?= Util::h((string) $paket['name']) ?>&ldquo; abgezogen &ndash;
+            danach sind noch
+            <?= max(0, (int) $paket['einheiten_gesamt'] - (int) $paket['einheiten_genutzt'] - 1) ?>
+            von <?= (int) $paket['einheiten_gesamt'] ?> &uuml;brig.</div></div>
+      <?php endif; ?>
+      <button class="btn btn--primaer btn--voll" type="submit">Verbindlich buchen</button>
+      <p class="winzig mitte mt-3">Absage bis <?= $frist ?> Stunden vorher kostenfrei.</p>
+    </div>
+  </form>
+
+  <p class="zugang__wechsel">
+    <a href="<?= $adresse(['service_id' => $serviceId, 'datum' => substr($gewaehlt, 0, 10)]) ?>">Andere Zeit w&auml;hlen</a>
+  </p>
+
+<?php
+    /* ---------------------------------------- Schritt 1: Zeit waehlen - */
+    else:
+?>
+  <form method="get" class="karte mb-4">
+    <input type="hidden" name="ansicht" value="buchen">
+    <div class="karte__koerper">
+      <?php if (count($leistungen) > 1): ?>
+        <div class="feld">
+          <label class="feld__label" for="bleistung">Was m&ouml;chtest du buchen?</label>
+          <select class="eingabe" id="bleistung" name="service_id" onchange="this.form.submit()">
+            <?php foreach ($leistungen as $l): ?>
+              <option value="<?= (int) $l['id'] ?>"<?= (int) $l['id'] === $serviceId ? ' selected' : '' ?>>
+                <?= Util::h((string) $l['name']) ?> ·
+                <?= Util::h(Util::geldKurz((int) $l['preis_cent'])) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      <?php endif; ?>
+      <div class="feld" style="margin-bottom:0">
+        <label class="feld__label" for="bdatum">Ab wann</label>
+        <input class="eingabe" id="bdatum" type="date" name="datum"
+               value="<?= Util::attr($abTag) ?>" min="<?= Util::attr(Util::heute()) ?>"
+               onchange="this.form.submit()">
+      </div>
+      <noscript><button class="btn btn--klein mt-4" type="submit">Zeiten anzeigen</button></noscript>
+    </div>
+  </form>
+
+  <?php if ((string) $service['beschreibung'] !== ''): ?>
+    <p class="klein gedimmt mb-4"><?= Util::h((string) $service['beschreibung']) ?></p>
+  <?php endif; ?>
+
+  <?php if ($paket !== null): ?>
+    <div class="hinweis hinweis--still mb-4"><?= Icon::svg('ticket', 17) ?>
+      <div class="hinweis__text">Du hast noch
+        <?= max(0, (int) $paket['einheiten_gesamt'] - (int) $paket['einheiten_genutzt']) ?>
+        Einheiten aus &bdquo;<?= Util::h((string) $paket['name']) ?>&ldquo;.
+        Die n&auml;chste Buchung wird davon abgezogen.</div></div>
+  <?php endif; ?>
+
+  <?php if ($tage === []): ?>
+    <div class="karte"><div class="karte__koerper mitte">
+      <div class="leerzustand__symbol" style="margin:0 auto 12px"><?= Icon::svg('calendar', 24) ?></div>
+      <h3 class="mb-2">In den n&auml;chsten drei Wochen ist nichts frei</h3>
+      <p class="gedimmt klein mb-4">Schreib deinem Trainer kurz &ndash; oft l&auml;sst sich
+        doch etwas einrichten.</p>
+      <a class="btn btn--primaer" href="<?= Util::attr(App::url('/portal/?ansicht=nachrichten')) ?>">
+        <?= Icon::svg('message', 15) ?> Nachricht schreiben</a>
+    </div></div>
+  <?php else: ?>
+    <?php
+    /*
+     * Die freien Zeiten als Liste, nicht als Knopfwolke: Dreissig gleich
+     * aussehende Uhrzeiten nebeneinander zwingen zum Suchen. Das Datum
+     * steht nur in der ersten Zeile eines Tages – viermal „Donnerstag,
+     * 17. September" untereinander liest niemand, und es verdeckt genau
+     * das, was sich von Zeile zu Zeile aendert.
+     */
+    ?>
+    <div class="zeitwahl">
+      <?php foreach ($tage as $tag => $frei): ?>
+        <?php $erste = true; foreach ($frei as $z): ?>
+          <a class="zeitwahl__zeile" href="<?= $adresse([
+               'service_id' => $serviceId,
+               'datum'      => $abTag,
+               'start'      => (string) $z['start'],
+             ]) ?>">
+            <span class="zeitwahl__tag"><?= $erste ? Util::h(Util::datumLang($tag)) : '' ?></span>
+            <span class="zeitwahl__zeit"><?= Util::h(Util::uhrzeit((string) $z['start'])) ?></span>
+            <?php /* Die Leistung steht schon in der Auswahl darueber. In jeder
+                     Zeile wiederholt, verdeckte sie genau das, was sich von
+                     Zeile zu Zeile aendert - deshalb hier das Ende. */ ?>
+            <span class="zeitwahl__dauer">bis <?= Util::h(Util::uhrzeit((string) $z['ende'])) ?></span>
+          </a>
+        <?php $erste = false; endforeach; ?>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+<?php
+    endif;
+  endif;
+
 /* ========================================================== Termine === */
 elseif ($ansicht === 'termine'):
   $frist = (int) Tenant::einstellung('stornofrist_stunden', 24);
 ?>
-  <h2 class="mb-3" style="font-size:15px">Kommende Termine</h2>
+  <div class="reihe reihe--zwischen mb-3">
+    <h2 style="font-size:15px">Kommende Termine</h2>
+    <a class="btn btn--klein" href="<?= Util::attr(App::url('/portal/?ansicht=buchen')) ?>">
+      <?= Icon::svg('plus', 14) ?> Termin buchen</a>
+  </div>
   <?php if ($akte['kommend'] === []): ?>
     <div class="karte mb-5"><div class="karte__koerper gedimmt klein">
       Zurzeit ist nichts geplant.</div></div>

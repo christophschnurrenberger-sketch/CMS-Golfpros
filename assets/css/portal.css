@@ -391,6 +391,117 @@
 .portal .avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .portal .ico { flex: none; }
 
+/* ------------------------------------------------------- Termin buchen -- */
+
+/*
+ * Der Knopf im Kopf.
+ *
+ * Auf dem Telefon nur das Zeichen: Neben Markenname und Bild ist fuer
+ * „Termin buchen" kein Platz, und drei gedraengte Dinge nebeneinander
+ * liest niemand. Ab der Breite, ab der die Bereichsleiste nach oben
+ * wandert, kommt die Beschriftung dazu.
+ */
+.portal__buchen {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 38px; padding: 0 11px;
+  margin-right: 12px;
+  border-radius: 999px;
+  background: var(--marke); color: var(--grund);
+  font-size: 14.5px; font-weight: 500;
+  flex: none;
+  transition: background .15s;
+}
+.portal__buchen:hover { background: var(--marke-dunkel); color: var(--grund); }
+.portal__buchen span { display: none; }
+/*
+ * Der Umbruch steht hier und nicht oben bei den anderen.
+ *
+ * Ein Media-Query gewichtet nichts hoeher; bei gleicher Gewichtung
+ * gewinnt die spaetere Regel. Oben stehend waere dieser Block von der
+ * Zeile darueber wieder ausgehebelt worden - der Knopf blieb auch auf
+ * dem Schreibtisch ein Pluszeichen.
+ */
+@media (min-width: 760px) {
+  .portal__buchen { padding: 0 16px; }
+  .portal__buchen span { display: inline; }
+}
+
+/*
+ * Die freien Zeiten als Liste.
+ *
+ * Eine Wolke aus dreissig gleich aussehenden Uhrzeiten zwingt zum
+ * Suchen; untereinander liest man Tag, Uhrzeit und Leistung in einer
+ * Zeile. Das Datum steht nur in der ersten Zeile eines Tages - deshalb
+ * eine eigene Spalte dafuer, die meistens leer bleibt und die Uhrzeiten
+ * trotzdem untereinander haelt.
+ */
+.portal .zeitwahl { border-top: 1px solid var(--rand); }
+/*
+ * Zwei Zeilen, feste Plaetze: oben der Tag ueber die ganze Breite, unten
+ * Uhrzeit und Dauer nebeneinander. Ohne die benannten Flaechen rutschte
+ * die Dauer bei der jeweils ersten Zeile eines Tages eine Reihe tiefer -
+ * die Liste sah aus wie eine Treppe.
+ */
+.portal .zeitwahl__zeile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "tag tag" "zeit dauer";
+  align-items: baseline;
+  gap: 3px 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rand);
+  color: inherit;
+}
+.portal .zeitwahl__tag {
+  grid-area: tag;
+  font-size: 13px; color: var(--text-3);
+  letter-spacing: .01em;
+}
+/* Das Datum steht nur in der ersten Zeile eines Tages; die uebrigen
+   lassen die Flaeche leer, damit die Uhrzeiten untereinander bleiben. */
+.portal .zeitwahl__tag:empty { display: none; }
+.portal .zeitwahl__zeit {
+  grid-area: zeit;
+  font-size: 19px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.portal .zeitwahl__dauer {
+  grid-area: dauer;
+  font-size: 14px; color: var(--text-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.portal .zeitwahl__zeile:hover { color: var(--marke); }
+.portal .zeitwahl__zeile:hover .zeitwahl__dauer { color: var(--marke); }
+
+/*
+ * Die Bestaetigung: dieselbe Karte wie „Dein naechster Termin".
+ *
+ * Absichtlich - was man gleich bucht, soll aussehen wie das, was danach
+ * im Portal steht. Der Kunde sieht das Ergebnis, bevor er es ausloest.
+ */
+.portal .buchen-bestaetigung {
+  background: var(--marke); color: var(--grund);
+  border-radius: clamp(18px, 3vw, 26px) clamp(18px, 3vw, 26px) clamp(18px, 3vw, 26px) 6px;
+  padding: clamp(24px, 4vw, 34px);
+  margin-bottom: clamp(18px, 3vw, 24px);
+}
+.portal .buchen-bestaetigung__tag {
+  font-size: clamp(24px, 5vw, 32px); font-weight: 500;
+  letter-spacing: -0.03em; line-height: 1.05;
+}
+.portal .buchen-bestaetigung__zeit { font-size: 16px; opacity: .9; margin-top: 6px; }
+.portal .buchen-bestaetigung__was {
+  margin-top: clamp(16px, 3vw, 22px);
+  padding-top: clamp(16px, 3vw, 22px);
+  border-top: 1px solid rgba(255, 255, 255, .22);
+  font-size: 15.5px;
+}
+.portal .buchen-bestaetigung__reihe {
+  display: flex; align-items: flex-start; gap: 9px; opacity: .9; margin-top: 7px;
+}
+
 /* ------------------------------------------ Anmelden und Registrieren -- */
 
 /*

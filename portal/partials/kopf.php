@@ -53,6 +53,25 @@ $logo     = (string) (Tenant::workspace()['logo'] ?? '');
     <span class="portal__marke-zusatz">Dein Bereich</span>
   </a>
   <div class="fueller"></div>
+  <?php
+  /*
+   * Buchen steht im Kopf, nicht in der Leiste unten.
+   *
+   * Die Leiste unten fuehrt zu Bereichen, in denen man nachsieht; Buchen
+   * ist keiner davon, sondern das eine, was der Kunde hier tut. Als
+   * sechstes Feld waere es zwischen „Fortschritt" und „Unterlagen"
+   * untergegangen, und auf einem schmalen Telefon waeren alle sechs
+   * Beschriftungen zu eng geworden. Oben steht es auf jeder Seite,
+   * dauerhaft und in der Markenfarbe.
+   */
+  ?>
+  <?php /* Die Beschriftung verschwindet auf schmalen Geraeten aus dem Bild,
+           nicht aus der Seite: aria-label, damit das Zeichen auch dort nicht
+           nur ein Pluszeichen ohne Bedeutung ist. */ ?>
+  <a class="portal__buchen" aria-label="Termin buchen"
+     href="<?= Util::attr(App::url('/portal/?ansicht=buchen')) ?>">
+    <?= Icon::svg('plus', 16) ?><span>Termin buchen</span>
+  </a>
   <a class="portal__ich" href="<?= Util::attr(App::url('/portal/?ansicht=profil')) ?>"
      aria-label="Mein Profil">
     <span class="avatar" style="background:<?= Util::attr(Util::avatarFarbe(Customers::name($kunde))) ?>">
