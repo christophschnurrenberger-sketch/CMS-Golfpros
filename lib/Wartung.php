@@ -28,7 +28,7 @@ final class Wartung
         try {
             $ergebnis['rechnungen_faellig'] = Invoices::faelligkeitPruefen();
             $ergebnis['pakete_abgelaufen']  = Commerce::paketeAufraeumen();
-            $ergebnis['erinnerungen']       = Bookings::erinnerungenVersenden();
+            $ergebnis['erinnerungen']       = Erinnerungen::versenden();
             $ergebnis['automationen']       = Automations::laufen(15);
             $ergebnis['zeitgesteuert']      = Automations::zeitgesteuertPruefen();
             $ergebnis['termine_vergangen']  = self::vergangeneTermine();

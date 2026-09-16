@@ -36,18 +36,34 @@ if (App::istPost()) {
 
     if ($aktion === 'buchung') {
         Tenant::einstellungSetzen('stornofrist_stunden', App::postInt('stornofrist_stunden', 24));
-        Tenant::einstellungSetzen('erinnerung_24', App::postBool('erinnerung_24'));
-        Tenant::einstellungSetzen('erinnerung_1', App::postBool('erinnerung_1'));
         Tenant::einstellungSetzen('buchung_bestaetigung', App::post('buchung_bestaetigung'));
         Tenant::einstellungSetzen('registrierung_offen', App::postBool('registrierung_offen'));
         App::melden('Buchungseinstellungen gespeichert.');
+    }
+
+    if ($aktion === 'erinnerungen') {
+        $vorlauf = Erinnerungen::vorlaufSaeubern(App::postListe('vorlauf'));
+        $kanaele = Erinnerungen::kanaeleSaeubern(App::postListe('kanaele'));
+        Tenant::einstellungSetzen('erinnerungen_aktiv', App::postBool('erinnerungen_aktiv'));
+        Tenant::einstellungSetzen('erinnerung_vorlauf', $vorlauf);
+        Tenant::einstellungSetzen('erinnerung_kanaele', $kanaele);
+
+        /*
+         * Die neue Vorgabe gilt sofort – auch für Termine, die schon im
+         * Kalender stehen. Alles andere wäre eine Einstellung, die scheinbar
+         * nichts tut: Wer „zwei Tage vorher" wählt, meint die Termine, die er
+         * gerade vor sich sieht.
+         */
+        $geplant = Erinnerungen::vorgabeNeuPlanen();
+        App::melden('Erinnerungen gespeichert.'
+            . ($geplant > 0 ? ' ' . $geplant . ' Erinnerungen für kommende Termine neu geplant.' : ''));
     }
     App::weiter('/app/einstellungen.php');
 }
 
 $w = Tenant::workspace();
 $titel = 'Einstellungen';
-$unter = 'Workspace, Rechnungsangaben, Buchung und Zahlungen.';
+$unter = 'Workspace, Rechnungsangaben, Buchung, Erinnerungen und Zahlungen.';
 require __DIR__ . '/partials/kopf.php';
 ?>
 
@@ -74,6 +90,7 @@ require __DIR__ . '/partials/kopf.php';
   <button class="reiter__teil ist-aktiv" data-reiter="allgemein">Allgemein</button>
   <button class="reiter__teil" data-reiter="rechnung">Rechnungen</button>
   <button class="reiter__teil" data-reiter="buchung">Buchung</button>
+  <button class="reiter__teil" data-reiter="erinnerungen">Erinnerungen</button>
   <button class="reiter__teil" data-reiter="zahlungen">Zahlungen &amp; KI</button>
 </div>
 
@@ -192,20 +209,6 @@ require __DIR__ . '/partials/kopf.php';
                value="<?= (int) Tenant::einstellung('stornofrist_stunden', 24) ?>" style="max-width:160px">
         <div class="feld__hinweis">Bis dahin kann der Kunde kostenfrei absagen. 24 Stunden sind üblich und fair.</div></div>
       <div class="feld">
-        <span class="feld__label">Automatische Erinnerungen</span>
-        <label class="haken mb-3">
-          <input type="checkbox" name="erinnerung_24" value="1"
-                 <?= Tenant::einstellung('erinnerung_24', true) ? ' checked' : '' ?>>
-          <span class="haken__text">Einen Tag vorher
-            <span class="haken__hinweis">Senkt Nichterscheinen erfahrungsgemäß deutlich.</span></span>
-        </label>
-        <label class="haken">
-          <input type="checkbox" name="erinnerung_1" value="1"
-                 <?= Tenant::einstellung('erinnerung_1', false) ? ' checked' : '' ?>>
-          <span class="haken__text">Eine Stunde vorher</span>
-        </label>
-      </div>
-      <div class="feld">
         <span class="feld__label">Kundenzugang</span>
         <label class="haken">
           <input type="checkbox" name="registrierung_offen" value="1"
@@ -222,14 +225,142 @@ require __DIR__ . '/partials/kopf.php';
         <div class="feld__hinweis">Steht zusätzlich in jeder Bestätigungsmail.</div></div>
       <div class="hinweis hinweis--still">
         <?= Icon::svg('clock', 17) ?>
-        <div class="hinweis__text">Erinnerungen werden beim Öffnen des Dashboards mitversendet.
-          Wer einen Cronjob einrichten kann, ruft alle 15 Minuten <code>cron.php</code> auf –
-          dann kommen sie pünktlich, auch wenn niemand im Backend arbeitet.</div>
+        <div class="hinweis__text">Wann und auf welchem Weg an einen Termin erinnert wird,
+          steht im Reiter <em>Erinnerungen</em>.</div>
       </div>
     </div>
     <div class="karte__fuss"><div class="fueller"></div>
       <button class="btn btn--primaer" type="submit">Speichern</button></div>
   </form>
+</div>
+
+<div data-reiter-feld="erinnerungen" data-reiter-gruppe="e" class="versteckt" id="erinnerungen">
+  <?php
+    $vorgabeVorlauf  = Erinnerungen::vorgabeVorlauf();
+    $vorgabeKanaele  = Erinnerungen::vorgabeKanaele();
+    $offen = Tenant::count('reminders', "status = 'geplant'");
+  ?>
+  <div class="raster raster--2" style="align-items:start">
+    <form method="post" class="karte">
+      <?= Auth::csrfFeld() ?>
+      <input type="hidden" name="aktion" value="erinnerungen">
+      <div class="karte__kopf"><h3>Terminerinnerungen</h3>
+        <div class="fueller"></div>
+        <?= pille($offen . ' geplant') ?>
+      </div>
+      <div class="karte__koerper">
+        <label class="haken mb-4">
+          <input type="checkbox" name="erinnerungen_aktiv" value="1"
+                 <?= Erinnerungen::aktiv() ? ' checked' : '' ?>>
+          <span class="haken__text">Kunden automatisch an ihre Termine erinnern
+            <span class="haken__hinweis">Senkt Nichterscheinen erfahrungsgemäß deutlich.</span></span>
+        </label>
+
+        <div class="feld">
+          <span class="feld__label">Wann</span>
+          <?php foreach (Erinnerungen::VORLAUF as $minuten => $name): ?>
+            <label class="haken mb-2">
+              <input type="checkbox" name="vorlauf[]" value="<?= (int) $minuten ?>"
+                     <?= in_array($minuten, $vorgabeVorlauf, true) ? ' checked' : '' ?>>
+              <span class="haken__text"><?= Util::h($name) ?></span>
+            </label>
+          <?php endforeach; ?>
+          <div class="feld__hinweis">Mehrere sind möglich – dann kommt je Zeitpunkt eine Nachricht.
+            Ein Vorlauf, der beim Buchen schon abgelaufen ist, entfällt für diesen Termin.</div>
+        </div>
+
+        <div class="feld">
+          <span class="feld__label">Auf welchem Weg</span>
+          <?php foreach (Kanaele::LISTE as $kanal => [$name, $icon]):
+            [$zustand, $satz] = Kanaele::zustand($kanal); ?>
+            <label class="haken mb-2">
+              <input type="checkbox" name="kanaele[]" value="<?= Util::attr($kanal) ?>"
+                     <?= in_array($kanal, $vorgabeKanaele, true) ? ' checked' : '' ?>>
+              <span class="haken__text"><?= Util::h($name) ?>
+                <?php if ($zustand !== 'bereit'): ?>
+                  <span class="haken__hinweis">Noch nicht eingerichtet – ankreuzen darfst du es
+                    trotzdem: Sobald die Zugangsdaten stehen, geht es von allein los.</span>
+                <?php endif; ?></span>
+            </label>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <div class="karte__fuss"><div class="fueller"></div>
+        <button class="btn btn--primaer" type="submit">Speichern</button></div>
+    </form>
+
+    <div class="stapel">
+      <div class="karte">
+        <div class="karte__kopf"><h3>Kanäle</h3></div>
+        <div class="karte__koerper karte__koerper--eng">
+          <div class="stapel stapel--eng">
+            <?php foreach (Kanaele::LISTE as $kanal => [$name, $icon]):
+              [$zustand, $satz] = Kanaele::zustand($kanal); ?>
+              <div style="padding:8px 4px">
+                <div class="reihe">
+                  <?= Icon::svg($icon, 16) ?>
+                  <span class="halbfett"><?= Util::h($name) ?></span>
+                  <div class="fueller"></div>
+                  <?= pille($zustand === 'bereit' ? 'bereit' : 'fehlt',
+                        $zustand === 'bereit' ? 'erfolg' : 'warnung') ?>
+                </div>
+                <div class="klein gedimmt mt-2"><?= Util::h($satz) ?></div>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="karte">
+        <div class="karte__kopf"><h3>SMS einrichten</h3></div>
+        <div class="karte__koerper">
+          <p class="klein">In der <code>config.php</code> unter <code>sms</code>:</p>
+          <ol class="klein gedimmt" style="line-height:1.9;padding-left:1.2em">
+            <li>Konto bei <em>seven.io</em> oder <em>Twilio</em> anlegen</li>
+            <li><code>anbieter</code> auf <code>seven</code> oder <code>twilio</code> setzen</li>
+            <li><code>api_key</code> eintragen (bei Twilio zusätzlich <code>konto</code>)</li>
+            <li><code>absender</code> ist der Name, der beim Kunden steht – höchstens 11 Zeichen</li>
+          </ol>
+          <div class="hinweis hinweis--still mt-4">
+            <?= Icon::svg('info', 16) ?>
+            <div class="hinweis__text klein">Eine SMS braucht eine Nummer mit Vorwahl.
+              <code>0170 1234567</code> genügt, <code>1234567</code> nicht – daraus lässt sich
+              kein Land ableiten, und geraten wird hier nicht.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="karte">
+        <div class="karte__kopf"><h3>WhatsApp</h3>
+          <div class="fueller"></div><?= pille('vorbereitet') ?></div>
+        <div class="karte__koerper">
+          <p class="klein">Die Anbindung an die WhatsApp Business Cloud API steht. Was fehlt, ist
+            der Zugang – und der ist bei Meta etwas Arbeit:</p>
+          <ol class="klein gedimmt" style="line-height:1.9;padding-left:1.2em">
+            <li>Meta-Business-Konto und WhatsApp Business Account anlegen</li>
+            <li>Eine Rufnummer verifizieren lassen und deren <em>Phone Number ID</em> notieren</li>
+            <li>Eine Nachrichtenvorlage („Terminerinnerung") einreichen und freigeben lassen</li>
+            <li>Beides mit einem dauerhaften Token in der <code>config.php</code> unter
+              <code>whatsapp</code> eintragen</li>
+          </ol>
+          <div class="hinweis hinweis--still mt-4">
+            <?= Icon::svg('info', 16) ?>
+            <div class="hinweis__text klein">Warum eine Vorlage: Meta lässt außerhalb eines
+              laufenden Gesprächs keine frei formulierten Nachrichten zu. Die Vorlage bekommt
+              Vorname, Leistung, Datum, Uhrzeit und den Namen der Schule als Platzhalter.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hinweis hinweis--still">
+        <?= Icon::svg('clock', 17) ?>
+        <div class="hinweis__text">Versendet wird beim Öffnen des Dashboards, höchstens alle
+          15 Minuten. Wer einen Cronjob einrichten kann, ruft in diesem Takt
+          <code>cron.php</code> auf – dann kommen die Erinnerungen pünktlich, auch wenn niemand
+          im Backend arbeitet.</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div data-reiter-feld="zahlungen" data-reiter-gruppe="e" class="versteckt" id="zahlungen">

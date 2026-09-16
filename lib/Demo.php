@@ -142,6 +142,11 @@ final class Demo
             'kopf_zusatz' => 'Golfschule · Karlsruhe',
             'unterrichtszeiten' => 'Di – Sa, nach Vereinbarung',
             'stornofrist_stunden' => 24,
+            /* Die Vorgabe der Erinnerungen – dieselbe, die eine frische
+               Anlage bekommt: einen Tag vorher, per E-Mail und SMS. */
+            'erinnerungen_aktiv' => true,
+            'erinnerung_vorlauf' => Erinnerungen::VORGABE_VORLAUF,
+            'erinnerung_kanaele' => Erinnerungen::VORGABE_KANAELE,
         ] as $k => $v) {
             Tenant::einstellungSetzen($k, $v);
         }
@@ -629,6 +634,16 @@ final class Demo
                     Tenant::update('bookings', $buchungId, ['teilnehmer' => $teilnehmer]);
                 }
             }
+        }
+
+        /*
+         * Die Erinnerungen der kommenden Termine. Ohne sie stünde in der
+         * Vorführung an jedem Termin „Es ist nichts eingeplant" – und die
+         * Funktion sähe kaputt aus, obwohl nur die Daten fehlen.
+         */
+        foreach (Tenant::all('bookings', "status = 'bestaetigt' AND start > :jetzt",
+            ['jetzt' => Util::jetzt()], 'start', 400) as $termin) {
+            Erinnerungen::planen((int) $termin['id']);
         }
     }
 

@@ -59,6 +59,32 @@ return [
         'webhook_secret' => '',
     ],
 
+    // SMS-Versand für Terminerinnerungen. Ohne Zugangsdaten geht keine SMS
+    // raus – die E-Mail dazu schon, und in der Oberfläche steht, was fehlt.
+    // Es wird nichts stillschweigend verschluckt und nichts vorgetäuscht.
+    'sms' => [
+        // 'seven' (seven.io, deutscher Anbieter) oder 'twilio'. Leer = aus.
+        'anbieter' => '',
+        'api_key'  => '',
+        // Nur bei Twilio: die Account SID.
+        'konto'    => '',
+        // Was beim Kunden als Absender steht. Höchstens 11 Zeichen, sonst
+        // kürzen die Netze. Leer = der Name des Workspace.
+        'absender' => '',
+    ],
+
+    // WhatsApp Business Cloud API. Vorbereitet, aber erst aktiv, wenn alle
+    // drei Werte stehen. Meta lässt außerhalb eines laufenden Gesprächs nur
+    // geprüfte Vorlagen zu; 'vorlage' ist deren Name. Die Platzhalter der
+    // Vorlage bekommen der Reihe nach: Vorname, Leistung, Datum, Uhrzeit,
+    // Name der Schule.
+    'whatsapp' => [
+        'token'           => '',
+        'phone_number_id' => '',
+        'vorlage'         => '',
+        'sprache'         => 'de',
+    ],
+
     // KI-Funktionen. Ohne Schlüssel arbeitet die Plattform mit dem
     // eingebauten, regelbasierten Generator weiter – nichts bricht ab.
     'ai' => [

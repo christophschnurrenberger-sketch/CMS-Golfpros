@@ -122,6 +122,77 @@ Jede verschickte Mail steht in der Kundenakte unter *Kommunikation* – auch
 dann, wenn der Versand fehlgeschlagen ist. Das ist die erste Stelle zum
 Nachsehen, wenn jemand sagt, er habe nichts bekommen.
 
+## Terminerinnerungen
+
+Unter *Einstellungen → Erinnerungen* steht, wann erinnert wird und auf
+welchem Weg. Voreingestellt ist **einen Tag vorher per E-Mail und SMS**.
+Mehrere Vorlaufzeiten sind möglich; dann geht je Zeitpunkt eine Nachricht
+raus.
+
+Was dort steht, ist die Vorgabe. Jeder einzelne Termin kann davon abweichen
+– in der Terminansicht unter *Erinnerungen → Ändern*. Dort steht auch, was
+schon rausging, was noch geplant ist und was warum entfallen ist.
+
+Ändert man die Vorgabe, werden alle künftigen Termine ohne eigene Regel
+sofort neu geplant. Wird ein Termin verschoben, wandern seine Erinnerungen
+mit. Wird er abgesagt, verfallen sie.
+
+Versendet wird beim Öffnen des Dashboards, höchstens alle 15 Minuten. Wer
+einen Cronjob einrichten kann, bekommt sie pünktlich – siehe *Cronjob*.
+
+### SMS
+
+In der `config.php` unter `sms`:
+
+```php
+'sms' => [
+    'anbieter' => 'seven',          // oder 'twilio'
+    'api_key'  => '…',
+    'konto'    => '',               // nur bei Twilio: die Account SID
+    'absender' => 'Sonnenhang',     // höchstens 11 Zeichen
+],
+```
+
+Ohne diese Angaben geht **keine** SMS raus. Vorgetäuscht wird nichts: Die
+Erinnerung steht am Termin als *entfällt* mit dem Grund, und die E-Mail
+desselben Zeitpunkts geht trotzdem.
+
+Eine SMS braucht eine Nummer mit Vorwahl. `0170 1234567`, `+49 170 1234567`
+und `0049 170 1234567` funktionieren, `1701234567` nicht – daraus lässt
+sich kein Land ableiten, und geraten wird nicht.
+
+### WhatsApp
+
+Die Anbindung an die WhatsApp Business Cloud API ist fertig, der Zugang
+muss bei Meta beantragt werden:
+
+1. Meta-Business-Konto und WhatsApp Business Account anlegen
+2. Eine Rufnummer verifizieren lassen, deren *Phone Number ID* notieren
+3. Eine Nachrichtenvorlage einreichen und freigeben lassen
+4. Beides mit einem dauerhaften Token in die `config.php` eintragen:
+
+```php
+'whatsapp' => [
+    'token'           => '…',
+    'phone_number_id' => '…',
+    'vorlage'         => 'terminerinnerung',
+    'sprache'         => 'de',
+],
+```
+
+Warum eine Vorlage und kein freier Text: Meta lässt außerhalb eines
+laufenden Gesprächs nur geprüfte Vorlagen zu, und eine Terminerinnerung
+kommt fast immer außerhalb dieses Fensters. Die Platzhalter der Vorlage
+bekommen der Reihe nach Vorname, Leistung, Datum, Uhrzeit und den Namen der
+Schule.
+
+### Vorführ-Workspaces schweigen
+
+Aus einem Workspace mit Demo-Daten geht nichts nach außen – weder E-Mail
+noch SMS noch WhatsApp. Dessen Kunden haben erfundene Adressen und Nummern;
+ein paar hundert Rückläufer würden den Ruf der Absenderdomain für die
+echten Kunden ruinieren.
+
 ## KI-Funktionen
 
 In `config.php` unter `ai` den Schlüssel eintragen. Ohne Schlüssel bleiben

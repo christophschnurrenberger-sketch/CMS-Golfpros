@@ -227,6 +227,10 @@ final class Bookings
                 Customers::aktivitaet($kundeId);
                 Gamification::punkte($kundeId, 20, 'Training gebucht');
             }
+            /* Erinnerungen entstehen mit dem Termin, nicht erst beim ersten
+               Wartungslauf: Sonst stünde der Termin ohne Plan da, und am
+               Termin wäre nicht ablesbar, was den Kunden erreichen wird. */
+            Erinnerungen::planen($id);
             Audit::schreiben('erstellt', 'booking', $id, (string) ($daten['titel'] ?? 'Termin') . ' am ' . Util::datumZeit($start));
             Automations::ausloesen('booking_created', ['customer_id' => $kundeId, 'booking_id' => $id]);
 
@@ -273,6 +277,7 @@ final class Bookings
                 }
             }
             self::wartelisteNachruecken($id);
+            Erinnerungen::absagen($id);
         });
         Audit::schreiben('storniert', 'booking', $id, $grund);
     }
@@ -295,8 +300,11 @@ final class Bookings
         }
         Tenant::update('bookings', $id, [
             'start' => $neuerStart, 'ende' => $ende, 'trainer_id' => $trainerId,
-            'erinnerung_24' => null, 'erinnerung_1' => null,
         ]);
+        /* Die Fälligkeiten wandern mit. Eine für den alten Zeitpunkt schon
+           versendete Erinnerung bleibt im Protokoll und wird für den neuen
+           erneut geplant – der Kunde hat den alten Termin im Kalender. */
+        Erinnerungen::neuPlanen($id);
         Audit::schreiben('geaendert', 'booking', $id, 'Umgebucht auf ' . Util::datumZeit($neuerStart));
         return [true, ''];
     }
@@ -572,48 +580,14 @@ final class Bookings
     /* ------------------------------------------------------ Erinnerungen */
 
     /**
-     * Fällige Erinnerungen. Wird beim Öffnen des Dashboards ausgeführt –
-     * so funktioniert die Erinnerung auch ohne Cronjob, den viele Hoster
-     * nicht anbieten. Ein echter Cronjob auf mail.php ist genauer und in
-     * docs/BETRIEB.md beschrieben.
+     * Fällige Erinnerungen versenden.
+     *
+     * Die Arbeit steckt in `Erinnerungen` – dort liegt der Plan, dort liegen
+     * die Kanäle. Diese Methode bleibt als Einstieg bestehen, weil die
+     * Wartung und `cron.php` sie seit jeher aufrufen.
      */
     public static function erinnerungenVersenden(): int
     {
-        $versendet = 0;
-        $morgen = date('Y-m-d H:i:s', time() + 86400);
-
-        foreach (Tenant::all('bookings',
-            "status = 'bestaetigt' AND erinnerung_24 IS NULL AND start > :jetzt AND start <= :morgen",
-            ['jetzt' => Util::jetzt(), 'morgen' => $morgen], 'start', 25) as $b) {
-            if (self::erinnerung($b, '24')) {
-                $versendet++;
-            }
-        }
-        $gleich = date('Y-m-d H:i:s', time() + 3600);
-        foreach (Tenant::all('bookings',
-            "status = 'bestaetigt' AND erinnerung_1 IS NULL AND start > :jetzt AND start <= :gleich",
-            ['jetzt' => Util::jetzt(), 'gleich' => $gleich], 'start', 25) as $b) {
-            if (self::erinnerung($b, '1')) {
-                $versendet++;
-            }
-        }
-        return $versendet;
-    }
-
-    private static function erinnerung(array $b, string $art): bool
-    {
-        $kunde = Tenant::find('customers', (int) $b['customer_id']);
-        if (!$kunde || (string) $kunde['email'] === '') {
-            Tenant::update('bookings', (int) $b['id'], ['erinnerung_' . $art => Util::jetzt()]);
-            return false;
-        }
-        $wann = $art === '24' ? 'morgen' : 'in einer Stunde';
-        Mail::anKunden($kunde, 'Erinnerung: dein Termin ' . $wann,
-            "Hallo " . $kunde['vorname'] . ",\n\n"
-            . "dein Termin \"" . $b['titel'] . "\" ist " . $wann . " – am "
-            . Util::datumLang((string) $b['start']) . " um " . Util::uhrzeit((string) $b['start']) . " Uhr.\n\n"
-            . "Bis dann!\n" . Tenant::name());
-        Tenant::update('bookings', (int) $b['id'], ['erinnerung_' . $art => Util::jetzt()]);
-        return true;
+        return Erinnerungen::versenden();
     }
 }

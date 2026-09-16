@@ -47,8 +47,10 @@ final class Schema
      *   3  customers.portal_token_bis und .abmelde_token - befristeter
      *      Zugangslink, dauerhafter Abmeldelink
      *   4  trips und trip_signups - das Reisemodul
+     *   5  reminders und bookings.erinnerungen - Terminerinnerungen mit
+     *      frei gewaehltem Vorlauf ueber E-Mail, SMS und WhatsApp
      */
-    public const VERSION = 4;
+    public const VERSION = 5;
 
     public static function migrate(): void
     {
@@ -102,6 +104,71 @@ final class Schema
         self::tokenNachruesten();
         self::videosWegraeumen();
         self::modulNachruesten('travel', 'events');
+
+        /* Seit den Terminerinnerungen: Vorlauf und Kanäle je Termin. */
+        self::spalteSicherstellen('bookings', 'erinnerungen', '%TEXT%');
+        self::erinnerungenNachruesten();
+    }
+
+    /**
+     * Die alten Erinnerungsschalter ziehen um – und die schon gebuchten
+     * Termine bekommen ihren Plan.
+     *
+     * Vorher gab es zwei Haken: „einen Tag vorher" und „eine Stunde vorher",
+     * beide nur per E-Mail. Daraus wird die neue Vorlaufliste. Wer nichts
+     * eingestellt hatte, bekommt die Vorgabe – einen Tag vorher.
+     *
+     * Der zweite Teil ist der wichtigere: Ohne ihn stünde die neue Funktion
+     * da, ohne dass ein einziger der bereits gebuchten Termine davon
+     * berührt wäre. Geplant wird deshalb einmalig für alles, was noch
+     * bevorsteht. Termine, deren alte 24-Stunden-Erinnerung schon rausging,
+     * bekommen den Vorlauf nicht noch einmal – sonst käme sie doppelt.
+     */
+    private static function erinnerungenNachruesten(): void
+    {
+        $vorher = Tenant::id();
+        try {
+            foreach (DB::all('SELECT id FROM workspaces WHERE aktiv = 1') as $zeile) {
+                $workspaceId = (int) $zeile['id'];
+                Tenant::setzen($workspaceId);
+
+                if (Tenant::einstellung('erinnerung_vorlauf', null) === null) {
+                    $vorlauf = [];
+                    if ((bool) Tenant::einstellung('erinnerung_24', true)) {
+                        $vorlauf[] = 1440;
+                    }
+                    if ((bool) Tenant::einstellung('erinnerung_1', false)) {
+                        $vorlauf[] = 60;
+                    }
+                    Tenant::einstellungSetzen('erinnerung_vorlauf',
+                        $vorlauf !== [] ? $vorlauf : Erinnerungen::VORGABE_VORLAUF);
+                    Tenant::einstellungSetzen('erinnerung_kanaele', Erinnerungen::VORGABE_KANAELE);
+                    Tenant::einstellungSetzen('erinnerungen_aktiv', $vorlauf !== []);
+                }
+
+                if (Tenant::count('reminders') > 0) {
+                    continue;
+                }
+                foreach (Tenant::all('bookings',
+                    "status = 'bestaetigt' AND start > :jetzt", ['jetzt' => Util::jetzt()], 'start', 500) as $termin) {
+                    $regeln = Erinnerungen::regeln($termin);
+                    if ((string) $termin['erinnerung_24'] !== '' && $termin['erinnerung_24'] !== null) {
+                        $regeln = array_values(array_filter($regeln,
+                            static fn (array $r): bool => $r['vorlauf'] !== 1440));
+                    }
+                    if ((string) $termin['erinnerung_1'] !== '' && $termin['erinnerung_1'] !== null) {
+                        $regeln = array_values(array_filter($regeln,
+                            static fn (array $r): bool => $r['vorlauf'] !== 60));
+                    }
+                    Erinnerungen::planen((int) $termin['id'], $regeln);
+                }
+            }
+        } catch (Throwable $e) {
+            Audit::schreiben('wartung_fehler', 'system', 0,
+                'Erinnerungen nachrüsten: ' . $e->getMessage());
+        } finally {
+            Tenant::setzen($vorher);
+        }
     }
 
     /**
@@ -555,8 +622,9 @@ final class Schema
                 notiz %TEXT%,
                 interne_notiz %TEXT%,
                 quelle %STR(32)% NOT NULL DEFAULT "backend",   -- backend|website|portal|automation
-                erinnerung_24 %DT%,
-                erinnerung_1 %DT%,
+                erinnerung_24 %DT%,                            -- nur noch Altbestand, siehe reminders
+                erinnerung_1 %DT%,                             -- dito
+                erinnerungen %TEXT%,                           -- JSON: Vorlauf und Kanäle dieses Termins
                 abgesagt_am %DT%,
                 abgesagt_grund %STR(255)% NOT NULL DEFAULT "",
                 erstellt %DT%
@@ -569,6 +637,29 @@ final class Schema
                 customer_id %INT% NOT NULL,
                 status %STR(24)% NOT NULL DEFAULT "gebucht",
                 bezahlt %INT% NOT NULL DEFAULT 0,
+                erstellt %DT%
+            )%ENGINE%',
+
+            /*
+             * Geplante und versendete Terminerinnerungen.
+             *
+             * Eine Zeile je Kunde, Vorlauf und Kanal. Getrennt statt einer
+             * Zeile mit Kanalliste, weil jeder Kanal für sich gelingen oder
+             * scheitern kann: Die E-Mail kam an, die SMS nicht – das muss
+             * ablesbar bleiben, und wiederholt wird nur der gescheiterte Teil.
+             */
+            'CREATE TABLE IF NOT EXISTS reminders (
+                id %PK%,
+                workspace_id %INT% NOT NULL,
+                booking_id %INT% NOT NULL,
+                customer_id %INT% NOT NULL DEFAULT 0,
+                vorlauf_min %INT% NOT NULL DEFAULT 1440,
+                kanal %STR(24)% NOT NULL DEFAULT "email",      -- email|sms|whatsapp
+                faellig %DT%,
+                status %STR(24)% NOT NULL DEFAULT "geplant",   -- geplant|gesendet|fehlgeschlagen|uebersprungen|abgesagt
+                gesendet %DT%,
+                versuche %INT% NOT NULL DEFAULT 0,
+                grund %STR(255)% NOT NULL DEFAULT "",
                 erstellt %DT%
             )%ENGINE%',
 
@@ -1364,6 +1455,7 @@ final class Schema
             'time_off' => ['workspace_id', 'user_id'],
             'bookings' => ['workspace_id', 'start', 'customer_id', 'trainer_id', 'status', 'invoice_id'],
             'booking_participants' => ['booking_id', 'customer_id'],
+            'reminders' => ['workspace_id', 'booking_id', 'status', 'faellig'],
             'waitlist' => ['workspace_id', 'event_id'],
             'packages' => ['workspace_id'],
             'customer_packages' => ['workspace_id', 'customer_id', 'status'],

@@ -40,8 +40,10 @@ des Entwurfs:
               │
         lib/vorlage.php      Ausgabebausteine (kennzahl, pille, person …)
               │
-        lib/*.php            Fachlogik: Customers, Bookings, Commerce,
-              │              Invoices, Training, Campaigns, KI …
+        lib/*.php            Fachlogik: Customers, Bookings, Erinnerungen,
+              │              Commerce, Invoices, Training, Campaigns, KI …
+              │
+        lib/Kanaele.php      der Weg nach draußen: E-Mail, SMS, WhatsApp
               │
         lib/Tenant.php       Mandantengrenze – hier und nur hier
               │
@@ -105,7 +107,7 @@ gebundenes `60` ließ einen Vergleich `… >= '60'` lautlos ins Leere laufen.
 
 ## Das Schema
 
-67 Tabellen, in einer Datei (`lib/Schema.php`) mit Platzhaltern, die je
+70 Tabellen, in einer Datei (`lib/Schema.php`) mit Platzhaltern, die je
 Treiber übersetzt werden:
 
 | Platzhalter | SQLite | MySQL |
@@ -299,6 +301,66 @@ bliebe sie beim nächsten Öffnen doppelt liegen.
 
 Kennt der Browser `showModal()` nicht, bleibt es beim Auf- und Zuklappen
 unter dem Gitter. Lieber die ältere Fassung als gar keine Uhrzeiten.
+
+## Erinnerungen: der Wunsch am Termin, der Plan in einer Tabelle
+
+Früher hatte ein Termin zwei Spalten – `erinnerung_24` und `erinnerung_1` –
+und jede hielt einen Zeitstempel fest. Das trug genau so weit, wie es zwei
+Vorlaufzeiten und einen Kanal gab. Jede weitere Zeit hätte eine Spalte
+gebraucht, jeder weitere Kanal noch eine, und zwei Zeitstempel können nicht
+festhalten, dass die SMS scheiterte, während die E-Mail ankam.
+
+Jetzt sind es zwei Dinge:
+
+* **Der Wunsch** steht als JSON am Termin (`bookings.erinnerungen`): „einen
+  Tag vorher per E-Mail und SMS". Ist das Feld leer, gilt die Vorgabe des
+  Workspace. Leer und „ausdrücklich keine Erinnerung" sind verschiedene
+  Zustände – deshalb ist das eine `NULL` und das andere eine leere Liste.
+* **Der Plan** steht in `reminders`: eine Zeile je Kunde, Vorlauf und Kanal,
+  mit Fälligkeit, Status und Grund. Diese Zeilen sind gleichzeitig das
+  Protokoll; am Termin ist ablesbar, was wann rausging und was warum nicht.
+
+Eine Zeile je Kanal statt einer Zeile mit Kanalliste: Jeder Kanal kann für
+sich gelingen oder scheitern, und wiederholt werden soll nur der
+gescheiterte Teil.
+
+`Erinnerungen::planen()` löscht die noch offenen Zeilen eines Termins und
+legt sie neu an; was versendet oder endgültig gescheitert ist, bleibt
+stehen. Das macht Planen beliebig oft wiederholbar – beim Buchen, beim
+Speichern, beim Verschieben, nach einer Änderung der Vorgabe.
+
+Ein Vorlauf, der beim Buchen schon abgelaufen ist, wird nicht sofort
+versendet. „Erinnerung: morgen" zwei Stunden vor dem Termin ist schlimmer
+als gar keine Erinnerung. Die Zeile entsteht trotzdem, mit dem Status
+*entfällt* und dem Grund – sonst stünde am Termin nichts, und der Pro
+fragte sich, wo die Erinnerung bleibt.
+
+## Ein Kanal ist ein Weg zum Kunden
+
+`lib/Kanaele.php` liegt vor E-Mail, SMS und WhatsApp. Fachlich sind die
+drei dasselbe – jemand soll eine Nachricht bekommen –, technisch überhaupt
+nicht. Alles Anbieterspezifische bleibt in dieser einen Datei; der Rest des
+Systems ruft `Kanaele::senden($kunde, $kanal, …)`.
+
+**Ohne Zugangsdaten wird nicht so getan, als wäre versendet worden.** Beim
+Bezahlen gibt es einen Testmodus, hier nicht: Eine stille Scheinsendung
+hieße, dass sich jemand auf eine Erinnerung verlässt, die nie ankam. Ein
+nicht eingerichteter Kanal sagt Nein, die Zeile bekommt *entfällt* mit dem
+Grund, und der Kanal daneben geht trotzdem raus.
+
+Telefonnummern werden nach E.164 gebracht, aber nicht geraten. `0170 …`,
+`+49 170 …` und `0049 170 …` sind eindeutig; `1701234567` ist es nicht, und
+eine geratene Vorwahl schickt die SMS zu einem fremden Anschluss. Solche
+Nummern gelten als nicht verwertbar.
+
+WhatsApp ist vorbereitet, nicht eingeschaltet: Die Anbindung an die Cloud
+API steht vollständig, aber Meta verlangt außerhalb eines laufenden
+Gesprächs eine freigegebene Vorlage. Ohne Vorlage in der `config.php`
+meldet der Kanal sich als nicht eingerichtet.
+
+Aus einem Workspace mit Demo-Daten geht gar nichts raus. Dessen Kunden
+haben erfundene Adressen; ein paar hundert Rückläufer ruinieren den Ruf der
+Absenderdomain für die echten Kunden gleich mit.
 
 ## Der Kunde meldet sich einmal an, nicht zweimal
 

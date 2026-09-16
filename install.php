@@ -118,6 +118,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $bereit) {
                 'smtp'       => ['host' => '', 'port' => 587, 'user' => '', 'pass' => '', 'secure' => 'tls'],
             ],
             'stripe'   => ['public_key' => '', 'secret_key' => '', 'webhook_secret' => ''],
+            /* SMS und WhatsApp bleiben leer: Beides braucht ein Konto bei
+               einem Anbieter, das niemand während der Installation nebenbei
+               anlegt. Terminerinnerungen gehen bis dahin per E-Mail raus. */
+            'sms'      => ['anbieter' => '', 'api_key' => '', 'konto' => '', 'absender' => ''],
+            'whatsapp' => ['token' => '', 'phone_number_id' => '', 'vorlage' => '', 'sprache' => 'de'],
             'ai'       => ['provider' => 'anthropic', 'api_key' => '', 'model' => 'claude-sonnet-5'],
             'debug'    => false,
         ];

@@ -40,6 +40,24 @@
     if (Thema.lesen() === 'system') Thema.anwenden('system');
   });
 
+  /* ------------------------------------------- Kästchen zeigt Feld ---- */
+
+  /*
+   * Ein Kontrollkästchen blendet einen Abschnitt ein: data-zeigt="#ziel".
+   *
+   * Der Abschnitt steht im HTML offen da – zugeklappt wird er erst hier.
+   * Ohne Skript sieht man also alles und kann alles ausfüllen; nur die
+   * Bequemlichkeit fehlt. Umgekehrt (im HTML zu, per Skript auf) wäre das
+   * Feld ohne Skript unerreichbar.
+   */
+  $$('[data-zeigt]').forEach(kaestchen => {
+    const ziel = $(kaestchen.dataset.zeigt);
+    if (!ziel) return;
+    const um = () => { ziel.hidden = !kaestchen.checked; };
+    um();
+    kaestchen.addEventListener('change', um);
+  });
+
   /* --------------------------------------------------------- Menüs ---- */
 
   document.addEventListener('click', (e) => {

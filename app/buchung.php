@@ -20,6 +20,28 @@ if (!$istNeu && !$termin) {
     App::weiter('/app/kalender.php');
 }
 
+/*
+ * Aus den angekreuzten Kästchen werden Regeln.
+ *
+ * Die Kanäle gelten für jede gewählte Vorlaufzeit – dieselbe Aufteilung wie
+ * in den Einstellungen. Je Vorlauf eigene Kanäle wären möglich, aber „SMS nur
+ * beim Ein-Tages-Vorlauf, E-Mail nur eine Stunde vorher" hat noch nie jemand
+ * gewollt und macht das Formular doppelt so groß.
+ *
+ * @return array<int,array{vorlauf:int,kanaele:array<int,string>}>
+ */
+$regelnAusPost = static function (): array {
+    $kanaele = Erinnerungen::kanaeleSaeubern(App::postListe('kanaele'));
+    $regeln  = [];
+    if ($kanaele === []) {
+        return [];
+    }
+    foreach (Erinnerungen::vorlaufSaeubern(App::postListe('vorlauf')) as $vorlauf) {
+        $regeln[] = ['vorlauf' => $vorlauf, 'kanaele' => $kanaele];
+    }
+    return $regeln;
+};
+
 if (App::istPost()) {
     Auth::csrfFordern();
     Auth::fordern('bookings.write');
@@ -52,6 +74,11 @@ if (App::istPost()) {
             'ohne_pruefung' => App::postBool('ohne_pruefung'),
         ]);
         if ($neueId > 0) {
+            /* Bookings::buchen() hat schon nach der Vorgabe geplant. Nur wenn
+               hier etwas anderes angekreuzt war, wird es überschrieben. */
+            if (App::postBool('erinnerung_eigen')) {
+                Erinnerungen::speichern($neueId, $regelnAusPost());
+            }
             App::melden('Termin angelegt.');
             App::weiter('/app/buchung.php?id=' . $neueId);
         }
@@ -67,7 +94,35 @@ if (App::istPost()) {
             'bezahlt' => App::postBool('bezahlt') ? 1 : 0,
             'preis_cent' => Util::centAus(App::post('preis')),
         ]);
+        /* Der Status kann sich geändert haben: Eine Absage über dieses
+           Feld muss die geplanten Erinnerungen genauso einsammeln wie der
+           Knopf „Absagen". */
+        Erinnerungen::planen($id);
         App::melden('Termin gespeichert.');
+        App::weiter('/app/buchung.php?id=' . $id);
+    }
+
+    if ($aktion === 'erinnerungen' && $id > 0) {
+        $geplant = Erinnerungen::speichern($id, $regelnAusPost());
+        App::melden($geplant > 0
+            ? 'Erinnerungen gespeichert – ' . $geplant . ' sind eingeplant.'
+            : 'Für diesen Termin wird jetzt nicht erinnert.');
+        App::weiter('/app/buchung.php?id=' . $id);
+    }
+
+    if ($aktion === 'erinnerung_vorgabe' && $id > 0) {
+        /* Leeres Feld heißt „nimm die Vorgabe" – nicht „keine Erinnerung".
+           Das ist der Unterschied zu einer leeren Regelliste. */
+        Tenant::update('bookings', $id, ['erinnerungen' => null]);
+        Erinnerungen::planen($id);
+        App::melden('Für diesen Termin gilt wieder die Vorgabe aus den Einstellungen.');
+        App::weiter('/app/buchung.php?id=' . $id);
+    }
+
+    if ($aktion === 'erinnerung_jetzt' && $id > 0) {
+        [$ok, $grund] = Erinnerungen::jetztSenden(App::postInt('erinnerung_id'));
+        App::melden($ok ? 'Erinnerung versendet.' : ($grund ?: 'Der Versand ist nicht gelungen.'),
+            $ok ? 'erfolg' : 'fehler');
         App::weiter('/app/buchung.php?id=' . $id);
     }
 
@@ -389,6 +444,51 @@ if ($istNeu) {
           </label>
         </div>
       </div>
+
+      <?php
+        /*
+         * Die Vorgabe steht schon da und ist angekreuzt. Wer nichts anfasst,
+         * bekommt genau das – der Haken „abweichend" entscheidet, ob das
+         * Formular überhaupt beachtet wird.
+         */
+        $vorlaufVorgabe = Erinnerungen::vorgabeVorlauf();
+        $kanaeleVorgabe = Erinnerungen::vorgabeKanaele();
+      ?>
+      <div class="karte">
+        <div class="karte__kopf"><h3>Erinnerung</h3></div>
+        <div class="karte__koerper">
+          <p class="klein gedimmt mb-3">
+            <?= Util::h(Erinnerungen::satz($vorlaufVorgabe, $kanaeleVorgabe)) ?>
+            – so steht es in den Einstellungen.
+          </p>
+          <label class="haken mb-3">
+            <input type="checkbox" name="erinnerung_eigen" value="1" data-zeigt="#erinnerung-eigen">
+            <span class="haken__text">Für diesen Termin abweichend</span>
+          </label>
+          <div id="erinnerung-eigen">
+            <div class="feld">
+              <span class="feld__label">Wann</span>
+              <?php foreach (Erinnerungen::VORLAUF as $minuten => $name): ?>
+                <label class="haken mb-2">
+                  <input type="checkbox" name="vorlauf[]" value="<?= (int) $minuten ?>"
+                         <?= in_array($minuten, $vorlaufVorgabe, true) ? ' checked' : '' ?>>
+                  <span class="haken__text"><?= Util::h($name) ?></span>
+                </label>
+              <?php endforeach; ?>
+            </div>
+            <div class="feld">
+              <span class="feld__label">Auf welchem Weg</span>
+              <?php foreach (Kanaele::LISTE as $kanal => [$kanalName, $kanalIcon]): ?>
+                <label class="haken mb-2">
+                  <input type="checkbox" name="kanaele[]" value="<?= Util::attr($kanal) ?>"
+                         <?= in_array($kanal, $kanaeleVorgabe, true) ? ' checked' : '' ?>>
+                  <span class="haken__text"><?= Util::h($kanalName) ?></span>
+                </label>
+              <?php endforeach; ?>
+            </div>
+          </div>
+        </div>
+      </div>
     </form>
     <?php
     require __DIR__ . '/partials/fuss.php';
@@ -511,6 +611,123 @@ require __DIR__ . '/partials/kopf.php';
       </div>
       <?php endif; ?>
     </form>
+
+
+    <?php
+      $erinnerungen = Erinnerungen::fuerTermin($id);
+      $regelnTermin = Erinnerungen::regeln($termin);
+      $vorlaufTermin = array_map(static fn (array $r): int => $r['vorlauf'], $regelnTermin);
+      $kanaeleTermin = $regelnTermin === [] ? [] : $regelnTermin[0]['kanaele'];
+      $eigeneRegel   = (string) ($termin['erinnerungen'] ?? '') !== '';
+    ?>
+    <div class="karte">
+      <div class="karte__kopf"><h3>Erinnerungen</h3>
+        <div class="fueller"></div>
+        <?= pille($eigeneRegel ? 'eigene Regel' : 'Vorgabe', $eigeneRegel ? 'info' : '') ?>
+      </div>
+      <div class="karte__koerper karte__koerper--eng">
+        <p class="klein gedimmt" style="padding:0 4px 6px">
+          <?= Util::h(Erinnerungen::satzZuTermin($termin)) ?>.
+          <?php if (Kanaele::stumm()): ?>
+            <br><?= Util::h(Kanaele::STUMM_GRUND) ?>
+          <?php endif; ?>
+        </p>
+
+        <?php if ($erinnerungen === []): ?>
+          <p class="klein gedimmt" style="padding:0 4px 6px">Es ist nichts eingeplant.</p>
+        <?php else: ?>
+          <div class="stapel stapel--eng">
+            <?php foreach ($erinnerungen as $e): ?>
+              <div class="reihe" style="padding:6px 4px;gap:10px;align-items:flex-start">
+                <span style="color:var(--text-3);flex:0 0 auto;padding-top:2px">
+                  <?= Icon::svg(Kanaele::icon((string) $e['kanal']), 15) ?></span>
+                <div style="min-width:0;flex:1 1 auto">
+                  <div style="font-size:13px">
+                    <span class="halbfett"><?= Util::h(Erinnerungen::vorlaufName((int) $e['vorlauf_min'])) ?></span>
+                    · <?= Util::h(Kanaele::name((string) $e['kanal'])) ?>
+                    <?php if (count($teilnehmer) > 0): ?>
+                      · <?= Util::h(Customers::nameVonId((int) $e['customer_id'])) ?>
+                    <?php endif; ?>
+                  </div>
+                  <div class="klein gedimmt">
+                    <?= Util::h(Util::datumZeit((string) ($e['gesendet'] ?: $e['faellig']))) ?>
+                    <?php if ((string) $e['grund'] !== ''): ?>
+                      · <?= Util::h((string) $e['grund']) ?>
+                    <?php endif; ?>
+                  </div>
+                </div>
+                <div class="fueller"></div>
+                <?= pille(Erinnerungen::statusName((string) $e['status']),
+                      Erinnerungen::statusFarbe((string) $e['status'])) ?>
+                <?php if (Auth::darf('bookings.write') && !$vergangen
+                          && in_array((string) $e['status'], ['geplant', 'fehlgeschlagen'], true)): ?>
+                  <form method="post" style="flex:0 0 auto">
+                    <?= Auth::csrfFeld() ?>
+                    <input type="hidden" name="aktion" value="erinnerung_jetzt">
+                    <input type="hidden" name="erinnerung_id" value="<?= (int) $e['id'] ?>">
+                    <button class="btn btn--klein" type="submit" title="Jetzt senden">
+                      <?= Icon::svg('send', 14) ?></button>
+                  </form>
+                <?php endif; ?>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+      </div>
+
+      <?php if (Auth::darf('bookings.write') && !$vergangen && (string) $termin['status'] !== 'abgesagt'): ?>
+      <div class="karte__koerper" style="padding-top:0">
+        <label class="haken">
+          <input type="checkbox" data-zeigt="#erinnerung-aendern">
+          <span class="haken__text">Ändern</span>
+        </label>
+        <form method="post" id="erinnerung-aendern" class="mt-3">
+          <?= Auth::csrfFeld() ?>
+          <input type="hidden" name="aktion" value="erinnerungen">
+          <div class="feld-reihe feld-reihe--2">
+            <div class="feld">
+              <span class="feld__label">Wann</span>
+              <?php foreach (Erinnerungen::VORLAUF as $minuten => $name): ?>
+                <label class="haken mb-2">
+                  <input type="checkbox" name="vorlauf[]" value="<?= (int) $minuten ?>"
+                         <?= in_array($minuten, $vorlaufTermin, true) ? ' checked' : '' ?>>
+                  <span class="haken__text"><?= Util::h($name) ?></span>
+                </label>
+              <?php endforeach; ?>
+            </div>
+            <div class="feld">
+              <span class="feld__label">Auf welchem Weg</span>
+              <?php foreach (Kanaele::LISTE as $kanal => [$kanalName, $kanalIcon]):
+                [$kanalZustand, $kanalSatz] = Kanaele::zustand($kanal); ?>
+                <label class="haken mb-2">
+                  <input type="checkbox" name="kanaele[]" value="<?= Util::attr($kanal) ?>"
+                         <?= in_array($kanal, $kanaeleTermin, true) ? ' checked' : '' ?>>
+                  <span class="haken__text"><?= Util::h($kanalName) ?>
+                    <?php if ($kanalZustand !== 'bereit'): ?>
+                      <span class="haken__hinweis">noch nicht eingerichtet</span>
+                    <?php endif; ?></span>
+                </label>
+              <?php endforeach; ?>
+              <div class="feld__hinweis">Nichts angekreuzt heißt: für diesen Termin keine Erinnerung.</div>
+            </div>
+          </div>
+          <div class="reihe mt-3">
+            <?php if ($eigeneRegel): ?>
+              <button class="btn" type="submit" form="erinnerung-vorgabe">Vorgabe verwenden</button>
+            <?php endif; ?>
+            <div class="fueller"></div>
+            <button class="btn btn--primaer" type="submit">Erinnerungen speichern</button>
+          </div>
+        </form>
+        <?php if ($eigeneRegel): ?>
+          <form method="post" id="erinnerung-vorgabe" hidden>
+            <?= Auth::csrfFeld() ?>
+            <input type="hidden" name="aktion" value="erinnerung_vorgabe">
+          </form>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
+    </div>
 
     <?php if ($teilnehmer !== []): ?>
     <div class="karte">
