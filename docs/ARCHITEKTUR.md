@@ -336,6 +336,33 @@ hier beantwortet sind, statt zu einer leeren Seite zu führen:
   eigene Tiefe, sondern seine Höhe: Ein zweistufiger Ast passt nur dort
   hinein, wo darunter noch zwei Ebenen frei sind.
 
+Im Baukasten wird der Baum **gezeichnet**, nicht nur eingerückt: je Vorfahr
+eine senkrechte Linie, am Eintrag ein Knick, und in der Zeile darunter steht
+im Klartext, wo die Seite hängt („unter Kurse"). Eine Einrückung allein
+beantwortet die Frage nicht, die man vor einer Seitenliste hat – bei zwei
+Ebenen errät man es, bei drei nicht mehr. Ob auf einer Ebene eine Linie
+weiterläuft, weiß nur der Server: `Pages::flach()` gibt je Seite `tiefe`,
+`letztes` und `linien` mit.
+
+Eingeordnet wird auf drei Wegen, und alle drei enden in derselben Prüfung:
+
+* **Ziehen** am Griff. Die Stelle, an der losgelassen wird, entscheidet:
+  mitten auf einer Zeile wird die Seite deren Unterseite, an den Rändern
+  wird sie zum Geschwister davor oder dahinter. Ohne diesen Unterschied
+  kann man mit der Maus sortieren, aber nichts einrücken – und genau das
+  ist der Sinn eines Baums. Abgeschickt wird ein gewöhnliches Formular,
+  nicht `fetch`: Eine Umsortierung im Browser, die der Server danach
+  ablehnt, wäre eine Lüge auf dem Bildschirm.
+* **Die vier Knöpfe** je Zeile: hoch, runter, eine Ebene tiefer, eine Ebene
+  höher. Sie bleiben, weil Ziehen auf dem Telefon nicht funktioniert und
+  mit der Tastatur allein gar nicht.
+* **Das Feld „Untergeordnet"** in den Seiteneinstellungen, für den
+  gezielten Umzug an eine weit entfernte Stelle.
+
+Gezogen wird am Griff und nicht an der ganzen Zeile: Die Zeile ist ein Link
+auf die Seite, und ein Browser, der nach dem Ziehen noch einen Klick
+nachschiebt, öffnete sonst genau die Seite, die man gerade einsortiert hat.
+
 Das Menü selbst kommt ohne JavaScript aus: `:hover` für die Maus,
 `:focus-within` für die Tastatur. Auf dem Telefon gibt es kein Überfahren –
 dort stehen die Unterpunkte im HTML offen da, und erst `site.js` klappt sie

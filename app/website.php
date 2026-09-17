@@ -25,6 +25,15 @@ if (App::istPost()) {
         App::weiter('/app/website.php#seite-' . $seiteId);
     }
 
+    /* Ziehen und Fallenlassen meldet sich als ganz gewöhnlicher POST. */
+    if ($aktion === 'baum_ablegen' && $seiteId > 0) {
+        [$ok, $grund] = Pages::ablegen($seiteId, App::postInt('ziel_id'), App::post('modus', 'unter'));
+        if (!$ok) {
+            App::melden($grund, 'warnung');
+        }
+        App::weiter('/app/website.php#seite-' . $seiteId);
+    }
+
     if ($aktion === 'ki_website') {
         $entwurf = KI::websiteEntwurf(App::post('beschreibung'), Tenant::name());
         $start = Pages::startseite();
@@ -105,46 +114,89 @@ require __DIR__ . '/partials/kopf.php';
       <div class="karte__kopf"><h2>Seiten</h2>
         <span class="pille"><?= count($normale) ?></span>
         <div class="fueller"></div>
-        <span class="klein gedimmt nicht-mobil">Die Einrückung ist die Navigation</span>
+        <span class="klein gedimmt nicht-mobil">Ziehen ordnet ein – der Baum ist die Navigation</span>
       </div>
       <div class="tabelle-huelle">
-        <table class="tabelle tabelle--klickbar">
-          <thead><tr><th>Seite</th><th class="nicht-mobil">Adresse</th>
+        <?php
+          $darf = Auth::darf('website.write');
+          /* Für „hoch/runter": Wer ist der erste und wer der letzte unter
+             seinen Geschwistern? Sonst bieten wir Knöpfe an, die nichts tun. */
+          $geschwister = [];
+          foreach ($normale as $s) { $geschwister[(int) $s['parent_id']][] = (int) $s['id']; }
+          $nachId = [];
+          foreach ($normale as $s) { $nachId[(int) $s['id']] = $s; }
+        ?>
+        <table class="tabelle tabelle--klickbar baumtabelle">
+          <thead><tr>
+            <?php if ($darf): ?><th class="baum__griff-spalte" aria-label="Ziehen"></th><?php endif; ?>
+            <th class="baum__name">Seite</th><th class="nicht-mobil">Adresse</th>
             <th class="zahl nicht-mobil">Aufrufe</th><th>Status</th>
-            <?php if (Auth::darf('website.write')): ?><th class="nicht-mobil">Ordnen</th><?php endif; ?>
+            <?php if ($darf): ?><th class="nicht-mobil">Ordnen</th><?php endif; ?>
             <th></th></tr></thead>
-          <tbody>
-          <?php
-            $darf = Auth::darf('website.write');
-            /* Für „hoch/runter": Wer ist der erste und wer der letzte unter
-               seinen Geschwistern? Sonst bieten wir Knöpfe an, die nichts tun. */
-            $geschwister = [];
-            foreach ($normale as $s) { $geschwister[(int) $s['parent_id']][] = (int) $s['id']; }
-          ?>
-          <?php foreach ($normale as $i => $s):
-            $url   = App::url('/app/seite.php?id=' . (int) $s['id']);
-            $tiefe = (int) ($s['tiefe'] ?? 0);
-            $reihe = $geschwister[(int) $s['parent_id']] ?? [];
-            $platz = array_search((int) $s['id'], $reihe, true);
-            $start = (int) $s['startseite'] === 1;
+          <tbody<?= $darf ? ' data-baum="' . Util::attr(App::url('/app/website.php')) . '"' : '' ?>>
+          <?php foreach ($normale as $s):
+            $url    = App::url('/app/seite.php?id=' . (int) $s['id']);
+            $tiefe  = (int) ($s['tiefe'] ?? 0);
+            $linien = (array) ($s['linien'] ?? []);
+            $reihe  = $geschwister[(int) $s['parent_id']] ?? [];
+            $platz  = array_search((int) $s['id'], $reihe, true);
+            $start  = (int) $s['startseite'] === 1;
+            $eltern = $nachId[(int) $s['parent_id']] ?? null;
             $kinder = count(array_filter($normale,
-                static fn($k) => (int) $k['parent_id'] === (int) $s['id'])); ?>
-            <tr id="seite-<?= (int) $s['id'] ?>" onclick="location.href='<?= Util::attr($url) ?>'">
-              <td>
-                <span class="baumzeile" style="--tiefe:<?= $tiefe ?>">
-                  <?php if ($tiefe > 0): ?><span class="baumzeile__ast" aria-hidden="true"></span><?php endif; ?>
-                  <span class="haupt"><?= Util::h((string) $s['titel']) ?></span>
-                  <?php if ($start): ?><?= pille('Startseite', 'marke') ?><?php endif; ?>
-                  <?php if ((int) $s['im_menue'] === 0 && !$start): ?>
-                    <?= pille('nicht im Menü', '') ?>
+                static fn($k) => (int) $k['parent_id'] === (int) $s['id']));
+            /* Eine Unterseite kann nur dort entstehen, wo darunter noch
+               eine Ebene frei ist. */
+            $platzFuerKind = !$start && $tiefe + 1 < Pages::MAX_TIEFE; ?>
+            <tr id="seite-<?= (int) $s['id'] ?>" data-id="<?= (int) $s['id'] ?>"
+                data-tiefe="<?= $tiefe ?>" data-titel="<?= Util::attr((string) $s['titel']) ?>"
+                <?= $start ? 'data-fest="1" ' : '' ?>
+                onclick="location.href='<?= Util::attr($url) ?>'">
+              <?php if ($darf): ?>
+              <td class="baum__griff-spalte" onclick="event.stopPropagation()">
+                <?php if (!$start): ?>
+                  <span class="baum__griff" draggable="true" title="Ziehen zum Einordnen"
+                        aria-hidden="true"><?= Icon::svg('grip', 14) ?></span>
+                <?php endif; ?>
+              </td>
+              <?php endif; ?>
+              <td class="baum__name">
+                <span class="baumzeile">
+                  <?php if ($tiefe > 0): ?>
+                    <span class="baumzeile__spur" aria-hidden="true">
+                      <?php foreach ($linien as $weiter): ?>
+                        <span class="baumzeile__stufe<?= $weiter ? ' ist-linie' : '' ?>"></span>
+                      <?php endforeach; ?>
+                      <span class="baumzeile__knick<?= !empty($s['letztes']) ? ' ist-letztes' : '' ?>"></span>
+                    </span>
                   <?php endif; ?>
+                  <span class="baumzeile__text">
+                    <span class="baumzeile__titel">
+                      <span class="haupt"><?= Util::h((string) $s['titel']) ?></span>
+                      <?php if ($start): ?><?= pille('Startseite', 'marke') ?><?php endif; ?>
+                      <?php if ((int) $s['im_menue'] === 0 && !$start): ?>
+                        <?= pille('nicht im Menü', '') ?>
+                      <?php endif; ?>
+                    </span>
+                    <span class="winzig gedimmt-2 baumzeile__unter">
+                      <?php
+                        /* Die Zeile beantwortet in ihrer ersten Angabe die
+                           Frage, die man vor einem Baum hat: Wo hängt die
+                           hier? Alles Weitere kommt danach. */
+                        $teile = [];
+                        if ($eltern !== null) {
+                            $teile[] = 'unter <strong>' . Util::h((string) $eltern['titel']) . '</strong>';
+                        } elseif (!$start) {
+                            $teile[] = 'Hauptpunkt';
+                        }
+                        if ($kinder > 0) {
+                            $teile[] = $kinder . ' ' . ($kinder === 1 ? 'Unterseite' : 'Unterseiten');
+                        }
+                        $teile[] = count(Pages::bloecke($s)) . ' Bausteine';
+                        $teile[] = Util::h(Util::relativ((string) $s['geaendert']));
+                        echo implode(' · ', $teile);
+                      ?></span>
+                  </span>
                 </span>
-                <div class="winzig gedimmt-2 baumzeile__unter" style="--tiefe:<?= $tiefe ?>">
-                  <?= count(Pages::bloecke($s)) ?> Bausteine
-                  <?php if ($kinder > 0): ?>
-                    · <?= $kinder ?> <?= $kinder === 1 ? 'Unterseite' : 'Unterseiten' ?>
-                  <?php endif; ?>
-                  · geändert <?= Util::h(Util::relativ((string) $s['geaendert'])) ?></div>
               </td>
               <td class="nicht-mobil mono gedimmt">/<?= Util::h((string) $s['slug']) ?></td>
               <td class="zahl nicht-mobil tabnum"><?= Util::zahl((int) $s['aufrufe']) ?></td>
@@ -177,15 +229,21 @@ require __DIR__ . '/partials/kopf.php';
                 <?php endforeach; ?>
               </td>
               <?php endif; ?>
-              <td class="aktionen">
-                <a class="btn btn--klein" target="_blank" rel="noopener" onclick="event.stopPropagation()"
+              <td class="aktionen" onclick="event.stopPropagation()">
+                <?php if ($darf && $platzFuerKind): ?>
+                  <a class="btn btn--klein" title="Unterseite anlegen"
+                     aria-label="Unterseite von <?= Util::attr((string) $s['titel']) ?> anlegen"
+                     href="<?= Util::attr(App::url('/app/seite.php?id=neu&eltern=' . (int) $s['id'])) ?>">
+                    <?= Icon::svg('plus', 14) ?></a>
+                <?php endif; ?>
+                <a class="btn btn--klein" target="_blank" rel="noopener"
                    href="<?= Util::attr(Pages::url($s)) ?>" aria-label="Ansehen">
                   <?= Icon::svg('external', 14) ?></a>
               </td>
             </tr>
           <?php endforeach; ?>
           <?php if ($normale === []): ?>
-            <tr class="tabelle-leer"><td colspan="6">Noch keine Seite angelegt.</td></tr>
+            <tr class="tabelle-leer"><td colspan="7">Noch keine Seite angelegt.</td></tr>
           <?php endif; ?>
           </tbody>
         </table>
@@ -194,8 +252,9 @@ require __DIR__ . '/partials/kopf.php';
       <div class="karte__fuss">
         <div class="klein gedimmt">
           <?= Icon::svg('info', 14) ?>
-          Einrücken macht eine Seite zur Unterseite der Zeile darüber – daraus wird
-          im Menü ein Klappmenü. Bis zu <?= Pages::MAX_TIEFE ?> Ebenen.
+          Am Griff ziehen: <strong>mitten auf eine Zeile</strong> macht die Seite zu deren
+          Unterseite, <strong>an den Rand</strong> setzt sie daneben. Das <?= Icon::svg('plus', 12) ?>
+          legt gleich eine Unterseite an. Bis zu <?= Pages::MAX_TIEFE ?> Ebenen.
         </div>
       </div>
       <?php endif; ?>

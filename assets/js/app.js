@@ -58,6 +58,110 @@
     kaestchen.addEventListener('change', um);
   });
 
+  /* ----------------------------------------------- Seitenbaum ziehen -- */
+
+  /*
+   * Eine Seite an ihren Platz ziehen.
+   *
+   * Der Unterschied zur Bausteinliste weiter unten: Dort gibt es nur eine
+   * Reihenfolge, hier auch eine Ebene. Deshalb entscheidet die Stelle, an
+   * der losgelassen wird, was gemeint war:
+   *
+   *   mitten auf einer Zeile  ->  wird deren Unterseite
+   *   am oberen Rand          ->  wird zum Geschwister davor
+   *   am unteren Rand         ->  zum Geschwister dahinter
+   *
+   * Gezogen wird am Griff, nicht an der Zeile: Die ganze Zeile ist ein
+   * Link auf die Seite, und ein Browser, der nach dem Ziehen noch einen
+   * Klick nachschiebt, öffnete sonst die Seite, die man gerade einsortiert
+   * hat.
+   *
+   * Abgeschickt wird ein gewöhnliches Formular statt fetch(): Der Server
+   * ordnet ein, prüft auf Ringe und Tiefe und antwortet mit der neuen
+   * Liste. Eine Umsortierung im Browser, die der Server danach ablehnt,
+   * wäre eine Lüge auf dem Bildschirm.
+   */
+  (function () {
+    const koerper = $('[data-baum]');
+    if (!koerper) return;
+    const url = koerper.dataset.baum;
+    let zeile = null;
+
+    const zieleWeg = () => $$('tr', koerper).forEach(t =>
+      t.classList.remove('ist-ziel-unter', 'ist-ziel-vor', 'ist-ziel-nach'));
+
+    /* Wo genau in der Zielzeile? Die Ränder sind bewusst schmal: Wer
+       einordnen will, trifft die Mitte leichter als den Rand. */
+    const modusFuer = (ziel, y) => {
+      const k = ziel.getBoundingClientRect();
+      const anteil = (y - k.top) / k.height;
+      if (anteil < 0.25) return 'vor';
+      if (anteil > 0.75) return 'nach';
+      return 'unter';
+    };
+
+    $$('.baum__griff', koerper).forEach(griff => {
+      griff.addEventListener('dragstart', (e) => {
+        zeile = griff.closest('tr');
+        if (!zeile) return;
+        zeile.classList.add('wird-gezogen');
+        e.dataTransfer.effectAllowed = 'move';
+        /* Ohne Nutzlast bricht Firefox das Ziehen sofort ab. */
+        e.dataTransfer.setData('text/plain', zeile.dataset.id || '');
+        if (e.dataTransfer.setDragImage) {
+          e.dataTransfer.setDragImage(zeile, 24, 16);
+        }
+      });
+      griff.addEventListener('dragend', () => {
+        if (zeile) zeile.classList.remove('wird-gezogen');
+        zeile = null;
+        zieleWeg();
+      });
+    });
+
+    koerper.addEventListener('dragover', (e) => {
+      if (!zeile) return;
+      const ziel = e.target.closest('tr');
+      /* Nicht auf sich selbst, und nicht auf die Startseite: Die ist die
+         Marke oben links und hat im Baum nichts zu suchen. */
+      if (!ziel || ziel === zeile || ziel.dataset.fest === '1') return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const modus = modusFuer(ziel, e.clientY);
+      zieleWeg();
+      ziel.classList.add('ist-ziel-' + modus);
+    });
+
+    koerper.addEventListener('dragleave', (e) => {
+      if (!koerper.contains(e.relatedTarget)) zieleWeg();
+    });
+
+    koerper.addEventListener('drop', (e) => {
+      if (!zeile) return;
+      const ziel = e.target.closest('tr');
+      if (!ziel || ziel === zeile || ziel.dataset.fest === '1') return;
+      e.preventDefault();
+      const modus = modusFuer(ziel, e.clientY);
+      zieleWeg();
+
+      /* Nach dem Neuladen soll die Zeile wieder dort stehen, wo sie war. */
+      if (window.Blick) window.Blick.merken(ziel);
+
+      const f = document.createElement('form');
+      f.method = 'post';
+      f.action = url;
+      [['aktion', 'baum_ablegen'], ['seite_id', zeile.dataset.id],
+       ['ziel_id', ziel.dataset.id], ['modus', modus],
+       ['_csrf', window.gpCsrf || '']].forEach(([n, w]) => {
+        const i = document.createElement('input');
+        i.type = 'hidden'; i.name = n; i.value = w;
+        f.appendChild(i);
+      });
+      document.body.appendChild(f);
+      f.submit();
+    });
+  })();
+
   /* --------------------------------------------------------- Menüs ---- */
 
   document.addEventListener('click', (e) => {

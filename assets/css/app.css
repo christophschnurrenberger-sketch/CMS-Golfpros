@@ -2262,22 +2262,65 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
 /* ------------------------------------------------------ Seitenbaum ---- */
 
 /*
- * Die Einrückung ist die Navigation.
+ * Der Baum wird gezeichnet, nicht nur eingerückt.
  *
- * Kein eigenes Baum-Element, sondern eine Tabellenzeile mit Abstand nach
- * links: So bleiben Sortierung, Klickfläche und die Spalten daneben genau
- * die, die es vorher schon gab – und eine Zeile lässt sich weiterhin
- * anklicken, um die Seite zu öffnen.
+ * Eine Einrückung allein beantwortet die Frage nicht, die man vor einer
+ * Seitenliste hat: Unter welcher Zeile hängt diese hier? Bei zwei Ebenen
+ * errät man es, bei drei nicht mehr. Deshalb läuft je Vorfahr eine
+ * senkrechte Linie mit, und am Eintrag selbst steht ein Knick – dieselbe
+ * Darstellung, die jeder Dateimanager benutzt, weil sie funktioniert.
+ *
+ * Gezeichnet wird mit leeren <span>, nicht mit ::before auf Abstand:
+ * Jede Stufe ist ein eigenes Kästchen, und ob dort eine Linie steht,
+ * entscheidet der Server (Pages::flach()) – der weiß als Einziger, ob der
+ * Vorfahr auf dieser Ebene noch Geschwister unter sich hat.
  */
-.baumzeile, .baumzeile__unter { display: block; padding-left: calc(var(--tiefe, 0) * 22px); }
-.baumzeile { position: relative; }
-.baumzeile__ast {
-  position: absolute; left: calc(var(--tiefe, 0) * 22px - 15px); top: 50%;
-  width: 9px; height: 9px;
-  border-left: 1.5px solid var(--rand); border-bottom: 1.5px solid var(--rand);
-  border-bottom-left-radius: 3px;
-  transform: translateY(-7px);
+.baumzeile { display: flex; align-items: flex-start; gap: 0; }
+.baumzeile__spur { display: flex; flex: 0 0 auto; align-self: stretch; }
+.baumzeile__stufe, .baumzeile__knick {
+  position: relative; flex: 0 0 auto; width: 22px; align-self: stretch;
 }
+/* Die durchlaufende Linie eines Vorfahren, der noch Geschwister hat. */
+.baumzeile__stufe.ist-linie::before,
+.baumzeile__knick::before {
+  content: ""; position: absolute; left: 10px; top: 0; bottom: 0;
+  border-left: 1.5px solid var(--rand);
+}
+/* Beim letzten Eintrag endet sie auf halber Höhe. */
+.baumzeile__knick.ist-letztes::before { bottom: auto; height: 12px; }
+/* Und biegt zum Eintrag ab. */
+.baumzeile__knick::after {
+  content: ""; position: absolute; left: 10px; top: 12px; width: 9px;
+  border-top: 1.5px solid var(--rand);
+}
+.baumzeile__text { min-width: 0; padding: 2px 0; }
+.baumzeile__titel { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.baumzeile__unter { display: block; margin-top: 1px; }
+/* Der Name braucht Platz, sonst bricht „unter Kurse" über drei Zeilen. */
+.baum__name { min-width: 250px; }
+
+/* ---- Ziehen und Fallenlassen ---- */
+
+.baum__griff-spalte { width: 30px; padding-right: 0 !important; }
+.baum__griff {
+  display: inline-flex; padding: 4px 2px; cursor: grab;
+  color: var(--text-3); border-radius: 5px;
+}
+.baum__griff:hover { color: var(--text); background: var(--flaeche); }
+.baum__griff:active { cursor: grabbing; }
+.baumtabelle tr.wird-gezogen { opacity: .4; }
+
+/*
+ * Drei Ziele, drei Anzeigen. „Unter" färbt die ganze Zeile – die Seite
+ * landet *in* ihr. „Vor" und „nach" zeichnen eine Linie an den Rand – sie
+ * landet *daneben*. Ohne diesen Unterschied zieht man ins Blaue.
+ */
+.baumtabelle tr.ist-ziel-unter > td {
+  background: color-mix(in srgb, var(--marke) 12%, transparent);
+  box-shadow: inset 2px 0 0 var(--marke);
+}
+.baumtabelle tr.ist-ziel-vor > td { box-shadow: inset 0 2px 0 var(--marke); }
+.baumtabelle tr.ist-ziel-nach > td { box-shadow: inset 0 -2px 0 var(--marke); }
 
 .mt-0 { margin-top: 0 !important; }
 .mt-2 { margin-top: var(--r2); }

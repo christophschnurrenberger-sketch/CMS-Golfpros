@@ -78,17 +78,36 @@ final class Pages
     {
         $seiten = $seiten ?? self::alle();
         $aus = [];
-        $gehen = static function (int $eltern, int $tiefe) use (&$gehen, $seiten, &$aus): void {
-            foreach ($seiten as $s) {
-                if ((int) ($s['parent_id'] ?? 0) !== $eltern) {
-                    continue;
-                }
-                $s['tiefe'] = $tiefe;
+
+        /*
+         * Neben der Tiefe kommen zwei Angaben mit, ohne die sich kein Baum
+         * zeichnen lässt:
+         *
+         *   `letztes`  Ist das der letzte Eintrag unter seinem Elternteil?
+         *              Nur dort endet die senkrechte Linie mit einem Knick.
+         *   `linien`   Je Ebene darüber: Läuft dort noch eine Linie weiter,
+         *              weil der Vorfahr auf dieser Ebene noch Geschwister
+         *              unter sich hat? Ohne diese Angabe hängen tiefe Äste
+         *              in der Luft, und man sieht einer eingerückten Zeile
+         *              nicht an, zu welcher Zeile darüber sie gehört.
+         *
+         * @param array<int,bool> $linien
+         */
+        $gehen = static function (int $eltern, int $tiefe, array $linien)
+                 use (&$gehen, $seiten, &$aus): void {
+            $kinder = array_values(array_filter($seiten,
+                static fn (array $s): bool => (int) ($s['parent_id'] ?? 0) === $eltern));
+            $anzahl = count($kinder);
+            foreach ($kinder as $i => $s) {
+                $letztes = $i === $anzahl - 1;
+                $s['tiefe']   = $tiefe;
+                $s['letztes'] = $letztes;
+                $s['linien']  = $linien;
                 $aus[] = $s;
-                $gehen((int) $s['id'], $tiefe + 1);
+                $gehen((int) $s['id'], $tiefe + 1, array_merge($linien, [!$letztes]));
             }
         };
-        $gehen(0, 0);
+        $gehen(0, 0, []);
 
         /*
          * Waisen sind keine Fehlermeldung wert, aber verschwinden dürfen
@@ -98,7 +117,9 @@ final class Pages
         $drin = array_column($aus, 'id');
         foreach ($seiten as $s) {
             if (!in_array($s['id'], $drin, true)) {
-                $s['tiefe'] = 0;
+                $s['tiefe']   = 0;
+                $s['letztes'] = true;
+                $s['linien']  = [];
                 $aus[] = $s;
             }
         }
@@ -366,6 +387,72 @@ final class Pages
             }
             $ids[] = (int) $g['id'];
             if ((int) $g['id'] === $elternId) {
+                $ids[] = $id;
+            }
+        }
+        if (!in_array($id, $ids, true)) {
+            $ids[] = $id;
+        }
+        foreach ($ids as $i => $sId) {
+            Tenant::update('pages', $sId, ['position' => $i]);
+        }
+        return [true, ''];
+    }
+
+    /**
+     * Was beim Ziehen und Fallenlassen passiert.
+     *
+     * Drei Möglichkeiten, und welche es wird, entscheidet die Stelle, an
+     * der losgelassen wurde:
+     *
+     *   `unter`  in der Mitte der Zielzeile – die Seite wird deren Unterseite
+     *   `vor`    am oberen Rand – sie wird zum Geschwister davor
+     *   `nach`   am unteren Rand – zum Geschwister dahinter
+     *
+     * Ohne diese Unterscheidung kann man mit der Maus zwar sortieren, aber
+     * nichts einrücken – und genau das ist der Sinn eines Baums.
+     *
+     * @return array{0:bool,1:string}
+     */
+    public static function ablegen(int $id, int $zielId, string $modus): array
+    {
+        if ($id === $zielId) {
+            return [false, 'Eine Seite lässt sich nicht auf sich selbst ziehen.'];
+        }
+        $seite = Tenant::find('pages', $id);
+        $ziel  = Tenant::find('pages', $zielId);
+        if ($seite === null || $ziel === null) {
+            return [false, 'Diese Seite gibt es nicht.'];
+        }
+        if ((int) $seite['startseite'] === 1) {
+            return [false, 'Die Startseite ist die Marke oben links und steht nicht im Menü.'];
+        }
+        if (in_array($zielId, self::nachkommen($id), true)) {
+            return [false, 'Eine Seite kann nicht unter ihre eigene Unterseite.'];
+        }
+
+        if ($modus === 'unter') {
+            return self::einordnen($id, $zielId);
+        }
+
+        /* Geschwister werden: dieselbe übergeordnete Seite wie das Ziel. */
+        $elternId = (int) $ziel['parent_id'];
+        if ($elternId > 0 && self::tiefe($elternId) + 1 + self::hoehe($id) > self::MAX_TIEFE) {
+            return [false, 'Tiefer als ' . self::MAX_TIEFE . ' Ebenen wird das Menü unbedienbar.'];
+        }
+        Tenant::update('pages', $id, ['parent_id' => $elternId]);
+
+        $ids = [];
+        foreach (Tenant::all('pages', 'parent_id = :p', ['p' => $elternId], 'position, titel') as $g) {
+            $gId = (int) $g['id'];
+            if ($gId === $id) {
+                continue;
+            }
+            if ($gId === $zielId && $modus === 'vor') {
+                $ids[] = $id;
+            }
+            $ids[] = $gId;
+            if ($gId === $zielId && $modus !== 'vor') {
                 $ids[] = $id;
             }
         }

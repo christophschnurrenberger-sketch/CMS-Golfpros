@@ -45,6 +45,20 @@ if ($istNeu) {
         'bloecke' => Util::json($bloecke),
         'art' => $art, 'status' => 'entwurf', 'im_menue' => $art === 'landingpage' ? 0 : 1,
     ]);
+
+    /*
+     * Gleich als Unterseite anlegen, wenn sie aus einer Zeile des Baums
+     * heraus entstanden ist. Sonst legt man sie an, geht zurück in die
+     * Übersicht und rückt sie von Hand ein – drei Schritte für etwas, das
+     * beim Klicken schon feststand.
+     */
+    $eltern = App::getInt('eltern');
+    if ($eltern > 0) {
+        [$okay, $grund] = Pages::einordnen($neuId, $eltern);
+        App::melden($okay
+            ? 'Unterseite von „' . (Tenant::find('pages', $eltern)['titel'] ?? '') . '" angelegt.'
+            : $grund, $okay ? 'erfolg' : 'warnung');
+    }
     App::weiter('/app/seite.php?id=' . $neuId);
 }
 
