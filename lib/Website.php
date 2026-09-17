@@ -129,12 +129,7 @@ final class Website
         $logo = (string) (Tenant::workspace()['logo'] ?? '');
         $slug = (string) (Tenant::workspace()['slug'] ?? '');
 
-        $menue = '';
-        foreach (Pages::menue() as $s) {
-            $aktiv = $aktuelleSeite && (int) $aktuelleSeite['id'] === (int) $s['id'];
-            $menue .= '<a class="kopf__link' . ($aktiv ? ' ist-aktiv' : '') . '" href="'
-                    . Util::attr(Pages::url($s)) . '">' . Util::h((string) $s['titel']) . '</a>';
-        }
+        $menue = self::navi(Pages::menue(), $aktuelleSeite);
 
         $start = Pages::startseite();
         $startUrl = $start ? Pages::url($start) : App::url('/site.php?w=' . rawurlencode($slug));
@@ -159,7 +154,7 @@ final class Website
                 : '<span class="kopf__name">' . Util::h(Tenant::name()) . '</span>'
                   . '<span class="kopf__zusatz">' . Util::h($zusatz) . '</span>')
              . '</a>'
-             . '<nav class="kopf__navi">' . $menue . '</nav>'
+             . '<nav class="kopf__navi" aria-label="Hauptmenü">' . $menue . '</nav>'
              . ($telefon !== ''
                 ? '<p class="kopf__ruf">' . Util::h($telefon) . '</p>'
                 : '<a class="knopf knopf--klein kopf__aktion" href="#buchung">Termin buchen</a>')
@@ -167,6 +162,56 @@ final class Website
              . 'onclick="document.querySelector(\'.kopf__navi\').classList.toggle(\'ist-offen\')">'
              . Icon::svg('menu', 20) . '</button>'
              . '</div></header>';
+    }
+
+    /**
+     * Die verschachtelte Liste des Hauptmenüs.
+     *
+     * Eine echte Liste und keine Reihe von Links: Ein Vorleseprogramm sagt
+     * dann „Menü, 5 Einträge, Eintrag 3 von 5, hat Untermenü" – aus einer
+     * Folge von <a> liest es gar nichts davon.
+     *
+     * Aufgeklappt wird ohne JavaScript, über :hover und :focus-within. Auf
+     * dem Telefon stehen die Unterpunkte offen da; erst site.js klappt sie
+     * zu und hängt die Knöpfe dazu. Wer kein JavaScript hat, sieht also
+     * mehr statt weniger – nie umgekehrt.
+     *
+     * @param array<int,array<string,mixed>> $punkte
+     */
+    private static function navi(array $punkte, ?array $aktuelleSeite, int $ebene = 0): string
+    {
+        if ($punkte === []) {
+            return '';
+        }
+        /* Der ganze Weg von oben bis zur offenen Seite wird markiert, nicht
+           nur der Endpunkt: Sonst sieht man einer aufgeklappten Unterseite
+           nicht an, zu welchem Hauptpunkt sie gehört. */
+        $pfad = [];
+        if ($aktuelleSeite !== null) {
+            foreach (Pages::pfad((int) $aktuelleSeite['id']) as $stufe) {
+                $pfad[] = (int) $stufe['id'];
+            }
+        }
+
+        $html = '<ul class="navi navi--' . $ebene . '">';
+        foreach ($punkte as $s) {
+            $kinder  = $s['kinder'] ?? [];
+            $istHier = $aktuelleSeite !== null && (int) $aktuelleSeite['id'] === (int) $s['id'];
+            $imPfad  = in_array((int) $s['id'], $pfad, true);
+
+            $html .= '<li class="navi__punkt' . ($kinder !== [] ? ' navi__punkt--zweig' : '')
+                   . ($imPfad ? ' ist-pfad' : '') . '">'
+                   . '<a class="kopf__link' . ($istHier ? ' ist-aktiv' : '') . '"'
+                   . ($istHier ? ' aria-current="page"' : '')
+                   . ' href="' . Util::attr(Pages::url($s)) . '">'
+                   . Util::h((string) $s['titel']) . '</a>';
+            if ($kinder !== []) {
+                $html .= '<span class="navi__pfeil" aria-hidden="true"></span>'
+                       . self::navi($kinder, $aktuelleSeite, $ebene + 1);
+            }
+            $html .= '</li>';
+        }
+        return $html . '</ul>';
     }
 
     public static function fuss(): string
@@ -180,9 +225,24 @@ final class Website
             $rechtliches .= '<a href="' . Util::attr(Pages::url($s)) . '">' . Util::h((string) $s['titel']) . '</a>';
         }
 
+        /*
+         * Im Fuß steht der Baum flach, aber in Baumreihenfolge und mit
+         * einem Zeichen für die Einrückung: Klappmenüs haben hier unten
+         * nichts verloren – wer bis zum Fuß gescrollt ist, sucht einen
+         * Link und nicht noch eine Bedienung.
+         */
         $menue = '';
         foreach (Pages::menue() as $s) {
             $menue .= '<a href="' . Util::attr(Pages::url($s)) . '">' . Util::h((string) $s['titel']) . '</a>';
+            foreach ($s['kinder'] ?? [] as $kind) {
+                $menue .= '<a class="fuss-band__unterpunkt" href="' . Util::attr(Pages::url($kind)) . '">'
+                        . Util::h((string) $kind['titel']) . '</a>';
+                foreach ($kind['kinder'] ?? [] as $enkel) {
+                    $menue .= '<a class="fuss-band__unterpunkt fuss-band__unterpunkt--tief" href="'
+                            . Util::attr(Pages::url($enkel)) . '">'
+                            . Util::h((string) $enkel['titel']) . '</a>';
+                }
+            }
         }
 
         $telefon = trim((string) Tenant::einstellung('telefon', ''));

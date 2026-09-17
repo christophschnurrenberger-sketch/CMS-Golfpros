@@ -51,8 +51,10 @@ final class Schema
      *      frei gewaehltem Vorlauf ueber E-Mail, SMS und WhatsApp
      *   6  customers.geaendert - Zeitpunkt der letzten Aenderung, damit
      *      die Schnittstelle nur Neues ausliefern kann
+     *   7  pages.parent_id - aus der Seitenliste wird ein Baum, und aus
+     *      der Navigation ein Menue ueber mehrere Ebenen
      */
-    public const VERSION = 6;
+    public const VERSION = 7;
 
     public static function migrate(): void
     {
@@ -121,6 +123,15 @@ final class Schema
          * die sich nachträglich treffen lässt, und sie sorgt dafür, dass
          * der erste Abgleich alle mitnimmt.
          */
+        /*
+         * Seit dem Seitenbaum: Wem ist diese Seite untergeordnet?
+         *
+         * 0 heißt „oberste Ebene". Bestehende Seiten stehen damit alle
+         * nebeneinander, genau wie vorher – der Baum ist zunächst flach
+         * und wird erst durch Einrücken zu einem.
+         */
+        self::spalteSicherstellen('pages', 'parent_id', '%INT% NOT NULL DEFAULT 0');
+
         self::spalteSicherstellen('customers', 'geaendert', '%DT%');
         try {
             DB::pdo()->exec("UPDATE customers SET geaendert = erstellt"
@@ -1139,6 +1150,7 @@ final class Schema
                 bloecke %TEXT%,                                -- JSON: der Baukasten
                 seo %TEXT%,                                    -- JSON: title, description, og
                 startseite %INT% NOT NULL DEFAULT 0,
+                parent_id %INT% NOT NULL DEFAULT 0,            -- 0 = oberste Ebene
                 im_menue %INT% NOT NULL DEFAULT 1,
                 position %INT% NOT NULL DEFAULT 0,
                 status %STR(24)% NOT NULL DEFAULT "entwurf",   -- entwurf|veroeffentlicht
@@ -1505,7 +1517,7 @@ final class Schema
             'automation_runs' => ['workspace_id', 'automation_id'],
             'campaigns' => ['workspace_id', 'status'],
             'forms' => ['workspace_id'],
-            'pages' => ['workspace_id', 'slug'],
+            'pages' => ['workspace_id', 'slug', 'parent_id'],
             'posts' => ['workspace_id', 'slug', 'status'],
             'categories' => ['workspace_id'],
             'media' => ['workspace_id'],

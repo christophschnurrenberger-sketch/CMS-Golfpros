@@ -256,6 +256,10 @@ final class Tenant
      */
     private const OHNE_STEMPEL = [
         'health_score', 'letzte_aktivitaet', 'portal_token', 'portal_token_bis',
+        /* Welche Seite die Startseite ist, ändert an keiner Seite etwas –
+           und das Umhängen setzt die Marke bei allen anderen zurück. Ohne
+           diese Ausnahme stünde danach überall „geändert: gerade eben". */
+        'startseite',
     ];
 
     /**

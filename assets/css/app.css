@@ -2259,6 +2259,26 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
 }
 
 /* Hilfsklassen – bewusst wenige */
+/* ------------------------------------------------------ Seitenbaum ---- */
+
+/*
+ * Die Einrückung ist die Navigation.
+ *
+ * Kein eigenes Baum-Element, sondern eine Tabellenzeile mit Abstand nach
+ * links: So bleiben Sortierung, Klickfläche und die Spalten daneben genau
+ * die, die es vorher schon gab – und eine Zeile lässt sich weiterhin
+ * anklicken, um die Seite zu öffnen.
+ */
+.baumzeile, .baumzeile__unter { display: block; padding-left: calc(var(--tiefe, 0) * 22px); }
+.baumzeile { position: relative; }
+.baumzeile__ast {
+  position: absolute; left: calc(var(--tiefe, 0) * 22px - 15px); top: 50%;
+  width: 9px; height: 9px;
+  border-left: 1.5px solid var(--rand); border-bottom: 1.5px solid var(--rand);
+  border-bottom-left-radius: 3px;
+  transform: translateY(-7px);
+}
+
 .mt-0 { margin-top: 0 !important; }
 .mt-2 { margin-top: var(--r2); }
 .mt-3 { margin-top: var(--r3); }

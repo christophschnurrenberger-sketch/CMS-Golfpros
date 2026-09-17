@@ -180,6 +180,18 @@ if (App::istPost()) {
     }
 
     if ($aktion === 'seite_speichern') {
+        /*
+         * Das Einordnen läuft über Pages::einordnen() und nicht über das
+         * Feld im Datensatz: Dort steckt der Schutz gegen Ringe und gegen
+         * eine zu tiefe Verschachtelung. Ein „parent_id" aus dem Formular
+         * kann jeden Wert haben, den jemand hineinschreibt.
+         */
+        if (isset($_POST['parent_id'])) {
+            [$eingeordnet, $grund] = Pages::einordnen($id, App::postInt('parent_id'));
+            if (!$eingeordnet) {
+                App::melden($grund, 'warnung');
+            }
+        }
         Pages::speichern([
             'titel' => App::post('titel'), 'slug' => App::post('slug'),
             'status' => App::post('status'), 'im_menue' => App::postBool('im_menue') ? 1 : 0,
@@ -536,9 +548,31 @@ require __DIR__ . '/partials/kopf.php';
               <option value="seite"<?= (string) $seite['art'] === 'seite' ? ' selected' : '' ?>>Normale Seite</option>
               <option value="landingpage"<?= (string) $seite['art'] === 'landingpage' ? ' selected' : '' ?>>Landingpage</option>
             </select></div>
+          <?php if ((int) $seite['startseite'] !== 1): ?>
+          <?php $moeglich = Pages::elternMoeglich($id); ?>
+          <div class="feld"><label class="feld__label" for="s-eltern">Untergeordnet</label>
+            <select id="s-eltern" name="parent_id">
+              <option value="0">— oberste Ebene —</option>
+              <?php foreach ($moeglich as $m): ?>
+                <option value="<?= (int) $m['id'] ?>"<?= (int) $seite['parent_id'] === (int) $m['id'] ? ' selected' : '' ?>>
+                  <?= str_repeat('— ', (int) $m['tiefe']) ?><?= Util::h((string) $m['titel']) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <div class="feld__hinweis">
+              <?php if ($moeglich === []): ?>
+                Diese Seite hat selbst schon Unterseiten über
+                <?= Pages::MAX_TIEFE ?> Ebenen – tiefer geht es nicht.
+              <?php else: ?>
+                Im Menü steht sie dann im Klappmenü dieser Seite.
+                Bis zu <?= Pages::MAX_TIEFE ?> Ebenen; die Adresse bleibt
+                <code>/<?= Util::h((string) $seite['slug']) ?></code>.
+              <?php endif; ?></div></div>
+          <?php endif; ?>
           <label class="haken mb-4">
             <input type="checkbox" name="im_menue" value="1"<?= (int) $seite['im_menue'] === 1 ? ' checked' : '' ?>>
-            <span class="haken__text">Im Menü zeigen</span>
+            <span class="haken__text">Im Menü zeigen
+              <span class="haken__hinweis">Aus heißt: erreichbar, aber nicht in der Navigation.
+                Unterseiten einer ausgeblendeten Seite rücken im Menü eine Ebene hoch.</span></span>
           </label>
 
           <hr>

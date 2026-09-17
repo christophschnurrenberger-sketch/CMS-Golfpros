@@ -193,14 +193,89 @@
 .seite .kopf__zusatz { font-family: var(--hand); font-size: 20px; color: var(--marke); margin-left: 3px; }
 .seite .kopf__marke img { max-height: 44px; width: auto; }
 
-.seite .kopf__navi { display: flex; gap: clamp(12px, 1.6vw, 24px); flex-wrap: wrap; padding-top: 8px; }
+.seite .kopf__navi { padding-top: 8px; }
+.seite .navi { list-style: none; margin: 0; padding: 0; }
+.seite .navi--0 { display: flex; gap: clamp(12px, 1.6vw, 24px); flex-wrap: wrap; }
+.seite .navi__punkt { position: relative; }
 .seite .kopf__link {
+  display: inline-block;
   font-size: 16px; font-weight: 500; color: var(--text);
   padding: 0 0 4px; border-bottom: 2px solid transparent;
   transition: color .16s, border-color .16s;
 }
 .seite .kopf__link:hover { color: var(--marke); border-bottom-color: var(--rand); }
 .seite .kopf__link.ist-aktiv { color: var(--marke); border-bottom-color: var(--marke); }
+/* Der ganze Weg zur offenen Seite ist markiert, nicht nur ihr Endpunkt –
+   sonst sieht man einer Unterseite nicht an, wo sie herkommt. */
+.seite .navi--0 > .ist-pfad > .kopf__link { color: var(--marke); }
+
+/* Ein Zweig bekommt ein kleines Dreieck. Rein aus CSS, damit im Menü kein
+   Bild und kein Symbolsatz hängt. */
+.seite .navi__pfeil {
+  display: inline-block; width: 0; height: 0; margin-left: 6px;
+  vertical-align: middle;
+  border: 4px solid transparent; border-top-color: currentColor;
+  opacity: .5; transition: transform .16s, opacity .16s;
+}
+.seite .navi__punkt--zweig:hover > .navi__pfeil,
+.seite .navi__punkt--zweig:focus-within > .navi__pfeil { opacity: 1; }
+
+/*
+ * Die Klappmenüs.
+ *
+ * Ohne JavaScript: :hover für die Maus, :focus-within für die Tastatur.
+ * Beides zusammen deckt jede Bedienung am Schreibtisch ab; auf dem Telefon
+ * greift weiter unten eine andere Regel.
+ *
+ * Die zweite Ebene klappt nach unten auf, die dritte zur Seite – ein
+ * weiteres Menü unter dem Menü wäre auf keinem Bildschirm mehr zu treffen.
+ */
+.seite .navi--1, .seite .navi--2 {
+  position: absolute; z-index: 60; min-width: 210px;
+  display: none;
+  padding: 8px; margin: 0;
+  background: var(--grund);
+  border: 1px solid var(--rand); border-radius: var(--ecke);
+  box-shadow: 0 18px 44px rgba(23, 39, 28, .16);
+}
+.seite .navi--1 { top: 100%; left: -10px; padding-top: 10px; }
+.seite .navi--2 { top: -9px; left: 100%; margin-left: 4px; }
+.seite .navi__punkt:hover > .navi--1,
+.seite .navi__punkt:focus-within > .navi--1,
+.seite .navi__punkt:hover > .navi--2,
+.seite .navi__punkt:focus-within > .navi--2 { display: block; }
+
+/*
+ * Zwischen Hauptpunkt und Klappmenü liegt ein Spalt, in dem der Zeiger die
+ * Maus verliert. Diese unsichtbare Brücke schließt ihn – sonst klappt das
+ * Menü auf dem Weg nach unten zu.
+ */
+.seite .navi__punkt--zweig::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 12px;
+}
+
+.seite .navi--1 .kopf__link, .seite .navi--2 .kopf__link {
+  display: block; padding: 7px 10px; border-bottom: 0; border-radius: 7px;
+  font-size: 15px; white-space: nowrap;
+}
+.seite .navi--1 .navi__punkt--zweig > .kopf__link,
+.seite .navi--2 .navi__punkt--zweig > .kopf__link { padding-right: 26px; }
+.seite .navi--1 .kopf__link:hover, .seite .navi--2 .kopf__link:hover {
+  background: var(--flaeche); color: var(--marke);
+}
+.seite .navi--1 .kopf__link.ist-aktiv, .seite .navi--2 .kopf__link.ist-aktiv {
+  background: var(--flaeche);
+}
+/*
+ * Im Klappmenü zeigt das Dreieck nach rechts – dorthin geht die nächste
+ * Ebene. Absolut gesetzt und nicht gefloatet: Ein Float fällt aus dem
+ * Fluss und landet am unteren Rand des ganzen Menüs statt neben seinem
+ * eigenen Eintrag.
+ */
+.seite .navi--1 .navi__pfeil, .seite .navi--2 .navi__pfeil {
+  position: absolute; right: 10px; top: 50%;
+  margin: 0; transform: translateY(-50%) rotate(-90deg);
+}
 
 .seite .kopf__ruf {
   margin: 0; font-family: var(--hand); font-size: 23px; color: var(--marke);
@@ -212,16 +287,57 @@
 }
 
 @media (max-width: 900px) {
-  .seite .kopf__navi {
-    display: none; order: 3; width: 100%;
-    flex-direction: column; gap: 0; padding-top: 10px;
-  }
-  .seite .kopf__navi.ist-offen { display: flex; }
-  .seite .kopf__link { padding: 12px 0; border-bottom: 1px solid var(--rand); }
+  .seite .kopf__navi { display: none; order: 3; width: 100%; padding-top: 10px; }
+  .seite .kopf__navi.ist-offen { display: block; }
+  .seite .navi--0 { display: block; }
+  .seite .kopf__link { display: block; padding: 12px 0; border-bottom: 1px solid var(--rand); }
   .seite .kopf__link.ist-aktiv { border-bottom-color: var(--marke); }
   .seite .kopf__menue { display: block; }
   .seite .kopf__ruf { display: none; }
+
+  /*
+   * Auf dem Telefon gibt es kein Überfahren mit der Maus. Deshalb stehen
+   * die Unterpunkte hier offen da – eingerückt, damit man die Ebene sieht.
+   * Erst site.js klappt sie zu und hängt einen Knopf daneben; ohne
+   * JavaScript bleibt alles erreichbar, nur länger.
+   */
+  .seite .navi--1, .seite .navi--2 {
+    position: static; display: block; min-width: 0;
+    padding: 0 0 0 16px; margin: 0;
+    background: none; border: 0; border-radius: 0; box-shadow: none;
+  }
+  .seite .navi--1 .kopf__link, .seite .navi--2 .kopf__link {
+    padding: 11px 0; border-radius: 0; border-bottom: 1px solid var(--rand);
+    white-space: normal;
+  }
+  .seite .navi--1 .kopf__link:hover, .seite .navi--2 .kopf__link:hover { background: none; }
+  .seite .navi__punkt--zweig::after { content: none; }
+  .seite .navi__pfeil, .seite .navi--1 .navi__pfeil { display: none; }
+
+  /* Mit Skript: zugeklappt, bis der Knopf daneben es öffnet. */
+  .seite .kopf__navi.ist-klappbar .navi__punkt--zweig > .navi--1,
+  .seite .kopf__navi.ist-klappbar .navi__punkt--zweig > .navi--2 { display: none; }
+  .seite .kopf__navi.ist-klappbar .navi__punkt--zweig.ist-offen > .navi--1,
+  .seite .kopf__navi.ist-klappbar .navi__punkt--zweig.ist-offen > .navi--2 { display: block; }
+  .seite .kopf__navi.ist-klappbar .navi__punkt--zweig > .kopf__link { padding-right: 46px; }
+  .seite .navi__klapp {
+    position: absolute; right: 0; top: 4px;
+    width: 38px; height: 38px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: 0; cursor: pointer; color: var(--text-3);
+  }
+  .seite .navi__klapp svg { transition: transform .16s; }
+  .seite .navi__punkt.ist-offen > .navi__klapp svg { transform: rotate(180deg); }
 }
+
+/* Ohne Klappknopf gibt es auch keinen Platzhalter dafür. */
+.seite .navi__klapp { display: none; }
+@media (max-width: 900px) {
+  .seite .kopf__navi.ist-klappbar .navi__klapp { display: flex; }
+}
+
+.seite .fuss-band__unterpunkt { padding-left: 12px; opacity: .85; }
+.seite .fuss-band__unterpunkt--tief { padding-left: 24px; opacity: .72; }
 
 /* ------------------------------------------------------------ Knöpfe -- */
 

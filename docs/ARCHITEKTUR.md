@@ -302,6 +302,46 @@ bliebe sie beim nächsten Öffnen doppelt liegen.
 Kennt der Browser `showModal()` nicht, bleibt es beim Auf- und Zuklappen
 unter dem Gitter. Lieber die ältere Fassung als gar keine Uhrzeiten.
 
+## Die Seiten sind ein Baum
+
+Jede Seite kennt ihre übergeordnete (`pages.parent_id`, 0 für die oberste
+Ebene). Daraus entsteht die Navigation: Hauptpunkte nebeneinander,
+Unterpunkte im Klappmenü darunter, drei Ebenen tief. Was tiefer läge, findet
+auf dem Telefon niemand mehr – wer mehr braucht, baut eine Übersichtsseite
+mit Kacheln.
+
+**Die Reihenfolge gilt innerhalb einer Ebene.** Zwei Seiten mit derselben
+`position` unter verschiedenen Eltern stören einander nicht, und ein
+Einrücken muss nicht die halbe Website umnummerieren.
+
+**Die Adresse bleibt flach.** Eine Unterseite heißt weiter `/platzreife`,
+nicht `/kurse/platzreife`. Verschachtelte Adressen wären schöner, würden
+aber jede veröffentlichte Adresse ändern, sobald jemand eine Seite
+einrückt – und damit jeden Link, der von außen darauf zeigt. Der Baum
+ordnet die Navigation, nicht die Adressen.
+
+**Die Startseite steht nicht im Baum.** Sie ist die Marke oben links, kein
+Menüpunkt, und bekommt deshalb auch keine Unterseiten.
+
+Drei Fälle, die jede Baumdarstellung früher oder später trifft, und die
+hier beantwortet sind, statt zu einer leeren Seite zu führen:
+
+* **Ringe.** `einordnen()` lehnt ab, was unter sich selbst hinge. Geprüft
+  wird gegen `nachkommen()`, nicht nur gegen den direkten Elternteil.
+* **Ein Hauptpunkt fällt weg** – gelöscht, ausgeblendet oder zurück auf
+  Entwurf gesetzt. Seine Unterseiten rücken eine Ebene hoch, statt zu
+  verschwinden. Mitzulöschen wäre die überraschendere Variante: Wer
+  „Kurse" entfernt, meint selten, dass „Platzreife" mit verschwindet.
+* **Ein ganzer Ast zieht um.** Ob er hineinpasst, entscheidet nicht seine
+  eigene Tiefe, sondern seine Höhe: Ein zweistufiger Ast passt nur dort
+  hinein, wo darunter noch zwei Ebenen frei sind.
+
+Das Menü selbst kommt ohne JavaScript aus: `:hover` für die Maus,
+`:focus-within` für die Tastatur. Auf dem Telefon gibt es kein Überfahren –
+dort stehen die Unterpunkte im HTML offen da, und erst `site.js` klappt sie
+zu und hängt die Knöpfe dazu. Wer kein JavaScript hat, sieht also mehr als
+nötig, nie weniger.
+
 ## Die Schnittstelle liefert, sie verschickt nicht
 
 `api.php` und `lib/Api.php` geben die Newsletter-Empfänger als JSON heraus.

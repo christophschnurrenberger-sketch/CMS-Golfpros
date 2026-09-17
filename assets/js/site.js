@@ -15,6 +15,49 @@
   });
 
   /*
+   * Das Menü auf dem Telefon.
+   *
+   * Am Schreibtisch klappen die Unterpunkte per :hover und :focus-within
+   * auf – dafür braucht es kein Skript. Auf dem Telefon gibt es kein
+   * Überfahren mit der Maus; dort stehen sie im HTML offen da, und erst
+   * hier bekommen sie einen Knopf und werden zugeklappt.
+   *
+   * Die Klasse setzt also das Skript, nicht das HTML: Ohne JavaScript
+   * sieht man mehr als nötig, nie weniger als nötig.
+   */
+  (function () {
+    var navi = document.querySelector('.kopf__navi');
+    if (!navi) return;
+    var zweige = navi.querySelectorAll('.navi__punkt--zweig');
+    if (!zweige.length) return;
+
+    navi.classList.add('ist-klappbar');
+    Array.prototype.forEach.call(zweige, function (punkt) {
+      var link = punkt.querySelector(':scope > .kopf__link');
+      var knopf = document.createElement('button');
+      knopf.type = 'button';
+      knopf.className = 'navi__klapp';
+      knopf.setAttribute('aria-expanded', 'false');
+      knopf.setAttribute('aria-label', 'Untermenü zu ' + (link ? link.textContent.trim() : 'diesem Punkt'));
+      knopf.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" '
+                      + 'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+                      + 'stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+      knopf.addEventListener('click', function () {
+        var offen = punkt.classList.toggle('ist-offen');
+        knopf.setAttribute('aria-expanded', offen ? 'true' : 'false');
+      });
+      punkt.insertBefore(knopf, punkt.querySelector(':scope > .navi__pfeil'));
+
+      /* Der Zweig, auf dem die offene Seite liegt, startet aufgeklappt –
+         sonst sucht man seinen eigenen Standort im zugeklappten Menü. */
+      if (punkt.classList.contains('ist-pfad')) {
+        punkt.classList.add('ist-offen');
+        knopf.setAttribute('aria-expanded', 'true');
+      }
+    });
+  })();
+
+  /*
    * Fragen und Antworten.
    *
    * Ohne JavaScript stehen alle Antworten offen da – das ist nicht nur

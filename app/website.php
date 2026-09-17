@@ -9,7 +9,23 @@ if (App::istPost()) {
     Auth::csrfFordern();
     Auth::fordern('website.write');
 
-    if (App::aktion() === 'ki_website') {
+    $aktion = App::aktion();
+    $seiteId = App::postInt('seite_id');
+
+    if (in_array($aktion, ['hoch', 'runter', 'einruecken', 'ausruecken'], true) && $seiteId > 0) {
+        [$ok, $grund] = match ($aktion) {
+            'hoch'       => [Pages::schieben($seiteId, -1), 'Weiter nach oben geht es nicht.'],
+            'runter'     => [Pages::schieben($seiteId, 1), 'Weiter nach unten geht es nicht.'],
+            'einruecken' => Pages::einruecken($seiteId),
+            'ausruecken' => Pages::ausruecken($seiteId),
+        };
+        if (!$ok) {
+            App::melden($grund, 'warnung');
+        }
+        App::weiter('/app/website.php#seite-' . $seiteId);
+    }
+
+    if ($aktion === 'ki_website') {
         $entwurf = KI::websiteEntwurf(App::post('beschreibung'), Tenant::name());
         $start = Pages::startseite();
         if ($start) {
@@ -34,7 +50,14 @@ if (App::istPost()) {
 
 $seiten = Pages::alle();
 $landingpages = array_values(array_filter($seiten, static fn($s) => (string) $s['art'] === 'landingpage'));
-$normale = array_values(array_filter($seiten, static fn($s) => (string) $s['art'] !== 'landingpage'));
+/*
+ * Die normalen Seiten stehen als Baum da: in Baumreihenfolge, jede mit
+ * ihrer Tiefe. Landingpages bleiben draußen – die hängen an einer Kampagne
+ * und nicht im Menü, und ein Baum mit einem Ast, der nirgendwohin führt,
+ * verwirrt mehr, als er ordnet.
+ */
+$normale = Pages::flach(array_values(array_filter($seiten,
+    static fn($s) => (string) $s['art'] !== 'landingpage')));
 $veroeffentlicht = count(array_filter($seiten, static fn($s) => (string) $s['status'] === 'veroeffentlicht'));
 $seoWert = SEO::pruefen();
 $besucher30 = Analytics::besucher(date('Y-m-d', strtotime('-29 days')), Util::heute());
@@ -80,28 +103,80 @@ require __DIR__ . '/partials/kopf.php';
   <div class="stapel">
     <div class="karte">
       <div class="karte__kopf"><h2>Seiten</h2>
-        <span class="pille"><?= count($normale) ?></span></div>
+        <span class="pille"><?= count($normale) ?></span>
+        <div class="fueller"></div>
+        <span class="klein gedimmt nicht-mobil">Die Einrückung ist die Navigation</span>
+      </div>
       <div class="tabelle-huelle">
         <table class="tabelle tabelle--klickbar">
           <thead><tr><th>Seite</th><th class="nicht-mobil">Adresse</th>
-            <th class="zahl nicht-mobil">Aufrufe</th><th>Status</th><th></th></tr></thead>
+            <th class="zahl nicht-mobil">Aufrufe</th><th>Status</th>
+            <?php if (Auth::darf('website.write')): ?><th class="nicht-mobil">Ordnen</th><?php endif; ?>
+            <th></th></tr></thead>
           <tbody>
-          <?php foreach ($normale as $s):
-            $url = App::url('/app/seite.php?id=' . (int) $s['id']); ?>
-            <tr onclick="location.href='<?= Util::attr($url) ?>'">
+          <?php
+            $darf = Auth::darf('website.write');
+            /* Für „hoch/runter": Wer ist der erste und wer der letzte unter
+               seinen Geschwistern? Sonst bieten wir Knöpfe an, die nichts tun. */
+            $geschwister = [];
+            foreach ($normale as $s) { $geschwister[(int) $s['parent_id']][] = (int) $s['id']; }
+          ?>
+          <?php foreach ($normale as $i => $s):
+            $url   = App::url('/app/seite.php?id=' . (int) $s['id']);
+            $tiefe = (int) ($s['tiefe'] ?? 0);
+            $reihe = $geschwister[(int) $s['parent_id']] ?? [];
+            $platz = array_search((int) $s['id'], $reihe, true);
+            $start = (int) $s['startseite'] === 1;
+            $kinder = count(array_filter($normale,
+                static fn($k) => (int) $k['parent_id'] === (int) $s['id'])); ?>
+            <tr id="seite-<?= (int) $s['id'] ?>" onclick="location.href='<?= Util::attr($url) ?>'">
               <td>
-                <span class="haupt"><?= Util::h((string) $s['titel']) ?></span>
-                <?php if ((int) $s['startseite'] === 1): ?>
-                  <?= pille('Startseite', 'marke') ?>
-                <?php endif; ?>
-                <div class="winzig gedimmt-2">
-                  <?= count(Pages::bloecke($s)) ?> Bausteine ·
-                  geändert <?= Util::h(Util::relativ((string) $s['geaendert'])) ?></div>
+                <span class="baumzeile" style="--tiefe:<?= $tiefe ?>">
+                  <?php if ($tiefe > 0): ?><span class="baumzeile__ast" aria-hidden="true"></span><?php endif; ?>
+                  <span class="haupt"><?= Util::h((string) $s['titel']) ?></span>
+                  <?php if ($start): ?><?= pille('Startseite', 'marke') ?><?php endif; ?>
+                  <?php if ((int) $s['im_menue'] === 0 && !$start): ?>
+                    <?= pille('nicht im Menü', '') ?>
+                  <?php endif; ?>
+                </span>
+                <div class="winzig gedimmt-2 baumzeile__unter" style="--tiefe:<?= $tiefe ?>">
+                  <?= count(Pages::bloecke($s)) ?> Bausteine
+                  <?php if ($kinder > 0): ?>
+                    · <?= $kinder ?> <?= $kinder === 1 ? 'Unterseite' : 'Unterseiten' ?>
+                  <?php endif; ?>
+                  · geändert <?= Util::h(Util::relativ((string) $s['geaendert'])) ?></div>
               </td>
               <td class="nicht-mobil mono gedimmt">/<?= Util::h((string) $s['slug']) ?></td>
               <td class="zahl nicht-mobil tabnum"><?= Util::zahl((int) $s['aufrufe']) ?></td>
               <td><?= pille((string) $s['status'] === 'veroeffentlicht' ? 'Live' : 'Entwurf',
                     (string) $s['status'] === 'veroeffentlicht' ? 'erfolg' : '') ?></td>
+              <?php if ($darf): ?>
+              <td class="nicht-mobil aktionen" onclick="event.stopPropagation()">
+                <?php
+                  /* Die Startseite ist die Marke oben links und steht nicht
+                     im Baum – bei ihr führen diese Knöpfe zu nichts. */
+                  $knoepfe = $start ? [] : [
+                    ['hoch', 'chevron-up', 'Nach oben', $platz !== false && $platz > 0],
+                    ['runter', 'chevron-down', 'Nach unten', $platz !== false && $platz < count($reihe) - 1],
+                    ['einruecken', 'chevron-right', 'Eine Ebene tiefer', $platz !== false && $platz > 0],
+                    ['ausruecken', 'chevron-left', 'Eine Ebene höher', $tiefe > 0],
+                  ];
+                  foreach ($knoepfe as [$aktion, $icon, $label, $moeglich]):
+                    if (!$moeglich): ?>
+                      <span class="btn btn--klein" aria-hidden="true"
+                            style="opacity:.25;pointer-events:none"><?= Icon::svg($icon, 14) ?></span>
+                    <?php continue; endif; ?>
+                  <form method="post" style="display:inline">
+                    <?= Auth::csrfFeld() ?>
+                    <input type="hidden" name="aktion" value="<?= Util::attr($aktion) ?>">
+                    <input type="hidden" name="seite_id" value="<?= (int) $s['id'] ?>">
+                    <button class="btn btn--klein" type="submit"
+                            title="<?= Util::attr($label) ?>" aria-label="<?= Util::attr($label . ': ' . $s['titel']) ?>">
+                      <?= Icon::svg($icon, 14) ?></button>
+                  </form>
+                <?php endforeach; ?>
+              </td>
+              <?php endif; ?>
               <td class="aktionen">
                 <a class="btn btn--klein" target="_blank" rel="noopener" onclick="event.stopPropagation()"
                    href="<?= Util::attr(Pages::url($s)) ?>" aria-label="Ansehen">
@@ -110,11 +185,20 @@ require __DIR__ . '/partials/kopf.php';
             </tr>
           <?php endforeach; ?>
           <?php if ($normale === []): ?>
-            <tr class="tabelle-leer"><td colspan="5">Noch keine Seite angelegt.</td></tr>
+            <tr class="tabelle-leer"><td colspan="6">Noch keine Seite angelegt.</td></tr>
           <?php endif; ?>
           </tbody>
         </table>
       </div>
+      <?php if ($darf && count($normale) > 1): ?>
+      <div class="karte__fuss">
+        <div class="klein gedimmt">
+          <?= Icon::svg('info', 14) ?>
+          Einrücken macht eine Seite zur Unterseite der Zeile darüber – daraus wird
+          im Menü ein Klappmenü. Bis zu <?= Pages::MAX_TIEFE ?> Ebenen.
+        </div>
+      </div>
+      <?php endif; ?>
     </div>
 
     <div class="karte">
