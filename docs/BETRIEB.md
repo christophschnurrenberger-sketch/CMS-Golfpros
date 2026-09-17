@@ -193,6 +193,31 @@ noch SMS noch WhatsApp. Dessen Kunden haben erfundene Adressen und Nummern;
 ein paar hundert Rückläufer würden den Ruf der Absenderdomain für die
 echten Kunden ruinieren.
 
+## Empfänger an ein eigenes Newslettersystem
+
+Unter *Einstellungen → Schnittstelle* wird ein Schlüssel erzeugt. Damit holt
+sich ein angeschlossenes System – etwa Acumen Mail – die Empfänger selbst ab:
+
+```
+GET /api.php?was=empfaenger
+Authorization: Bearer gp_2_…
+```
+
+Der Schlüssel steht genau einmal im Klartext auf dem Bildschirm; gespeichert
+wird nur sein Abdruck. Geht er verloren, wird ein neuer erzeugt – der alte
+gilt dann nicht mehr. Ein Schlüssel gilt für einen Workspace.
+
+Zwei Listen gehören zusammen: `empfaenger` liefert, wer eingewilligt hat,
+`abmeldungen` liefert, wer widerrufen hat. Wer nur die erste abruft, trägt
+Abgemeldete drüben nie aus.
+
+Die vollständige Beschreibung steht in [API.md](API.md) – die Datei ist zum
+Weitergeben an den gedacht, der die Verbindung einrichtet.
+
+Kommt dort immer „kein_schluessel" an, verschluckt der Server die Kopfzeile
+`Authorization`, bevor PHP sie sieht. Die `.htaccess` reicht sie durch; wer
+nginx einsetzt, überträgt die beiden Zeilen sinngemäß.
+
 ## KI-Funktionen
 
 In `config.php` unter `ai` den Schlüssel eintragen. Ohne Schlüssel bleiben

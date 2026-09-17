@@ -58,6 +58,24 @@ if (App::istPost()) {
         App::melden('Erinnerungen gespeichert.'
             . ($geplant > 0 ? ' ' . $geplant . ' Erinnerungen für kommende Termine neu geplant.' : ''));
     }
+    if ($aktion === 'api_schluessel') {
+        /*
+         * Der Schlüssel steht genau einmal auf dem Bildschirm. Gespeichert
+         * ist nur sein Abdruck – wer ihn verliert, erzeugt einen neuen,
+         * statt ihn irgendwo nachzuschlagen.
+         */
+        Auth::start();
+        $_SESSION['gp_api_schluessel'] = Api::schluesselErzeugen();
+        App::melden('Neuer Schlüssel erzeugt. Er steht nur jetzt im Klartext da.');
+        App::weiter('/app/einstellungen.php#schnittstelle');
+    }
+
+    if ($aktion === 'api_widerrufen') {
+        Api::schluesselWiderrufen();
+        App::melden('Der Schlüssel gilt nicht mehr. Angeschlossene Systeme kommen ab sofort nicht mehr an die Empfänger.');
+        App::weiter('/app/einstellungen.php#schnittstelle');
+    }
+
     App::weiter('/app/einstellungen.php');
 }
 
@@ -92,6 +110,7 @@ require __DIR__ . '/partials/kopf.php';
   <button class="reiter__teil" data-reiter="buchung">Buchung</button>
   <button class="reiter__teil" data-reiter="erinnerungen">Erinnerungen</button>
   <button class="reiter__teil" data-reiter="zahlungen">Zahlungen &amp; KI</button>
+  <button class="reiter__teil" data-reiter="schnittstelle">Schnittstelle</button>
 </div>
 
 <div data-reiter-feld="allgemein" data-reiter-gruppe="e">
@@ -358,6 +377,137 @@ require __DIR__ . '/partials/kopf.php';
           15 Minuten. Wer einen Cronjob einrichten kann, ruft in diesem Takt
           <code>cron.php</code> auf – dann kommen die Erinnerungen pünktlich, auch wenn niemand
           im Backend arbeitet.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div data-reiter-feld="schnittstelle" data-reiter-gruppe="e" class="versteckt" id="schnittstelle">
+  <?php
+    Auth::start();
+    $neuerSchluessel = (string) ($_SESSION['gp_api_schluessel'] ?? '');
+    unset($_SESSION['gp_api_schluessel']);
+    $steht = Api::schluesselVorhanden();
+  ?>
+  <div class="raster raster--2" style="align-items:start">
+    <div class="stapel">
+      <div class="karte">
+        <div class="karte__kopf"><h3>Empfänger für das Newslettersystem</h3>
+          <div class="fueller"></div>
+          <?= pille($steht ? 'eingerichtet' : 'kein Schlüssel', $steht ? 'erfolg' : '') ?>
+        </div>
+        <div class="karte__koerper">
+          <p class="klein">Ein angeschlossenes Newslettersystem – etwa Acumen Mail – holt sich die
+            Empfänger selbst ab, so oft es mag. Übertragen wird, wer den Newsletter-Haken gesetzt
+            hat und aktiv ist; wer widerrufen hat, steht in einer zweiten Liste, damit er dort
+            ausgetragen werden kann.</p>
+
+          <?php if ($neuerSchluessel !== ''): ?>
+            <div class="hinweis hinweis--warnung mt-4">
+              <?= Icon::svg('lock', 17) ?>
+              <div class="hinweis__text">
+                <strong>Jetzt kopieren – danach ist er nicht mehr lesbar.</strong>
+                <div class="eingabe-gruppe mt-3">
+                  <input class="eingabe" id="api-schluessel" readonly
+                         value="<?= Util::attr($neuerSchluessel) ?>"
+                         onfocus="this.select()" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace">
+                  <button class="btn" type="button"
+                          data-kopieren="<?= Util::attr($neuerSchluessel) ?>">
+                    <?= Icon::svg('copy', 15) ?> Kopieren</button>
+                </div>
+                <div class="klein gedimmt mt-2">Gespeichert wird nur ein Abdruck. Geht der
+                  Schlüssel verloren, erzeugst du hier einen neuen – der alte gilt dann nicht mehr.</div>
+              </div>
+            </div>
+          <?php endif; ?>
+
+          <?php if ($steht): ?>
+            <div class="stapel stapel--eng mt-4">
+              <?php foreach ([
+                ['Schlüssel', Api::schluesselKurz()],
+                ['Erzeugt am', Api::schluesselErstellt() !== '' ? Util::datumZeit(Api::schluesselErstellt()) : '—'],
+                ['Zuletzt abgeholt', Api::letzterZugriff() !== '' ? Util::relativ(Api::letzterZugriff()) : 'noch nie'],
+                ['Empfänger', (string) Tenant::count('customers', 'newsletter = 1 AND email != "" AND status = "aktiv"')],
+                ['Abmeldungen', (string) Tenant::count('customers', 'email != "" AND (newsletter = 0 OR status != "aktiv")')],
+              ] as [$label, $wert]): ?>
+                <div class="reihe" style="font-size:13px">
+                  <span class="gedimmt"><?= Util::h($label) ?></span>
+                  <div class="fueller"></div>
+                  <span class="halbfett" style="text-align:right"><?= Util::h((string) $wert) ?></span>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php else: ?>
+            <p class="klein gedimmt mt-4">Ohne Schlüssel kommt niemand an die Empfänger – die
+              Schnittstelle antwortet auf jede Anfrage mit „nicht angemeldet".</p>
+          <?php endif; ?>
+        </div>
+        <div class="karte__fuss">
+          <?php if ($steht): ?>
+            <form method="post" data-bestaetigen="Den Schlüssel widerrufen? Angeschlossene Systeme kommen danach nicht mehr an die Empfänger.">
+              <?= Auth::csrfFeld() ?>
+              <input type="hidden" name="aktion" value="api_widerrufen">
+              <button class="btn" type="submit" style="color:var(--gefahr)">Widerrufen</button>
+            </form>
+          <?php endif; ?>
+          <div class="fueller"></div>
+          <form method="post"<?= $steht ? ' data-bestaetigen="Einen neuen Schlüssel erzeugen? Der bisherige gilt dann nicht mehr."' : '' ?>>
+            <?= Auth::csrfFeld() ?>
+            <input type="hidden" name="aktion" value="api_schluessel">
+            <button class="btn btn--primaer" type="submit">
+              <?= Icon::svg('refresh', 15) ?> <?= $steht ? 'Neuen Schlüssel erzeugen' : 'Schlüssel erzeugen' ?></button>
+          </form>
+        </div>
+      </div>
+
+      <div class="hinweis hinweis--still">
+        <?= Icon::svg('shield', 17) ?>
+        <div class="hinweis__text klein">Übertragen werden Name, E-Mail, Ort, Land, Handicap,
+          Heimatclub, Etiketten und der Stand der Einwilligung – alles, woraus sich Empfängergruppen
+          bilden lassen. Straße, Telefonnummer, Notizen, Umsätze und Termine bleiben hier.</div>
+      </div>
+    </div>
+
+    <div class="karte">
+      <div class="karte__kopf"><h3>Adressen</h3></div>
+      <div class="karte__koerper">
+        <p class="klein">Diese drei Adressen bekommt, wer die Verbindung einrichtet. Die
+          vollständige Beschreibung steht in <code>docs/API.md</code>.</p>
+        <div class="stapel stapel--eng mt-3">
+          <?php foreach ([
+            ['Selbsttest', 'auskunft', 'Stimmt der Schlüssel? Wie viele sind es? – ohne einen einzigen Datensatz.'],
+            ['Empfänger', 'empfaenger', 'Alle mit Einwilligung, seitenweise.'],
+            ['Abmeldungen', 'abmeldungen', 'Wer nicht mehr einwilligt – dort austragen.'],
+          ] as [$name, $was, $text]): ?>
+            <div style="padding:8px 4px">
+              <div class="reihe">
+                <span class="halbfett"><?= Util::h($name) ?></span>
+                <div class="fueller"></div>
+                <button class="btn btn--klein" type="button"
+                        data-kopieren="<?= Util::attr(Api::url($was)) ?>">
+                  <?= Icon::svg('copy', 14) ?></button>
+              </div>
+              <code class="klein" style="display:block;word-break:break-all;color:var(--text-3)"><?= Util::h(Api::url($was)) ?></code>
+              <div class="klein gedimmt"><?= Util::h($text) ?></div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+
+        <div class="feld mt-4">
+          <span class="feld__label">Anmeldung</span>
+          <code class="klein" style="display:block;word-break:break-all">Authorization: Bearer <?= Util::h($steht ? Api::schluesselKurz() : 'gp_…') ?></code>
+          <div class="feld__hinweis">Wer keine eigenen Kopfzeilen setzen kann, hängt
+            <code>&amp;schluessel=…</code> an die Adresse. Das steht dann allerdings in jedem
+            Serverprotokoll – die Kopfzeile ist der bessere Weg.</div>
+        </div>
+
+        <div class="feld">
+          <span class="feld__label">Nur das Neue holen</span>
+          <code class="klein" style="display:block;word-break:break-all"><?= Util::h(Api::url('empfaenger', ['seit' => '2026-01-01T00:00:00Z'])) ?></code>
+          <div class="feld__hinweis">Jede Antwort nennt oben ihren <code>stand</code>. Wer den
+            aufbewahrt und beim nächsten Mal als <code>seit</code> mitschickt, bekommt nur, was
+            sich seitdem geändert hat.</div>
+        </div>
       </div>
     </div>
   </div>

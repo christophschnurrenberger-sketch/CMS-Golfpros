@@ -49,8 +49,10 @@ final class Schema
      *   4  trips und trip_signups - das Reisemodul
      *   5  reminders und bookings.erinnerungen - Terminerinnerungen mit
      *      frei gewaehltem Vorlauf ueber E-Mail, SMS und WhatsApp
+     *   6  customers.geaendert - Zeitpunkt der letzten Aenderung, damit
+     *      die Schnittstelle nur Neues ausliefern kann
      */
-    public const VERSION = 5;
+    public const VERSION = 6;
 
     public static function migrate(): void
     {
@@ -108,6 +110,24 @@ final class Schema
         /* Seit den Terminerinnerungen: Vorlauf und Kanäle je Termin. */
         self::spalteSicherstellen('bookings', 'erinnerungen', '%TEXT%');
         self::erinnerungenNachruesten();
+
+        /*
+         * Seit der Newsletter-Schnittstelle: Wann wurde dieser Kunde
+         * zuletzt geändert?
+         *
+         * Ohne diesen Zeitpunkt kann ein angeschlossenes System nur immer
+         * wieder alles holen. Für bestehende Datensätze gilt zunächst der
+         * Zeitpunkt der Anlage – das ist die einzige belastbare Aussage,
+         * die sich nachträglich treffen lässt, und sie sorgt dafür, dass
+         * der erste Abgleich alle mitnimmt.
+         */
+        self::spalteSicherstellen('customers', 'geaendert', '%DT%');
+        try {
+            DB::pdo()->exec("UPDATE customers SET geaendert = erstellt"
+                . " WHERE geaendert IS NULL OR geaendert = ''");
+        } catch (Throwable $e) {
+            Audit::schreiben('wartung_fehler', 'system', 0, 'geaendert nachtragen: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -450,6 +470,7 @@ final class Schema
                 portal_passwort %STR(255)% NOT NULL DEFAULT "",
                 newsletter %INT% NOT NULL DEFAULT 0,
                 letzte_aktivitaet %DT%,
+                geaendert %DT%,                                -- fuer den Abgleich mit dem Newslettersystem
                 erstellt %DT%
             )%ENGINE%',
 

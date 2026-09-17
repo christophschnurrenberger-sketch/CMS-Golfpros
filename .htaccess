@@ -44,10 +44,23 @@ Options -Indexes
   # Unterordner hier den Pfad eintragen, z. B. RewriteBase /golfpro/
   # RewriteBase /
 
+  # Die Kopfzeile Authorization verschluckt jedes CGI/FastCGI. Ohne diese
+  # Zeile kommt bei api.php kein Schlüssel an, und die Schnittstelle
+  # antwortet auf jede Anfrage mit „es fehlt der Schlüssel".
+  #
+  # Ganz oben, vor der Regel für vorhandene Dateien: Die beendet mit [L]
+  # jede weitere Verarbeitung, und api.php ist eine vorhandene Datei.
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
   # Vorhandene Dateien und Ordner bleiben unangetastet.
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
+
+  # Die Schnittstelle: /api/v1/empfaenger -> api.php?was=empfaenger
+  # Ohne mod_rewrite tut es api.php?was=empfaenger genauso.
+  RewriteRule ^api/v1/([a-z]+)/?$ api.php?was=$1 [QSA,L]
 
   RewriteRule ^blog/([A-Za-z0-9_-]+)/?$ site.php?beitrag=$1 [QSA,L]
   RewriteRule ^blog/?$ site.php?s=blog [QSA,L]

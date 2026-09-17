@@ -99,4 +99,19 @@ require __DIR__ . '/partials/kopf.php';
   </div>
 <?php endif; ?>
 
+<?php if (Auth::darf('settings.allgemein')): ?>
+  <div class="hinweis hinweis--still mt-4">
+    <?= Icon::svg('link', 17) ?>
+    <div class="hinweis__text">
+      <span class="hinweis__titel">Empfänger an ein eigenes Newslettersystem übergeben</span>
+      Unter <a href="<?= Util::attr(App::url('/app/einstellungen.php#schnittstelle')) ?>">Einstellungen
+      → Schnittstelle</a> erzeugst du einen Schlüssel. Damit holt sich ein angeschlossenes System –
+      etwa Acumen Mail – die Empfänger selbst ab, samt Abmeldungen.
+      <?php if (Api::schluesselVorhanden() && Api::letzterZugriff() !== ''): ?>
+        Zuletzt abgeholt <?= Util::h(Util::relativ(Api::letzterZugriff())) ?>.
+      <?php endif; ?>
+    </div>
+  </div>
+<?php endif; ?>
+
 <?php require __DIR__ . '/partials/fuss.php'; ?>

@@ -302,6 +302,36 @@ bliebe sie beim nächsten Öffnen doppelt liegen.
 Kennt der Browser `showModal()` nicht, bleibt es beim Auf- und Zuklappen
 unter dem Gitter. Lieber die ältere Fassung als gar keine Uhrzeiten.
 
+## Die Schnittstelle liefert, sie verschickt nicht
+
+`api.php` und `lib/Api.php` geben die Newsletter-Empfänger als JSON heraus.
+Ein angeschlossenes System holt sie ab, so oft es mag.
+
+Die andere Richtung – GolfPro schiebt die Adressen hinüber – wäre mehr Code
+für dieselbe Wirkung: Sie bräuchte eine Warteschlange, Wiederholungen bei
+einem Ausfall der Gegenstelle und eine Überwachung, die merkt, dass seit
+Dienstag nichts mehr ankommt. Beim Abholen liegt all das dort, wo die Daten
+gebraucht werden.
+
+**Zwei Listen.** `empfaenger` sind die mit Einwilligung, `abmeldungen` die
+mit Adresse und ohne Einwilligung. Ohne die zweite verschwindet ein
+Abgemeldeter einfach aus der ersten, und die Gegenstelle kann nicht
+unterscheiden, ob jemand widerrufen hat oder ob die Seite zu Ende war.
+
+**Der Schlüssel trägt die Nummer des Workspace vorn** (`gp_2_…`).
+Andernfalls müsste die Anmeldung den Abdruck jedes Workspace durchprobieren
+– und genau dort baut später jemand einen Vergleich ein, dessen Laufzeit
+verrät, welcher Schlüssel fast gestimmt hat. Gespeichert wird nur der
+SHA-256-Abdruck; im Klartext steht der Schlüssel einmal auf dem Bildschirm.
+
+**Sortiert wird nach `geaendert`, nicht nach Namen.** Wer Seite für Seite
+abholt, während nebenher jemand einen Kunden anlegt, bekäme sonst
+Datensätze doppelt oder gar nicht. Dafür trägt `customers` seit Fassung 6
+einen Änderungszeitpunkt, den `Tenant::insert()` und `Tenant::update()`
+selbst setzen – zentral, weil eine der dreißig Stellen, die einen Kunden
+ändern, sonst vergessen wird, und dann fehlt genau dieser Kunde im nächsten
+Abgleich.
+
 ## Wer ein Feld bedient, bleibt stehen
 
 An etlichen Stellen lädt ein Auswahlfeld die Seite neu, weil der Server

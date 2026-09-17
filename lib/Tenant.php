@@ -225,7 +225,7 @@ final class Tenant
         if (!array_key_exists('erstellt', $daten) && self::hatSpalte($tabelle, 'erstellt')) {
             $daten['erstellt'] = Util::jetzt();
         }
-        return DB::insert($tabelle, $daten);
+        return DB::insert($tabelle, self::gestempelt($tabelle, $daten));
     }
 
     public static function update(string $tabelle, int $id, array $daten): int
@@ -234,13 +234,54 @@ final class Tenant
         if ($daten === []) {
             return 0;
         }
-        return DB::update($tabelle, $daten, self::wo('id = :pk'), ['pk' => $id]);
+        return DB::update($tabelle, self::gestempelt($tabelle, $daten), self::wo('id = :pk'), ['pk' => $id]);
     }
 
     public static function updateWhere(string $tabelle, array $daten, string $bedingung, array $parameter = []): int
     {
         unset($daten['workspace_id'], $daten['id']);
-        return $daten === [] ? 0 : DB::update($tabelle, $daten, self::wo($bedingung), $parameter);
+        return $daten === []
+            ? 0
+            : DB::update($tabelle, self::gestempelt($tabelle, $daten), self::wo($bedingung), $parameter);
+    }
+
+    /**
+     * Felder, deren Änderung den Datensatz nach außen nicht verändert.
+     *
+     * Der Gesundheitswert wird alle 15 Minuten für 25 Kunden neu gerechnet,
+     * und ein Zugangslink oder ein Aktivitätsstempel sagt über die Person
+     * nichts aus. Würden diese Schreibvorgänge den Änderungszeitpunkt
+     * mitnehmen, meldete die Schnittstelle bei jedem Abgleich dieselben
+     * Leute erneut – und „nur das Neue holen" wäre wertlos.
+     */
+    private const OHNE_STEMPEL = [
+        'health_score', 'letzte_aktivitaet', 'portal_token', 'portal_token_bis',
+    ];
+
+    /**
+     * Setzt `geaendert`, wo die Tabelle die Spalte führt.
+     *
+     * Zentral und nicht an den dreißig Stellen, die einen Kunden ändern:
+     * Eine davon wird vergessen, und dann fehlt genau dieser Kunde im
+     * nächsten Abgleich mit dem Newslettersystem. Ein ausdrücklich
+     * mitgegebener Wert bleibt stehen – einer Datenübernahme muss es
+     * freistehen, einen alten Zeitpunkt zu schreiben.
+     *
+     * @param array<string,mixed> $daten
+     * @return array<string,mixed>
+     */
+    private static function gestempelt(string $tabelle, array $daten): array
+    {
+        if (array_key_exists('geaendert', $daten)) {
+            return $daten;
+        }
+        if (array_diff(array_keys($daten), self::OHNE_STEMPEL) === []) {
+            return $daten;
+        }
+        if (self::hatSpalte($tabelle, 'geaendert')) {
+            $daten['geaendert'] = Util::jetzt();
+        }
+        return $daten;
     }
 
     public static function delete(string $tabelle, int $id): int

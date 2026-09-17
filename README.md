@@ -129,6 +129,8 @@ eigenen Daten anzufassen.
   Fehlersuche
 * [docs/DEPLOY.md](docs/DEPLOY.md) – der automatische Upload auf den
   Webspace: was einzurichten ist und was er nicht anfasst
+* [docs/API.md](docs/API.md) – die Schnittstelle, über die ein
+  Newslettersystem die Empfänger abholt. Zum Weitergeben gedacht
 
 ## Lizenz
 
