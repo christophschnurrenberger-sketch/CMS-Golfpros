@@ -237,15 +237,23 @@
 
   /* ------------------------------------------------- Filter absenden -- */
 
+  /*
+   * Diese Felder laden die Seite neu. Vorher merken sie sich, wo sie im
+   * Bild standen – sonst schaut man nach dem Filtern wieder auf die
+   * Überschrift statt auf die Liste, die man gerade gefiltert hat.
+   * Die Arbeit macht blick.js.
+   */
+  const platzMerken = el => { if (window.Blick) window.Blick.merken(el); };
+
   $$('[data-auto-absenden]').forEach(el => {
-    el.addEventListener('change', () => { el.closest('form').submit(); });
+    el.addEventListener('change', () => { platzMerken(el); el.closest('form').submit(); });
   });
 
   let suchTakt;
   $$('[data-such-absenden]').forEach(el => {
     el.addEventListener('input', () => {
       clearTimeout(suchTakt);
-      suchTakt = setTimeout(() => el.closest('form').submit(), 450);
+      suchTakt = setTimeout(() => { platzMerken(el); el.closest('form').submit(); }, 450);
     });
   });
 

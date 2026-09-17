@@ -302,6 +302,32 @@ bliebe sie beim nächsten Öffnen doppelt liegen.
 Kennt der Browser `showModal()` nicht, bleibt es beim Auf- und Zuklappen
 unter dem Gitter. Lieber die ältere Fassung als gar keine Uhrzeiten.
 
+## Wer ein Feld bedient, bleibt stehen
+
+An etlichen Stellen lädt ein Auswahlfeld die Seite neu, weil der Server
+etwas Neues ausrechnen muss: die freien Zeiten zu einer anderen Leistung,
+eine gefilterte Liste, ein anderer Zeitraum. Technisch ist das ein
+gewöhnlicher Seitenaufruf – und der beginnt im Browser immer oben. Für den,
+der das Feld gerade bedient hat, sieht das aus, als wäre die Seite
+weggesprungen.
+
+`assets/js/blick.js` merkt sich vor dem Neuladen, wie weit das bediente Feld
+unter der Oberkante des Fensters stand, und rückt die Seite danach zurecht.
+Gemerkt wird der Abstand des Feldes, nicht nur die Rollhöhe: Über dem Feld
+kann eine Meldung dazugekommen oder eine Liste kürzer geworden sein, und
+dann wäre dieselbe Rollhöhe der falsche Ort. Lässt sich das Feld nicht
+eindeutig wiederfinden – in einer Liste heißt das Auswahlfeld jeder Zeile
+`status` –, gilt die gemerkte Rollhöhe allein.
+
+Eine eigene Datei, weil beide Oberflächen sie brauchen: die Anwendung
+(`app.js`) und die öffentliche Website (`site.js`). Zwei Kopien desselben
+Dutzends Zeilen laufen früher oder später auseinander.
+
+Angestoßen wird sie ausdrücklich, nicht bei jedem `change`: nur dort, wo ein
+Feld die Seite wirklich neu lädt. Sonst würde ein ausgefülltes Formular nach
+dem Speichern zum zuletzt angefassten Feld rollen, statt die Meldung oben zu
+zeigen.
+
 ## Erinnerungen: der Wunsch am Termin, der Plan in einer Tabelle
 
 Früher hatte ein Termin zwei Spalten – `erinnerung_24` und `erinnerung_1` –

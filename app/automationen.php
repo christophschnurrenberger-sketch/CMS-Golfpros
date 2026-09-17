@@ -73,7 +73,7 @@ require __DIR__ . '/partials/kopf.php';
                 <input type="hidden" name="id" value="<?= (int) $a['id'] ?>">
                 <label class="schalter">
                   <input type="checkbox"<?= $aktiv ? ' checked' : '' ?>
-                         onchange="this.form.submit()">
+                         onchange="if(window.Blick)window.Blick.merken(this);this.form.submit()">
                   <span class="schalter__spur"></span>
                 </label>
               </form>

@@ -349,7 +349,7 @@ require __DIR__ . '/partials/kopf.php';
                     <?= Auth::csrfFeld() ?>
                     <input type="hidden" name="aktion" value="anmeldung_status">
                     <input type="hidden" name="anmeldung_id" value="<?= (int) $a['id'] ?>">
-                    <select class="eingabe" name="status" onchange="this.form.submit()">
+                    <select class="eingabe" name="status" onchange="if(window.Blick)window.Blick.merken(this);this.form.submit()">
                       <?php foreach (['angemeldet' => 'Angemeldet', 'bestaetigt' => 'Bestätigt',
                                       'warteliste' => 'Warteliste', 'storniert' => 'Storniert'] as $k => $n): ?>
                         <option value="<?= $k ?>"<?= (string) $a['status'] === $k ? ' selected' : '' ?>>

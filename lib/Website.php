@@ -281,6 +281,7 @@ final class Website
                . self::kopf($seite)
                . '<main>' . $inhalt . '</main>'
                . self::fuss()
+               . '<script src="' . Util::attr(App::asset('assets/js/blick.js')) . '"></script>'
                . '<script src="' . Util::attr(App::asset('assets/js/site.js')) . '"></script>'
                . '</body></html>';
 

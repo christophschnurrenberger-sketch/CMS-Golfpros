@@ -223,7 +223,10 @@ if ($istNeu) {
      * des Browsers. Das gehoert in keinen Verlauf.
      */ ?>
     <script>
-    function terminNeuLaden(f) {
+    function terminNeuLaden(f, ausloeser) {
+      /* Nach dem Neuladen soll das bediente Feld wieder dort stehen, wo es
+         gerade stand – sonst schaut man plötzlich auf die Überschrift. */
+      if (window.Blick) { window.Blick.merken(ausloeser || f.service_id); }
       var u = new URL(location.pathname, location.origin);
       u.searchParams.set('id', 'neu');
       u.searchParams.set('leistung', f.service_id.value);
@@ -257,7 +260,7 @@ if ($istNeu) {
           <div class="feld-reihe feld-reihe--2">
             <div class="feld">
               <label class="feld__label" for="service_id">Leistung</label>
-              <select id="service_id" name="service_id" onchange="terminNeuLaden(this.form)">
+              <select id="service_id" name="service_id" onchange="terminNeuLaden(this.form, this)">
                 <?php foreach ($leistungen as $s): ?>
                   <option value="<?= (int) $s['id'] ?>"<?= $serviceId === (int) $s['id'] ? ' selected' : '' ?>>
                     <?= Util::h((string) $s['name']) ?> · <?= (int) $s['dauer_min'] ?> Min ·
@@ -269,7 +272,7 @@ if ($istNeu) {
               <label class="feld__label" for="start_datum">Tag</label>
               <input class="eingabe" id="start_datum" type="date" name="datum"
                      value="<?= Util::attr($datum) ?>" min="<?= Util::attr(Util::heute()) ?>"
-                     onchange="terminNeuLaden(this.form)">
+                     onchange="terminNeuLaden(this.form, this)">
             </div>
           </div>
 
@@ -345,7 +348,7 @@ if ($istNeu) {
 
           <div class="feld">
             <label class="feld__label" for="customer_id">Kunde</label>
-            <select id="customer_id" name="customer_id" onchange="terminNeuLaden(this.form)">
+            <select id="customer_id" name="customer_id" onchange="terminNeuLaden(this.form, this)">
               <option value="0">Ohne Kunde (Blocker, interner Termin)</option>
               <?php foreach (Tenant::all('customers', "status = 'aktiv'", [], 'nachname, vorname') as $k): ?>
                 <option value="<?= (int) $k['id'] ?>"<?= $kundeId === (int) $k['id'] ? ' selected' : '' ?>>

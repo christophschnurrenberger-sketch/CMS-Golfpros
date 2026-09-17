@@ -328,7 +328,7 @@ $inhalt .= '<form method="post" class="vorgang__form">'
          . '<input type="hidden" name="w" value="' . Util::attr((string) (Tenant::workspace()['slug'] ?? '')) . '">'
          . ($liste ? '<input type="hidden" name="liste" value="1">' : '')
          . '<div class="feld"><label for="leistung">Leistung</label>'
-         . '<select id="leistung" name="service_id" onchange="this.form.submit()">';
+         . '<select id="leistung" name="service_id" onchange="if(window.Blick)window.Blick.merken(this);this.form.submit()">';
 foreach ($leistungen as $l) {
     $inhalt .= '<option value="' . (int) $l['id'] . '"' . ((int) $l['id'] === $serviceId ? ' selected' : '') . '>'
              . Util::h((string) $l['name']) . ' · ' . Util::h(Util::geldKurz((int) $l['preis_cent']))
@@ -341,7 +341,7 @@ $inhalt .= '</select></div>'
          . ($liste
             ? '<div class="feld"><label for="datum">Ab wann</label>'
               . '<input id="datum" type="date" name="datum" value="' . Util::attr($datum) . '" min="'
-              . Util::attr(Util::heute()) . '" onchange="this.form.submit()"></div>'
+              . Util::attr(Util::heute()) . '" onchange="if(window.Blick)window.Blick.merken(this);this.form.submit()"></div>'
             : '')
          . '<noscript><button class="knopf knopf--klein" type="submit">Zeiten anzeigen</button></noscript>'
          . '</form>';

@@ -50,12 +50,12 @@ require __DIR__ . '/partials/kopf.php';
 ?>
 
 <form method="get" class="filterleiste mb-4">
-  <select name="objekt" onchange="this.form.submit()">
+  <select name="objekt" onchange="if(window.Blick)window.Blick.merken(this);this.form.submit()">
     <?php foreach ($objekte as $k => $v): ?>
       <option value="<?= Util::attr($k) ?>"<?= $objekt === $k ? ' selected' : '' ?>><?= Util::h($v) ?></option>
     <?php endforeach; ?>
   </select>
-  <select name="wer" onchange="this.form.submit()">
+  <select name="wer" onchange="if(window.Blick)window.Blick.merken(this);this.form.submit()">
     <option value="0">Alle Personen</option>
     <?php foreach ($team as $t): ?>
       <option value="<?= (int) $t['id'] ?>"<?= $wer === (int) $t['id'] ? ' selected' : '' ?>>

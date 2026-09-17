@@ -678,7 +678,7 @@ final class Renderer
             }
             $auswahl = '<form method="get" action="" class="buchkal__wahl">' . $mitnehmen
                      . '<div class="feld"><label for="bk-leistung-' . $sid . '">Leistung</label>'
-                     . '<select id="bk-leistung-' . $sid . '" name="bl" onchange="this.form.submit()">'
+                     . '<select id="bk-leistung-' . $sid . '" name="bl" onchange="if(window.Blick)window.Blick.merken(this);this.form.submit()">'
                      . $optionen . '</select></div>'
                      . '<noscript><button class="knopf knopf--klein" type="submit">Kalender zeigen</button></noscript>'
                      . '</form>';
