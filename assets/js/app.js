@@ -58,6 +58,162 @@
     kaestchen.addEventListener('change', um);
   });
 
+  /* --------------------------------------------------- Bildwähler ----- */
+
+  /*
+   * Ein Bild aus der Mediathek holen, ohne die Seite zu verlassen.
+   *
+   * Vorher stand an jedem Bildfeld „Mediathek öffnen und Pfad einfügen".
+   * Das ist kein Bedienschritt, das ist eine Bastelanleitung – zweiter Tab,
+   * hochladen, Pfad abschreiben, zurückwechseln. Entsprechend standen auf
+   * den Websites die Ersatzstreifen statt Bildern.
+   *
+   * Das Fenster entsteht erst beim ersten Klick und wird danach
+   * wiederverwendet: Es enthält eine Liste, die der Server liefert, und
+   * lädt auf Wunsch gleich eine neue Datei hoch.
+   */
+  (function () {
+    if (!document.querySelector('[data-bild-waehlen]')) return;
+
+    let fenster = null;
+    let ziel = null;
+
+    /* Eine Adresse von außerhalb bleibt, wie sie ist; ein Pfad aus der
+       eigenen Mediathek bekommt die Basis davor. */
+    const adresse = (pfad) => (/^(https?:)?\/\//.test(pfad) || pfad.charAt(0) === '/')
+      ? pfad
+      : (window.gpBasis || '') + '/' + pfad;
+
+    const vorschau = (feld) => {
+      const huelle = feld.closest('[data-bildfeld]');
+      if (!huelle) return;
+      const pfad  = (feld.value || '').trim();
+      const schau = $('.bildfeld__schau', huelle);
+      const weg   = $('[data-bild-weg]', huelle);
+      if (schau) { schau.style.backgroundImage = pfad ? 'url("' + adresse(pfad) + '")' : ''; }
+      if (weg) { weg.hidden = !pfad; }
+    };
+
+    const setzen = (feld, pfad) => {
+      feld.value = pfad;
+      vorschau(feld);
+    };
+
+    /* Auch wenn der Wert von woanders kommt – etwa aus der Vorbelegung
+       eines Dialogs –, soll die Vorschau stimmen. */
+    document.addEventListener('change', (e) => {
+      if (e.target.matches && e.target.matches('[data-bildfeld] input')) vorschau(e.target);
+    });
+    document.addEventListener('input', (e) => {
+      if (e.target.matches && e.target.matches('[data-bildfeld] input')) vorschau(e.target);
+    });
+    $$('[data-bildfeld] input').forEach(vorschau);
+
+    const bauen = () => {
+      const d = document.createElement('dialog');
+      d.className = 'modal bildwahl';
+      d.innerHTML =
+        '<div class="modal__kopf"><h2>Bild wählen</h2>'
+        + '<button class="btn btn--klein" type="button" data-modal-zu aria-label="Schließen">✕</button></div>'
+        + '<div class="modal__koerper">'
+        + '<label class="ablage ablage--klein" style="margin-bottom:var(--r3)">'
+        + '<span class="halbfett">Neues Bild hochladen</span>'
+        + '<span class="klein gedimmt">JPG, PNG, WebP, SVG oder GIF</span>'
+        + '<input type="file" accept="image/*" class="bildwahl__datei"'
+        + ' style="position:absolute;opacity:0;width:1px;height:1px"></label>'
+        + '<p class="klein gedimmt bildwahl__stand" hidden></p>'
+        + '<div class="bildwahl__gitter"></div></div>';
+      document.body.appendChild(d);
+
+      d.addEventListener('click', (e) => {
+        if (e.target.closest('[data-modal-zu]') || e.target === d) d.close();
+        const kachel = e.target.closest('[data-pfad]');
+        if (kachel && ziel) { setzen(ziel, kachel.dataset.pfad); d.close(); }
+      });
+      $('.bildwahl__datei', d).addEventListener('change', function () {
+        if (!this.files || !this.files[0]) return;
+        hochladen(d, this.files[0]);
+        this.value = '';
+      });
+      return d;
+    };
+
+    const stand = (d, text, fehler) => {
+      const p = $('.bildwahl__stand', d);
+      p.hidden = !text;
+      p.textContent = text || '';
+      p.style.color = fehler ? 'var(--gefahr)' : '';
+    };
+
+    const laden = (d) => {
+      const gitter = $('.bildwahl__gitter', d);
+      gitter.innerHTML = '<p class="klein gedimmt">Wird geladen …</p>';
+      fetch((window.gpBasis || '') + '/app/bilder.php', { headers: { Accept: 'application/json' } })
+        .then(r => r.json())
+        .then(a => {
+          if (!a.bilder || !a.bilder.length) {
+            gitter.innerHTML = '<p class="klein gedimmt">Noch keine Bilder. '
+              + 'Lad oben eines hoch – es landet auch in der Mediathek.</p>';
+            return;
+          }
+          gitter.innerHTML = a.bilder.map(b =>
+            '<button type="button" class="bildwahl__kachel" data-pfad="' + b.pfad + '" '
+            + 'title="' + (b.name || '').replace(/"/g, '&quot;') + '">'
+            + '<img src="' + b.url + '" alt="" loading="lazy"></button>').join('');
+        })
+        .catch(() => { gitter.innerHTML = '<p class="klein" style="color:var(--gefahr)">'
+          + 'Die Mediathek war nicht erreichbar.</p>'; });
+    };
+
+    const hochladen = (d, datei) => {
+      stand(d, 'Wird hochgeladen …', false);
+      const daten = new FormData();
+      daten.append('datei', datei);
+      daten.append('_csrf', window.gpCsrf || '');
+      fetch((window.gpBasis || '') + '/app/bilder.php', { method: 'POST', body: daten })
+        .then(r => r.json().then(a => ({ ok: r.ok, a })))
+        .then(({ ok, a }) => {
+          if (!ok || !a.pfad) { stand(d, a.fehler || 'Das hat nicht geklappt.', true); return; }
+          stand(d, '', false);
+          /* Gleich einsetzen: Wer hochlädt, will genau dieses Bild. */
+          if (ziel) { setzen(ziel, a.pfad); d.close(); }
+        })
+        .catch(() => stand(d, 'Keine Verbindung zum Server.', true));
+    };
+
+    /*
+     * Zu welchem Feld gehört der Knopf?
+     *
+     * In einer Liste (Galerie, Karten, Logos) hat das Feld keine eigene
+     * Kennung – es gibt beliebig viele Zeilen mit demselben Namen. Deshalb
+     * zählt zuerst die Hülle, in der der Knopf steht; die Kennung ist nur
+     * der Rückfall für Knöpfe, die außerhalb stehen.
+     */
+    const feldVon = (knopf, kennung) => {
+      const huelle = knopf.closest('[data-bildfeld]');
+      const drin = huelle ? $('input', huelle) : null;
+      return drin || (kennung ? document.getElementById(kennung) : null);
+    };
+
+    document.addEventListener('click', (e) => {
+      const auf = e.target.closest('[data-bild-waehlen]');
+      if (auf) {
+        ziel = feldVon(auf, auf.dataset.bildWaehlen);
+        if (!ziel) return;
+        if (!fenster) fenster = bauen();
+        laden(fenster);
+        stand(fenster, '', false);
+        fenster.showModal();
+        return;
+      }
+      const weg = e.target.closest('[data-bild-weg]');
+      if (weg) {
+        const feld = feldVon(weg, weg.dataset.bildWeg);
+        if (feld) setzen(feld, '');
+      }
+    });
+  })();
+
   /* ----------------------------------------------- Seitenbaum ziehen -- */
 
   /*
@@ -238,6 +394,10 @@
             if (feld) feld.value = auf.dataset[k];
           }
         });
+        /* Felder mit eigener Anzeige – etwa die Bildvorschau – erfahren
+           sonst nichts davon, dass sich ihr Wert geändert hat. */
+        $$('[data-bildfeld] input', d).forEach(
+          f => f.dispatchEvent(new Event('change', { bubbles: true })));
         const titel = auf.dataset.modalTitel;
         if (titel) { const h = d.querySelector('.modal__kopf h2'); if (h) h.textContent = titel; }
         d.showModal();

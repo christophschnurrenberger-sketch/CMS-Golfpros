@@ -242,7 +242,15 @@ Ein paar Regeln, die von Fehlern kommen und deshalb aufgeschrieben sind:
   mit `overflow-x: clip` am Abschnitt gefangen, **nicht** mit `hidden`:
   `hidden` erzeugt einen Scroll-Container und nimmt dem Kopf sein
   `position: sticky`. Am `body` wirkt beides gar nicht – der Browser
-  reicht die Angabe an `html` weiter.
+  reicht die Angabe an `html` weiter. Dazu kommt eine Tücke, die nicht im
+  Namen steht: `overflow-x: hidden` rechnet `overflow-y` still auf `auto`
+  hoch. Eine einzige Zeile gegen seitliches Verschieben legt damit jedes
+  `sticky` im ganzen Teilbaum still. Genau daran hing die Werkzeugleiste
+  im Baukasten: Sie saß fest an der Oberkante des Bausteins, war bei einem
+  hohen Baustein längst aus dem Bild – und der erste Versuch mit `sticky`
+  wirkte nicht, weil `.seite` und `.bau__leinwand` beide `hidden` hatten.
+  Heute klebt die Leiste in einem unsichtbaren Anker über die ganze Höhe
+  des Bausteins (`.bau-block__anker`), der Zeiger durchlässt.
 * Rasterspalten sind `minmax(0, 1fr)`, nicht `1fr`. Sonst wächst eine
   lange URL die Spalte über den Bildschirm hinaus.
 * Der Schrittanzeiger blendet unter 680 Pixeln alle Namen außer dem
@@ -677,6 +685,50 @@ Platz fahren zu lassen.
 Die Prüfung macht `Bookings::umbuchen()` – dieselbe Funktion wie auf der
 Terminseite, mit derselben Kollisionsprüfung. Liegt am Ziel schon etwas,
 bleibt der Termin, wo er war, und die Meldung sagt es.
+
+## Ein Bild wählt man, man tippt es nicht ab
+
+An jedem Bildfeld im Baukasten stand ein Textfeld und daneben der Hinweis
+„Mediathek öffnen und Pfad einfügen". Das ist kein Bedienschritt, das ist
+eine Bastelanleitung: zweiter Tab, hochladen, `uploads/w2/medien/range-
+a3f9c.jpg` abschreiben, zurückwechseln. Entsprechend standen auf den
+Websites die gestreiften Ersatzflächen statt Bildern.
+
+Heute ist jedes Bildfeld ein Knopf mit Vorschau. Er öffnet die Mediathek
+als Fenster, zeigt die vorhandenen Bilder und nimmt gleich neue an.
+Dieselbe Hülle steht an drei Stellen, und zwar aus einer Quelle
+(`bildfeld()` in `lib/vorlage.php`):
+
+* oben im Baustein (Aufmacher, Bild),
+* **in den Listen eines Bausteins** – Galerie, Karten, Logoleiste. Dort
+  war das Feld bis zuletzt ein nacktes Textfeld, weshalb diese Bausteine
+  regelmäßig leer blieben,
+* beim Teammitglied. Der Baustein „Team" zeigt das Foto seit jeher – nur
+  gab es nirgends ein Feld dafür.
+
+Die Zeilen einer Liste haben keine eindeutige Kennung; es gibt beliebig
+viele davon mit demselben Feldnamen. Deshalb sucht das Skript sein
+Eingabefeld nicht über eine Kennung, sondern über die Hülle
+`[data-bildfeld]`, in der der Knopf steht.
+
+Geprüft wird beim Hochladen an einer Stelle, `Medien::uebernehmen()`: Typ
+**aus dem Inhalt** (`$_FILES[...]['type']` kommt aus der Anfrage und lässt
+sich frei setzen), bei Bildern zusätzlich der Versuch, sie zu öffnen, dann
+die Größe. Der gespeicherte Name entsteht neu aus Slug und Zufall, die
+Endung kommt aus der Weißliste – eine Datei namens `foto.php`, die
+wirklich ein PNG ist, landet als `foto-a3f9c.png`. Der JSON-Endpunkt
+`app/bilder.php` verlangt eine angemeldete Sitzung, CSRF beim Hochladen
+und eines der Rechte `website.write`, `content.write` oder `settings.team`
+– das letzte, weil ein Head-Pro das Team pflegt, aber nicht die Website.
+
+### Leere Bausteine sind sichtbar
+
+Galerie, Karten, Logoleiste und FAQ geben ohne Inhalt gar kein HTML aus.
+Im Baukasten wurde daraus ein vier Pixel hoher Streifen: unsichtbar, nicht
+anklickbar, nicht auswählbar – und damit auch nicht zu entfernen. Wer
+einen Baustein hinzufügt und nichts sieht, hält ihn für verschwunden.
+Deshalb bekommt ein Baustein, dessen Ausgabe leer ist, im Baukasten einen
+gestreiften Platzhalter mit seinem Namen. Auf der Website steht er nicht.
 
 ## Persönliche Dateien gehen durch eine Tür
 

@@ -370,6 +370,7 @@ require __DIR__ . '/partials/kopf.php';
                    id="block-<?= Util::attr((string) $b['id']) ?>"
                    data-block-id="<?= Util::attr((string) $b['id']) ?>"
                    onclick="location.href='<?= Util::attr(App::url('/app/seite.php?id=' . $id . '&block=' . $b['id'])) ?>'">
+                <span class="bau-block__anker">
                 <span class="bau-block__marke"><?= Util::h(Bloecke::name((string) $b['typ'])) ?></span>
                 <?php if (Auth::darf('website.write')): ?>
                 <span class="bau-block__leiste" onclick="event.stopPropagation()">
@@ -399,7 +400,29 @@ require __DIR__ . '/partials/kopf.php';
                   </form>
                 </span>
                 <?php endif; ?>
-                <?= Renderer::block($b) ?>
+                </span>
+                <?php /*
+                 * Ein leerer Baustein bekommt einen Platzhalter.
+                 *
+                 * Galerie, Karten, Logoleiste und FAQ geben ohne Inhalt eine
+                 * leere Zeichenkette zurück. Im Baukasten wurde daraus ein
+                 * vier Pixel hoher Streifen: unsichtbar, nicht anklickbar,
+                 * nicht auswählbar – und damit auch nicht zu entfernen. Wer
+                 * einen Baustein hinzufügt und nichts sieht, hält ihn für
+                 * verschwunden.
+                 */
+                $inhalt = Renderer::block($b);
+                if (trim($inhalt) === ''): ?>
+                  <div class="bau-block__leer">
+                    <?= Icon::svg(Bloecke::icon((string) $b['typ']), 22) ?>
+                    <p class="halbfett"><?= Util::h(Bloecke::name((string) $b['typ'])) ?> –
+                      noch nichts eingetragen</p>
+                    <p class="klein gedimmt">Rechts ausfüllen, dann erscheint der Baustein
+                      hier und auf der Website.</p>
+                  </div>
+                <?php else: ?>
+                  <?= $inhalt ?>
+                <?php endif; ?>
               </div>
             <?php endforeach; ?>
           <?php endif; ?>
@@ -465,6 +488,16 @@ require __DIR__ . '/partials/kopf.php';
                               <option value=""<?= $uwert === '' ? ' selected' : '' ?>>Nein</option>
                               <option value="1"<?= $uwert !== '' ? ' selected' : '' ?>>Ja</option>
                             </select>
+                          <?php elseif ($uart === 'bild'): ?>
+                            <?php /*
+                             * Auch in einer Liste ist ein Bild ein Bild.
+                             * Hier stand bis zuletzt ein nacktes Textfeld –
+                             * weshalb Galerie, Karten und Logoleiste leer
+                             * blieben, obwohl der Baustein längst stand.
+                             * Eine Kennung gibt es hier nicht; der Wähler
+                             * findet das Feld über seine Hülle.
+                             */ ?>
+                            <?= bildfeld('', 'l_' . $feld . '_' . $uf . '[]', $uwert, ['eng' => true]) ?>
                           <?php else: ?>
                             <input class="eingabe" name="l_<?= Util::attr($feld . '_' . $uf) ?>[]"
                                    value="<?= Util::attr($uwert) ?>">
@@ -510,14 +543,20 @@ require __DIR__ . '/partials/kopf.php';
               </div>
 
             <?php elseif ($art === 'bild'): ?>
-              <div class="feld">
-                <label class="feld__label" for="<?= $fid ?>"><?= Util::h($label) ?></label>
-                <input class="eingabe" id="<?= $fid ?>" name="<?= $fid ?>"
-                       value="<?= Util::attr((string) $wert) ?>" placeholder="uploads/… oder https://">
-                <div class="feld__hinweis">
-                  <a href="<?= Util::attr(App::url('/app/medien.php')) ?>" target="_blank" rel="noopener">
-                    Mediathek öffnen</a> und Pfad einfügen.</div>
-              </div>
+              <?php /*
+               * Ein Bildfeld ist ein Knopf, kein Textfeld.
+               *
+               * Vorher stand hier ein Feld für den Pfad und daneben der
+               * Hinweis „Mediathek öffnen und Pfad einfügen": zweiter Tab,
+               * hochladen, Pfad abschreiben, zurückwechseln. Das hat
+               * niemand gemacht – und deshalb standen auf den Websites die
+               * Ersatzstreifen statt Bildern. Das Textfeld bleibt daneben
+               * bestehen, für Adressen von außerhalb.
+               */ ?>
+              <?= bildfeld($label, $fid, (string) $wert, [
+                    'id' => $fid,
+                    'hinweis' => 'Aus der Mediathek wählen oder eine Adresse eintragen.',
+                  ]) ?>
 
             <?php else: ?>
               <div class="feld">
@@ -533,9 +572,38 @@ require __DIR__ . '/partials/kopf.php';
           <div style="position:sticky;bottom:0;padding:var(--r3) var(--r4);
                       border-top:1px solid var(--rand);background:var(--flaeche)">
             <button class="btn btn--primaer btn--voll" type="submit">Baustein speichern</button>
+            <?php /*
+             * Kopieren und Entfernen stehen hier ein zweites Mal – die
+             * Werkzeugleiste am Baustein selbst erscheint erst beim
+             * Daraufzeigen, und wer mit der Tastatur arbeitet oder auf
+             * einem Tablet tippt, zeigt auf nichts. Die Knöpfe liegen
+             * außerhalb dieses Formulars (Formulare lassen sich nicht
+             * schachteln) und werden über ihre Kennung angesprochen.
+             */ ?>
+            <div class="reihe reihe--eng mt-3">
+              <button class="btn btn--klein" type="submit" form="block-kopieren">
+                <?= Icon::svg('copy', 14) ?> Kopieren</button>
+              <div class="fueller"></div>
+              <button class="btn btn--klein" type="submit" form="block-entfernen"
+                      style="color:var(--gefahr)">
+                <?= Icon::svg('trash', 14) ?> Entfernen</button>
+            </div>
           </div>
         <?php endif; ?>
       </form>
+      <?php if (Auth::darf('website.write')): ?>
+        <form method="post" id="block-kopieren" hidden>
+          <?= Auth::csrfFeld() ?>
+          <input type="hidden" name="aktion" value="block_kopie">
+          <input type="hidden" name="block_id" value="<?= Util::attr((string) $gewaehlterBlock['id']) ?>">
+        </form>
+        <form method="post" id="block-entfernen" hidden
+              data-bestaetigen="Diesen Baustein entfernen?">
+          <?= Auth::csrfFeld() ?>
+          <input type="hidden" name="aktion" value="block_weg">
+          <input type="hidden" name="block_id" value="<?= Util::attr((string) $gewaehlterBlock['id']) ?>">
+        </form>
+      <?php endif; ?>
 
     <?php else: ?>
       <div class="bau__spalte-kopf">Seite</div>

@@ -68,7 +68,15 @@
   line-height: 1.72;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
+  /*
+   * clip statt hidden – aus demselben Grund wie weiter unten bei den
+   * Abschnitten, hier aber noch mit einer zweiten Wirkung: `overflow-x:
+   * hidden` rechnet `overflow-y` still auf `auto` hoch und macht die Seite
+   * damit zu einem Rollbereich. Alles, was darin `position: sticky` ist,
+   * klebt dann an einem Kasten, der sich nie bewegt – im Baukasten war so
+   * die Werkzeugleiste hoher Bausteine nicht mehr erreichbar.
+   */
+  overflow-x: clip;
 }
 
 .seite *, .seite *::before, .seite *::after { box-sizing: border-box; }

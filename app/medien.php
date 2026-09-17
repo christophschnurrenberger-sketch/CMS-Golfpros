@@ -10,81 +10,11 @@ if (App::istPost()) {
     Auth::fordern('content.write');
 
     if (App::aktion() === 'hochladen' && isset($_FILES['dateien'])) {
-        $erlaubt = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp',
-                    'image/svg+xml' => 'svg', 'image/gif' => 'gif', 'application/pdf' => 'pdf'];
-        $ordner = GP_ROOT . '/uploads/w' . Tenant::id() . '/medien';
-        if (!is_dir($ordner)) {
-            @mkdir($ordner, 0750, true);
-        }
-        $anzahl = 0;
-        $abgelehnt = [];
-        $grenze = App::uploadGrenze();
-        $namen = (array) ($_FILES['dateien']['name'] ?? []);
-        foreach (array_keys($namen) as $i) {
-            $wie = (string) $namen[$i];
+        /* Die Prüfungen stehen in lib/Medien.php – der Bildwähler im
+           Baukasten nimmt dieselben. */
+        [$pfade, $abgelehnt] = Medien::uebernehmenViele((array) $_FILES['dateien']);
+        $anzahl = count($pfade);
 
-            /*
-             * Jeder abgewiesene Upload bekommt einen Grund. Vorher wurden
-             * sie stillschweigend uebersprungen, und am Ende stand nur
-             * „Nichts hochgeladen" - womit niemand etwas anfangen kann.
-             */
-            $fehlercode = (int) $_FILES['dateien']['error'][$i];
-            if ($fehlercode !== UPLOAD_ERR_OK) {
-                $abgelehnt[] = $wie . ' – ' . match ($fehlercode) {
-                    UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE =>
-                        'zu gross für diesen Server'
-                        . ($grenze > 0 ? ' (Grenze: ' . Util::bytes($grenze) . ')' : ''),
-                    UPLOAD_ERR_PARTIAL   => 'nur halb angekommen, bitte noch einmal',
-                    UPLOAD_ERR_NO_FILE   => 'keine Datei ausgewählt',
-                    UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE =>
-                        'der Server konnte nicht schreiben – das muss der Hoster beheben',
-                    UPLOAD_ERR_EXTENSION => 'vom Server abgelehnt',
-                    default              => 'unbekannter Fehler ' . $fehlercode,
-                };
-                continue;
-            }
-
-            /*
-             * Der Typ wird aus dem Inhalt bestimmt, nicht aus dem, was der
-             * Browser behauptet. $_FILES[...]['type'] kommt aus der Anfrage
-             * und lässt sich frei setzen: Wer „image/png" schreibt und eine
-             * PHP-Datei schickt, kam bis hierher durch die Prüfung. Gefährlich
-             * war das nicht – die gespeicherte Endung stammt aus der Weißliste,
-             * und uploads/.htaccess verbietet die Ausführung –, aber geprüft
-             * hat es nichts.
-             */
-            $tmp = (string) $_FILES['dateien']['tmp_name'][$i];
-            $typ = Medientyp::erkennen($tmp);
-            if (!isset($erlaubt[$typ])) {
-                $abgelehnt[] = $wie . ' – Dateityp nicht erlaubt (' . ($typ !== '' ? $typ : 'unbekannt') . ')';
-                continue;
-            }
-            /* Bei Bildern zusätzlich: Lässt es sich überhaupt als Bild lesen?
-               Eine Datei, die nur wie ein PNG anfängt, fällt hier durch. */
-            if (str_starts_with($typ, 'image/') && $typ !== 'image/svg+xml' && @getimagesize($tmp) === false) {
-                $abgelehnt[] = $wie . ' – sieht aus wie ein Bild, lässt sich aber nicht öffnen';
-                continue;
-            }
-            if ((int) $_FILES['dateien']['size'][$i] > 12 * 1024 * 1024) {
-                $abgelehnt[] = $wie . ' – über 12 MB';
-                continue;
-            }
-            $name = Util::slug(pathinfo((string) $namen[$i], PATHINFO_FILENAME), 40)
-                  . '-' . substr(Util::token(3), 0, 5) . '.' . $erlaubt[$typ];
-            if (!move_uploaded_file((string) $_FILES['dateien']['tmp_name'][$i], $ordner . '/' . $name)) {
-                $abgelehnt[] = $wie . ' – konnte nicht gespeichert werden. Ist uploads/ beschreibbar?';
-                continue;
-            }
-            $pfad = 'uploads/w' . Tenant::id() . '/medien/' . $name;
-            $masse = @getimagesize($ordner . '/' . $name) ?: [0, 0];
-            Tenant::insert('media', [
-                'dateiname' => (string) $namen[$i], 'pfad' => $pfad, 'mime' => $typ,
-                'groesse' => (int) $_FILES['dateien']['size'][$i],
-                'breite' => (int) $masse[0], 'hoehe' => (int) $masse[1],
-                'user_id' => Auth::id(),
-            ]);
-            $anzahl++;
-        }
         if ($anzahl > 0) {
             App::melden($anzahl === 1 ? 'Eine Datei hochgeladen.' : $anzahl . ' Dateien hochgeladen.', 'erfolg');
         }
@@ -128,7 +58,7 @@ require __DIR__ . '/partials/kopf.php';
     <div class="halbfett">Dateien auswählen oder hierher ziehen</div>
     <?php /* Nicht „12 MB" behaupten, wenn der Server bei 2 MB dichtmacht. */
       $grenze = App::uploadGrenze();
-      $zeigen = $grenze > 0 ? min($grenze, 12 * 1024 * 1024) : 12 * 1024 * 1024; ?>
+      $zeigen = $grenze > 0 ? min($grenze, Medien::GRENZE) : Medien::GRENZE; ?>
     <div class="klein gedimmt">JPG, PNG, WebP, SVG, GIF und PDF · bis <?= Util::h(Util::bytes($zeigen)) ?> je Datei</div>
     <input id="dateien" type="file" name="dateien[]" multiple
            accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif,application/pdf"

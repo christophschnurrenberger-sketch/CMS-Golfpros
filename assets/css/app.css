@@ -1974,7 +1974,10 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
   box-shadow: var(--schatten-3);
   border-radius: var(--radius);
   transition: max-width .3s cubic-bezier(.2,.9,.3,1);
-  overflow: hidden;
+  /* clip und nicht hidden: hidden macht die Leinwand zu einem Rollbereich,
+     und die klebende Werkzeugleiste im Baustein klebt dann an ihr statt an
+     der Bühne. Geklippt wird mit beiden gleich. */
+  overflow: clip;
 }
 .bau__leinwand[data-geraet="tablet"] { max-width: 768px; }
 .bau__leinwand[data-geraet="mobil"]  { max-width: 390px; }
@@ -1987,12 +1990,30 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
 }
 .bau-block:hover { border-color: color-mix(in srgb, var(--marke) 45%, transparent); }
 .bau-block.ist-gewaehlt { border-color: var(--marke); }
+/*
+ * Die Werkzeuge bleiben am oberen Bildrand kleben.
+ *
+ * Vorher saßen sie fest an der Oberkante des Bausteins. Bei einem hohen
+ * Baustein – Aufmacher, Leistungen, FAQ – ist die beim Hineinscrollen
+ * längst aus dem Bild: Man zeigt auf den Baustein, es erscheint nichts,
+ * und der Baustein sieht aus, als ließe er sich nicht mehr löschen.
+ *
+ * Gelöst mit einem unsichtbaren Anker über die ganze Höhe des Bausteins,
+ * in dem die Leiste klebt. Der Anker lässt Zeiger durch (`pointer-events`),
+ * damit er den Baustein darunter nicht blockiert; die Leiste selbst nimmt
+ * sie wieder an.
+ */
+.bau-block__anker {
+  position: absolute; inset: -1px -1px auto; height: calc(100% + 2px);
+  display: flex; align-items: flex-start;
+  pointer-events: none; z-index: 4;
+}
 .bau-block__leiste {
-  position: absolute; top: -1px; right: -1px;
+  position: sticky; top: 0; margin-left: auto;
   display: none; gap: 2px;
   background: var(--marke); color: var(--auf-marke);
   padding: 3px; border-radius: 0 0 0 8px;
-  z-index: 4;
+  pointer-events: auto;
 }
 .bau-block:hover .bau-block__leiste, .bau-block.ist-gewaehlt .bau-block__leiste { display: flex; }
 .bau-block__knopf {
@@ -2001,12 +2022,29 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
 }
 .bau-block__knopf:hover { background: rgba(255,255,255,.18); }
 .bau-block__marke {
-  position: absolute; top: -1px; left: -1px;
+  position: sticky; top: 0;
   background: var(--marke); color: var(--auf-marke);
   font-size: 10.5px; font-weight: 620; padding: 2px 7px;
-  border-radius: 0 0 8px 0; display: none; z-index: 4;
+  border-radius: 0 0 8px 0; display: none;
+  pointer-events: auto; align-self: flex-start;
 }
 .bau-block:hover .bau-block__marke, .bau-block.ist-gewaehlt .bau-block__marke { display: block; }
+
+/*
+ * Ein Baustein ohne Inhalt.
+ *
+ * Galerie, Karten, Logoleiste und FAQ geben leer gar kein HTML aus. Ohne
+ * diesen Platzhalter bliebe im Baukasten ein vier Pixel hoher Streifen –
+ * den trifft niemand mit der Maus, und die Werkzeugleiste käme nie zum
+ * Vorschein. Der Platzhalter steht nur hier, nicht auf der Website.
+ */
+.bau-block__leer {
+  padding: var(--r5) var(--r4); text-align: center; color: var(--text-3);
+  background: repeating-linear-gradient(135deg,
+    var(--flaeche-2) 0 10px, var(--flaeche-3) 10px 20px);
+}
+.bau-block__leer .ico { color: var(--text-4); margin-bottom: 6px; }
+.bau-block__leer p { margin: 0; }
 
 .bau-vorrat { padding: var(--r2); display: flex; flex-direction: column; gap: 3px; }
 .bau-vorrat__teil {
@@ -2259,6 +2297,49 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
 }
 
 /* Hilfsklassen – bewusst wenige */
+/* ------------------------------------------------------ Bildwähler ---- */
+
+/*
+ * Ein Bildfeld zeigt, was drinsteht.
+ *
+ * Ein Pfad wie „uploads/w2/medien/range-a3f9c.jpg" sagt niemandem, welches
+ * Bild das ist. Die kleine Vorschau daneben schon – und sie zeigt sofort,
+ * wenn der Pfad ins Leere führt.
+ */
+.bildfeld__reihe { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.bildfeld__schau {
+  flex: 0 0 auto; width: 62px; height: 46px; border-radius: 8px;
+  border: 1px solid var(--rand); background: var(--flaeche) center/cover no-repeat;
+  display: grid; place-items: center; color: var(--text-4);
+}
+.bildfeld__knoepfe { display: flex; gap: 6px; flex-wrap: wrap; }
+.bildfeld__pfad { font-size: 12px; }
+
+/* In den Listen eines Bausteins steht das Feld enger: Dort liegen mehrere
+   Zeilen untereinander, und die Beschriftung steht schon darüber. */
+.bildfeld--eng { margin-bottom: 0; }
+.bildfeld--eng > .feld__label { display: none; }
+.bildfeld--eng .bildfeld__reihe { gap: 8px; margin-bottom: 6px; }
+.bildfeld--eng .bildfeld__schau { width: 46px; height: 34px; border-radius: 6px; }
+
+.bildwahl { max-width: 680px; width: min(680px, calc(100vw - 32px)); }
+.bildwahl__gitter {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  max-height: 46vh; overflow-y: auto;
+}
+.bildwahl__kachel {
+  padding: 0; border: 1px solid var(--rand); border-radius: 9px;
+  background: var(--flaeche); cursor: pointer; overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+.bildwahl__kachel:hover, .bildwahl__kachel:focus-visible {
+  border-color: var(--marke); outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--marke) 25%, transparent);
+}
+.bildwahl__kachel img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ablage--klein { padding: var(--r3); gap: 2px; }
+
 /* ------------------------------------------------------ Seitenbaum ---- */
 
 /*

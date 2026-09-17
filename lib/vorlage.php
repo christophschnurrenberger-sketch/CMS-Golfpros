@@ -135,3 +135,54 @@ function karteAuf(string $titel = '', string $aktionen = '', string $klasse = ''
     }
     return $html;
 }
+
+/**
+ * Ein Bildfeld: Vorschau, „Bild wählen", „Entfernen" und der Pfad.
+ *
+ * Steht hier und nicht dreimal im Quelltext, weil es inzwischen an drei
+ * Stellen gebraucht wird: oben im Baustein, in den Listen eines Bausteins
+ * (Galerie, Karten, Logos) und beim Teammitglied. Drei Kopien laufen
+ * auseinander, und die Fassung in der Liste war schon vorher nur ein
+ * nacktes Textfeld – genau der Grund, weshalb in Galerien nichts stand.
+ *
+ * Das Skript findet das Eingabefeld über die Hülle `[data-bildfeld]`;
+ * eine Kennung braucht es nur für die Beschriftung. Deshalb funktionieren
+ * auch die Zeilen einer Liste, die gar keine eindeutige Kennung haben.
+ *
+ * @param array{id?:string,versteckt?:bool,eng?:bool,hinweis?:string} $o
+ */
+function bildfeld(string $label, string $name, string $wert, array $o = []): string
+{
+    $id      = (string) ($o['id'] ?? '');
+    $eng     = !empty($o['eng']);
+    $hinweis = (string) ($o['hinweis'] ?? '');
+    $bild    = $wert !== '' ? Util::attr(App::url($wert)) : '';
+
+    $html = '<div class="feld bildfeld' . ($eng ? ' bildfeld--eng' : '') . '" data-bildfeld>';
+    $html .= $id !== ''
+        ? '<label class="feld__label" for="' . Util::attr($id) . '">' . Util::h($label) . '</label>'
+        : '<span class="feld__label">' . Util::h($label) . '</span>';
+
+    $html .= '<div class="bildfeld__reihe">'
+           . '<span class="bildfeld__schau"'
+           . ($bild !== '' ? ' style="background-image:url(' . $bild . ')"' : '') . '>'
+           . ($wert === '' ? Icon::svg('image', $eng ? 14 : 18) : '') . '</span>'
+           . '<div class="bildfeld__knoepfe">'
+           . '<button class="btn btn--klein" type="button" data-bild-waehlen="' . Util::attr($id) . '">'
+           . Icon::svg('image', 14) . ' Bild wählen</button>'
+           . '<button class="btn btn--klein" type="button" data-bild-weg="' . Util::attr($id) . '"'
+           . ($wert === '' ? ' hidden' : '') . '>Entfernen</button>'
+           . '</div></div>';
+
+    $html .= !empty($o['versteckt'])
+        ? '<input type="hidden"' . ($id !== '' ? ' id="' . Util::attr($id) . '"' : '')
+          . ' name="' . Util::attr($name) . '" value="' . Util::attr($wert) . '">'
+        : '<input class="eingabe bildfeld__pfad"' . ($id !== '' ? ' id="' . Util::attr($id) . '"' : '')
+          . ' name="' . Util::attr($name) . '" value="' . Util::attr($wert) . '"'
+          . ' placeholder="uploads/… oder https://">';
+
+    if ($hinweis !== '') {
+        $html .= '<div class="feld__hinweis">' . Util::h($hinweis) . '</div>';
+    }
+    return $html . '</div>';
+}

@@ -42,6 +42,7 @@ if (App::istPost()) {
             'titel'     => App::post('titel'),
             'telefon'   => App::post('telefon'),
             'bio'       => App::post('bio'),
+            'bild'      => App::post('bild'),
             'farbe'     => App::post('farbe', '#0d6b4f'),
             'standorte' => Util::json(array_map('intval', App::postListe('standorte'))),
             'aktiv'     => App::postBool('aktiv') ? 1 : 0,
@@ -208,6 +209,7 @@ require __DIR__ . '/partials/kopf.php';
                       data-setztitel="<?= Util::attr((string) $u['titel']) ?>"
                       data-setztelefon="<?= Util::attr((string) $u['telefon']) ?>"
                       data-setzbio="<?= Util::attr((string) $u['bio']) ?>"
+                      data-setzbild="<?= Util::attr((string) $u['bild']) ?>"
                       data-setzfarbe="<?= Util::attr((string) ($u['farbe'] ?: '#0d6b4f')) ?>">
                 <?= Icon::svg('edit', 14) ?> Bearbeiten</button>
               <?php if (!$eigen): ?>
@@ -291,6 +293,19 @@ require __DIR__ . '/partials/kopf.php';
       <div class="feld"><label class="feld__label" for="t-bio">Kurzprofil</label>
         <textarea class="eingabe" id="t-bio" name="bio" rows="3" data-waechst
                   placeholder="Schwerpunkte, Ausbildung, Erfahrung – erscheint auf der Website."></textarea></div>
+      <?php /*
+       * Das Foto.
+       *
+       * Der Baustein „Team" auf der Website zeigt es seit jeher – nur gab
+       * es nirgends ein Feld dafür, und so stand dort immer der gestreifte
+       * Platzhalter. Derselbe Wähler wie im Baukasten: Mediathek öffnen,
+       * hochladen, fertig.
+       */ ?>
+      <?= bildfeld('Foto', 'bild', '', [
+            'id' => 't-bild', 'versteckt' => true,
+            'hinweis' => 'Hochformat wirkt am besten. Ohne Foto zeigt die Website '
+                       . 'ein gestreiftes Feld an der Stelle.',
+          ]) ?>
       <?php if (count($orte) > 1): ?>
         <div class="feld">
           <span class="feld__label">Standorte</span>
