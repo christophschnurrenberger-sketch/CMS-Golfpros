@@ -694,7 +694,17 @@ final class Renderer
                   . Util::h((string) ($e['zusatz'] ?? '')) . '</span>'
                 : $wer;
 
-            $stimmen .= '<figure class="stimme" style="margin:0"' . self::eintrag('eintraege', (int) $i) . '>'
+            /*
+             * Kein `style="margin:0"` mehr. Das stand hier, um den
+             * Vorgabeabstand des <figure> loszuwerden – und schlug dabei
+             * jede Regel aus dem Stilblatt: Die Stimmen sollten versetzt
+             * stehen, konnten es aber nicht, weil ein Stil am Element
+             * jeden Stil aus der Datei übertrumpft. Übrig blieb eine
+             * schmale Spalte, in der alle Stimmen untereinander standen
+             * und zwei Drittel der Seite leer. Der Abstand wird jetzt in
+             * `site.css` gesetzt, wo auch das Nebeneinander steht.
+             */
+            $stimmen .= '<figure class="stimme"' . self::eintrag('eintraege', (int) $i) . '>'
                       . '<blockquote class="stimme__text" style="margin:0 0 10px">„'
                       . self::huelle($text, self::feld('eintraege', 'mehrzeilig', (int) $i, 'text')
                                             . self::leer('Was gesagt wurde'))
@@ -1245,7 +1255,7 @@ final class Renderer
                     . '<p class="liste__text">' . Util::h(Util::datumLang((string) $e['start'])) . ' · '
                     . Util::h((string) ($e['ort_text'] ?: Events::ortName((int) $e['location_id']))) . '</p>'
                     . '<div class="liste__neben"><p class="leise" style="margin:0">'
-                    . ($frei > 0 ? 'noch ' . $frei . ' Plätze' : 'ausgebucht') . '</p></div>'
+                    . ($frei > 0 ? 'noch ' . ($frei === 1 ? '1 Platz' : $frei . ' Plätze') : 'ausgebucht') . '</p></div>'
                     . '</div></article>';
         }
         if ($liste === '') {
@@ -1299,7 +1309,7 @@ final class Renderer
                       . '<span class="reisekachel__preis">ab ' . Util::h(Util::geldKurz((int) $r['preis_cent']))
                       . '</span>'
                       . '<span class="reisekachel__frei">'
-                      . ($frei > 0 ? 'noch ' . $frei . ' Plätze' : 'ausgebucht') . '</span>'
+                      . ($frei > 0 ? 'noch ' . ($frei === 1 ? '1 Platz' : $frei . ' Plätze') : 'ausgebucht') . '</span>'
                       . '</span></span></a>';
         }
 

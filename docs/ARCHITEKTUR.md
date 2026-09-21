@@ -256,6 +256,18 @@ Ein paar Regeln, die von Fehlern kommen und deshalb aufgeschrieben sind:
 * Der Schrittanzeiger blendet unter 680 Pixeln alle Namen außer dem
   aktuellen aus. Drei Namen nebeneinander passen nicht in 390 Pixel, und
   die Seite ließe sich seitlich verschieben.
+* **Kein `style="..."` am Element für etwas, das Aufbau ist.** Ein Stil am
+  Element schlägt jede Regel aus der Datei, auch die, die es noch gar
+  nicht gibt. Die Kundenstimmen trugen `style="margin:0"`, damit das
+  <figure> seinen Vorgabeabstand verliert – und konnten deshalb nie
+  nebeneinander stehen: Jeder Versuch im Stilblatt lief ins Leere, und
+  keiner sah, warum. Abstände und Anordnung gehören in `site.css`.
+* Wie viele Spalten nebeneinander passen, entscheidet
+  `repeat(auto-fit, minmax(min(100%, 270px), 1fr))` – keine Haltepunkte
+  und **kein `vw`**. Im Baukasten ist die Leinwand schmaler als das
+  Fenster; eine Angabe in `vw` würde dort eine Breite behaupten, die die
+  Vorschau gar nicht hat, und die Vorschau zeigte etwas anderes als die
+  Website.
 
 ### Schriften liegen auf dem eigenen Server
 
