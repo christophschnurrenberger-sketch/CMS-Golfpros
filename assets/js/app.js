@@ -73,10 +73,13 @@
    * lädt auf Wunsch gleich eine neue Datei hoch.
    */
   (function () {
-    if (!document.querySelector('[data-bild-waehlen]')) return;
+    /* Auch die Vorschau im Baukasten ruft den Wähler – dort hängt er an
+       keinem Formularfeld, sondern an einem Bild in der Seite. */
+    if (!document.querySelector('[data-bild-waehlen], [data-art="bild"]')) return;
 
     let fenster = null;
     let ziel = null;
+    let rueckruf = null;
 
     /* Eine Adresse von außerhalb bleibt, wie sie ist; ein Pfad aus der
        eigenen Mediathek bekommt die Basis davor. */
@@ -97,6 +100,13 @@
     const setzen = (feld, pfad) => {
       feld.value = pfad;
       vorschau(feld);
+    };
+
+    /* Ein Pfad ist gewählt: entweder in ein Feld, oder an den Aufrufer. */
+    const uebergeben = (pfad) => {
+      if (rueckruf) { const r = rueckruf; rueckruf = null; r(pfad); return true; }
+      if (ziel) { setzen(ziel, pfad); return true; }
+      return false;
     };
 
     /* Auch wenn der Wert von woanders kommt – etwa aus der Vorbelegung
@@ -128,7 +138,7 @@
       d.addEventListener('click', (e) => {
         if (e.target.closest('[data-modal-zu]') || e.target === d) d.close();
         const kachel = e.target.closest('[data-pfad]');
-        if (kachel && ziel) { setzen(ziel, kachel.dataset.pfad); d.close(); }
+        if (kachel && uebergeben(kachel.dataset.pfad)) { d.close(); }
       });
       $('.bildwahl__datei', d).addEventListener('change', function () {
         if (!this.files || !this.files[0]) return;
@@ -176,7 +186,7 @@
           if (!ok || !a.pfad) { stand(d, a.fehler || 'Das hat nicht geklappt.', true); return; }
           stand(d, '', false);
           /* Gleich einsetzen: Wer hochlädt, will genau dieses Bild. */
-          if (ziel) { setzen(ziel, a.pfad); d.close(); }
+          if (uebergeben(a.pfad)) { d.close(); }
         })
         .catch(() => stand(d, 'Keine Verbindung zum Server.', true));
     };
@@ -199,11 +209,9 @@
       const auf = e.target.closest('[data-bild-waehlen]');
       if (auf) {
         ziel = feldVon(auf, auf.dataset.bildWaehlen);
+        rueckruf = null;
         if (!ziel) return;
-        if (!fenster) fenster = bauen();
-        laden(fenster);
-        stand(fenster, '', false);
-        fenster.showModal();
+        oeffnen();
         return;
       }
       const weg = e.target.closest('[data-bild-weg]');
@@ -212,6 +220,23 @@
         if (feld) setzen(feld, '');
       }
     });
+
+    const oeffnen = () => {
+      if (!fenster) fenster = bauen();
+      laden(fenster);
+      stand(fenster, '', false);
+      fenster.showModal();
+    };
+
+    /*
+     * Für alles, was kein Formularfeld ist: der Baukasten ruft den Wähler
+     * für ein Bild mitten in der Seite und bekommt den Pfad zurück.
+     */
+    window.gpBildWaehlen = (fertig) => {
+      ziel = null;
+      rueckruf = fertig;
+      oeffnen();
+    };
   })();
 
   /* ----------------------------------------------- Seitenbaum ziehen -- */

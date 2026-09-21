@@ -353,7 +353,22 @@ require __DIR__ . '/partials/kopf.php';
         <?php endif; ?>
       </div>
 
-      <div class="bau__leinwand" id="leinwand" data-geraet="desktop" data-bau-ziel>
+      <?php
+      /*
+       * Ab hier ist die Vorschau das Formular.
+       *
+       * `Renderer::bearbeitbar(true)` sorgt dafür, dass jedes Feld, das
+       * sich an Ort und Stelle ändern lässt, seine Herkunft mit ins HTML
+       * bekommt – und dass leere Felder sichtbar bleiben, statt wie auf
+       * der Website wegzufallen. Der Schalter wird unter der Leinwand
+       * wieder zurückgenommen, damit die Vorschauen weiter unten (und ein
+       * späterer Aufruf im selben Prozess) die öffentliche Fassung sehen.
+       */
+      $darfSchreiben = Auth::darf('website.write');
+      Renderer::bearbeitbar($darfSchreiben);
+      ?>
+      <div class="bau__leinwand" id="leinwand" data-geraet="desktop" data-bau-ziel
+           data-seite="<?= $darfSchreiben ? (int) $id : '' ?>">
         <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/site.css')) ?>">
         <div class="seite" style="<?= Util::attr(Website::stilVariablen()) ?>">
           <?php if ($bloecke === []): ?>
@@ -366,10 +381,17 @@ require __DIR__ . '/partials/kopf.php';
             </div>
           <?php else: ?>
             <?php foreach ($bloecke as $i => $b): ?>
+              <?php /*
+               * Die Auswahl hängt nicht mehr als `onclick` am Baustein.
+               * Mit beschreibbaren Feldern darin wäre jeder Versuch, den
+               * Textzeiger zu setzen, ein Seitenwechsel gewesen. Das
+               * Skript entscheidet jetzt anhand dessen, was angeklickt
+               * wurde – ein Feld wählt nicht aus, der Rand schon.
+               */ ?>
               <div class="bau-block<?= (string) $b['id'] === $gewaehlt ? ' ist-gewaehlt' : '' ?>"
                    id="block-<?= Util::attr((string) $b['id']) ?>"
                    data-block-id="<?= Util::attr((string) $b['id']) ?>"
-                   onclick="location.href='<?= Util::attr(App::url('/app/seite.php?id=' . $id . '&block=' . $b['id'])) ?>'">
+                   data-block-url="<?= Util::attr(App::url('/app/seite.php?id=' . $id . '&block=' . $b['id'])) ?>">
                 <span class="bau-block__anker">
                 <span class="bau-block__marke"><?= Util::h(Bloecke::name((string) $b['typ'])) ?></span>
                 <?php if (Auth::darf('website.write')): ?>
@@ -428,6 +450,7 @@ require __DIR__ . '/partials/kopf.php';
           <?php endif; ?>
         </div>
       </div>
+      <?php Renderer::bearbeitbar(false); ?>
     </div>
   </div>
 
@@ -726,4 +749,7 @@ document.querySelectorAll('[data-geraet]').forEach(function (k) {
 });
 </script>
 
-<?php require __DIR__ . '/partials/fuss.php'; ?>
+<?php
+$skripte = '<script src="' . Util::attr(App::asset('assets/js/bauen.js')) . '"></script>';
+require __DIR__ . '/partials/fuss.php';
+?>

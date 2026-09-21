@@ -686,6 +686,86 @@ Die Prüfung macht `Bookings::umbuchen()` – dieselbe Funktion wie auf der
 Terminseite, mit derselben Kollisionsprüfung. Liegt am Ziel schon etwas,
 bleibt der Termin, wo er war, und die Meldung sagt es.
 
+## Die Vorschau ist das Formular
+
+Der Baukasten hatte drei Spalten, und die mittlere war zum Ansehen da. Wer
+ein Wort ändern wollte, ging so vor: links den Baustein anklicken, rechts
+das richtige Feld suchen, dort tippen, speichern, warten, hinsehen. Vier
+Schritte zwischen „das Wort gefällt mir nicht" und „das Wort ist weg" –
+und bei jedem Schritt die Frage, ob man gerade das richtige Feld erwischt
+hat, denn die Zuordnung zwischen „Kleine Zeile darüber" und dem, was oben
+auf der Seite steht, muss man sich merken.
+
+Heute klickt man das Wort an und schreibt. Rechts bleibt nur, was in der
+Seite keine Gestalt hat und sich deshalb auch nicht anklicken lässt:
+Ausrichtung, Höhe, Schalter, das Ziel eines Knopfes, die Adresse eines
+Videos.
+
+### Der Renderer sagt, was wohin gehört
+
+Es gibt keine zweite Ausgabeform für den Baukasten – das wäre die
+Vorschau, die lügt. Stattdessen hat der Renderer einen Schalter:
+
+```php
+Renderer::bearbeitbar(true);   // nur um die Leinwand herum
+```
+
+Ist er an, passiert zweierlei. Erstens bekommt jedes Feld, das sich
+sinnvoll an Ort und Stelle ändern lässt, seine Herkunft als Angabe mit ins
+HTML: `data-feld`, dazu `data-art` (text, marker, mehrzeilig, zeilen,
+bild) und bei Listen `data-nr` und `data-unter`. Zweitens bleiben leere
+Felder stehen. Auf der Website fällt ein leerer Titel weg; im Baukasten
+muss er dastehen, sonst gäbe es keine Stelle, in die man hineinschreiben
+könnte. Dafür prüfen die Bausteine nicht mehr auf `!== ''`, sondern über
+`Renderer::zeigen()`.
+
+Das Skript `assets/js/bauen.js` kennt die Bausteine nicht und muss es auch
+nicht. Es liest die Angaben, schickt den Wert an `app/baustein.php` und
+lässt den Server entscheiden, ob er ihn annimmt. Dort wird gegen die
+Baustein-Definition geprüft, nicht gegen das, was der Aufruf behauptet:
+Ein Feld, das der Baustein nicht hat, wird nicht geschrieben, und eine
+Liste nimmt nur ihre eigenen Unterfelder an.
+
+**Die öffentliche Ausgabe ändert sich durch all das an keiner Stelle.**
+Bei ausgeschaltetem Schalter liefert `feld()` eine leere Zeichenkette, und
+`zeigen()` verhält sich wie der Vergleich vorher. Geprüft wird das mit
+einem Abdruck: jeder Bausteintyp einmal vorbelegt und einmal leer, dazu
+jede Seite des Demo-Mandanten – 65 Fälle, Byte für Byte verglichen.
+
+### Drei Fallen, die beim Bauen aufgefallen sind
+
+**Zierrat gehört nicht in die beschreibbare Stelle.** Ein Zitat rendert
+`„` + Text + `"`. Lag die beschreibbare Stelle um alles drei, wanderten
+die Anführungszeichen beim ersten Speichern in den Text – und beim zweiten
+standen vier davon da. Deshalb umschließt `huelle()` im Baukasten genau
+den Wert. Dasselbe gilt für alles, was der Baukasten selbst anbaut: Das
+Kreuz zum Entfernen eines Eintrags trägt `data-bau-zutat` und wird beim
+Auslesen übersprungen.
+
+**Eine gemeinsame Kopfzeile heißt nicht gemeinsame Felder.**
+`kopfzeile()` gibt Kleinzeile, Überschrift und Text aus – eine Galerie
+kennt aber nur die Überschrift. Ohne Gegenprüfung standen im Baukasten
+Stellen zum Hineinschreiben, die der Baustein gar nicht speichern kann:
+Man tippt, und nichts passiert. Deshalb merkt sich der Renderer beim
+Ausgeben die Felder des laufenden Bausteins (`self::$felder`), und
+`feld()` schweigt für alles, was nicht dazugehört.
+
+**Eine Rückfrage beim Verlassen der Seite ist keine Lösung.** Wer im
+letzten Feld noch tippt und dann weiterklickt, soll den Satz nicht
+verlieren – aber auch nicht gefragt werden, ob er die Seite wirklich
+verlassen will. Diese Rückfrage hält auf und speichert trotzdem nichts.
+Die Antwort sind zwei Bausteine des Browsers: `keepalive` an jeder
+Anfrage, damit sie einen Seitenwechsel überlebt, und `sendBeacon` beim
+`pagehide` für das Feld, in dem gerade der Zeiger steht.
+
+### Was der Baukasten nicht übernimmt
+
+Namen, Kurzprofil und Foto im Baustein „Team" stehen am Teammitglied, nicht
+am Baustein – sie lassen sich dort nicht überschreiben, und der Platzhalter
+sagt das auch. Ebenso die Leistungen, solange „Trainer aus dem System
+übernehmen" an ist: Die Einträge kommen aus den Leistungen, und eine
+Bearbeitung liefe ins Leere.
+
 ## Ein Bild wählt man, man tippt es nicht ab
 
 An jedem Bildfeld im Baukasten stand ein Textfeld und daneben der Hinweis
