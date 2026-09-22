@@ -880,7 +880,7 @@ final class KI
 
     private static function systemText(): string
     {
-        return 'Du bist der Assistent in GolfPro CMS, der Software eines Golf Professionals. '
+        return 'Du bist der Assistent in TeePilot, der Software eines Golf Professionals. '
              . 'Antworte auf Deutsch, kurz und konkret, in der Du-Form. '
              . 'Erfinde niemals Zahlen: Wenn dir eine Zahl fehlt, sage, wo sie in der Software steht. '
              . 'Du gibst keine rechtliche, steuerliche oder medizinische Beratung. '

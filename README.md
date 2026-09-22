@@ -1,4 +1,4 @@
-# GolfPro CMS
+# TeePilot
 
 Das digitale Betriebssystem für selbstständige Golf Professionals, Coaches
 und Academies: Website, Buchung, Kundenakte, Training, Verkauf, Rechnungen,

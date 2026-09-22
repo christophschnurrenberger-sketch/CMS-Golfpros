@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GolfPro CMS – direkt in der Vorschau schreiben
+   TeePilot – direkt in der Vorschau schreiben
    --------------------------------------------------------------------------
    Bis hierher lief der Baukasten so: links den Baustein anklicken, rechts
    das Feld suchen, dort tippen, speichern, warten, hinsehen. Vier Schritte

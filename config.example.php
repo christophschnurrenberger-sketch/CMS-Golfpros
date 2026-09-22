@@ -45,7 +45,7 @@ return [
 
     // Absender für Systemmails.
     'mail' => [
-        'from_name'  => 'GolfPro CMS',
+        'from_name'  => 'TeePilot',
         'from_email' => '',
         // 'transport' => 'mail' | 'smtp'
         'transport'  => 'mail',

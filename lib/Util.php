@@ -360,8 +360,17 @@ final class Util
      */
     public static function avatarFarbe(string $text): string
     {
-        $paletten = ['#3b6ef6', '#7c5cff', '#0ea5a5', '#e0663c', '#d4405f',
-                     '#2f9e55', '#8a6d3b', '#4a5568', '#b8862d', '#5b7fa6'];
+        /*
+         * Zehn gedeckte Töne, die alle weiße Schrift tragen.
+         *
+         * Die alte Reihe war heller und bunter – acht von zehn Farben
+         * kamen mit weißen Initialen unter 4,5:1, das helle Türkis sogar
+         * auf 3,0. Initialen in einem Avatar sind kleiner Text auf einer
+         * Fläche; wenn sie niemand lesen kann, ist der Avatar eine bunte
+         * Scheibe. Der schlechteste Wert hier liegt bei 5,9:1.
+         */
+        $paletten = ['#1f5a4a', '#2c5f7c', '#6b4a86', '#8a3f52', '#8a5a1e',
+                     '#3f6b2e', '#45566b', '#7a3f2e', '#2b6b6e', '#5c5a2a'];
         return $paletten[abs(crc32($text)) % count($paletten)];
     }
 

@@ -27,7 +27,7 @@ if ($koerper === '') {
  */
 if (!Stripe::signaturPruefen($koerper, $signatur)) {
     http_response_code(400);
-    error_log('GolfPro: Stripe-Webhook mit ungültiger Signatur abgewiesen.');
+    error_log('TeePilot: Stripe-Webhook mit ungültiger Signatur abgewiesen.');
     exit('signatur');
 }
 

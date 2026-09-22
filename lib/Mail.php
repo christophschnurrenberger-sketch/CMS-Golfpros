@@ -13,7 +13,7 @@ final class Mail
 {
     public static function senden(string $an, string $betreff, string $text, array $o = []): bool
     {
-        $vonName  = (string) (Tenant::einstellung('mail_absender_name', '') ?: Config::get('mail.from_name', 'GolfPro CMS'));
+        $vonName  = (string) (Tenant::einstellung('mail_absender_name', '') ?: Config::get('mail.from_name', 'TeePilot'));
         $vonMail  = (string) (Tenant::einstellung('mail_absender', '') ?: Config::get('mail.from_email', ''));
         if ($vonMail === '') {
             $vonMail = 'noreply@' . (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
@@ -27,7 +27,7 @@ final class Mail
             'Reply-To: ' . ($o['antwort'] ?? $vonMail),
             'MIME-Version: 1.0',
             'Content-Type: multipart/alternative; boundary="' . $grenze . '"',
-            'X-Mailer: GolfPro CMS',
+            'X-Mailer: TeePilot',
         ];
 
         $koerper = "--{$grenze}\r\nContent-Type: text/plain; charset=UTF-8\r\n"

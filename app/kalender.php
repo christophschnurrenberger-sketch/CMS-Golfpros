@@ -184,7 +184,7 @@ foreach ($termine as $t) {
 $vonStunde = max(0, intdiv($vonMin, 60) - 1);
 $bisStunde = min(24, (int) ceil($bisMin / 60) + 1);
 
-$farben = ['einzel' => '', 'gruppe' => 'lila', 'kurs' => 'akzent', 'video' => 'info',
+$farben = ['einzel' => '', 'gruppe' => 'ki', 'kurs' => 'akzent', 'video' => 'info',
            'workshop' => 'warnung', 'event' => 'warnung', 'online' => 'info', 'camp' => 'akzent'];
 $leistungen = Tenant::nachId('services');
 
@@ -221,7 +221,7 @@ require __DIR__ . '/partials/kopf.php';
   <?php /* Die Legende gehoert neben den Kalender, nicht unter ihn: Wer
            die Farben nachschlagen will, schaut nicht ans Seitenende. */ ?>
   <div class="farblegende">
-    <?php foreach (['' => 'Einzeln', 'lila' => 'Gruppe', 'info' => 'Video', 'akzent' => 'Kurs'] as $k => $n): ?>
+    <?php foreach (['' => 'Einzeln', 'ki' => 'Gruppe', 'info' => 'Video', 'akzent' => 'Kurs'] as $k => $n): ?>
       <span class="farblegende__teil"><i class="farblegende__punkt<?= $k !== '' ? ' farblegende__punkt--' . $k : '' ?>"></i><?= Util::h($n) ?></span>
     <?php endforeach; ?>
   </div>

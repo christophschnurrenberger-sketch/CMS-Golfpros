@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GolfPro CMS – Oberflächenlogik
+   TeePilot – Oberflächenlogik
    --------------------------------------------------------------------------
    Kein Framework. Die Seiten kommen fertig vom Server; dieses Skript macht
    sie lebendig: Befehlspalette, Menüs, Dialoge, Ziehen und Ablegen, Thema.

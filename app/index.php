@@ -133,7 +133,7 @@ require __DIR__ . '/partials/kopf.php';
     <div class="karte">
       <div class="karte__kopf">
         <h2><?= Icon::svg('ai', 17) ?> Empfohlene Aktionen</h2>
-        <span class="pille pille--lila"><?= count($empfehlungen) ?></span>
+        <span class="pille pille--ki"><?= count($empfehlungen) ?></span>
         <div class="fueller"></div>
         <span class="klein gedimmt nicht-mobil">aus deinen Daten berechnet</span>
       </div>

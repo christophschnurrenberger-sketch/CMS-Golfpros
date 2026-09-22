@@ -52,7 +52,7 @@ final class Tenant
 
     public static function name(): string
     {
-        return (string) (self::workspace()['name'] ?? 'GolfPro CMS');
+        return (string) (self::workspace()['name'] ?? Marke::NAME);
     }
 
     public static function plan(): string

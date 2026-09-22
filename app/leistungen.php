@@ -102,7 +102,7 @@ require __DIR__ . '/partials/kopf.php';
           <div class="reihe reihe--eng reihe--umbruch mt-3">
             <?= pille((int) $s['dauer_min'] . ' Min') ?>
             <?= pille(Util::geldKurz((int) $s['preis_cent']), 'marke') ?>
-            <?php if ((int) $s['kapazitaet'] > 1): ?><?= pille('bis ' . (int) $s['kapazitaet'] . ' TN', 'lila') ?><?php endif; ?>
+            <?php if ((int) $s['kapazitaet'] > 1): ?><?= pille('bis ' . (int) $s['kapazitaet'] . ' TN', 'ki') ?><?php endif; ?>
             <?php if ($buchungen > 0): ?><?= pille($buchungen . '× gebucht', 'offen') ?><?php endif; ?>
           </div>
         </div>

@@ -211,7 +211,7 @@ function rahmenAuf(string $titel): void
 <html lang="de"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title><?= htmlspecialchars($titel, ENT_QUOTES, 'UTF-8') ?> · GolfPro CMS</title>
+<title><?= htmlspecialchars($titel, ENT_QUOTES, 'UTF-8') ?> · TeePilot</title>
 <style>
 /* Eigenständige Gestaltung: Der Installer läuft, bevor es Branding gibt. */
 *{box-sizing:border-box}
@@ -219,9 +219,9 @@ body{margin:0;background:#f6f7f6;color:#16191a;
   font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 .huelle{max-width:620px;margin:0 auto;padding:44px 20px 70px}
 .marke{display:flex;align-items:center;gap:11px;margin-bottom:26px}
-.marke span{width:36px;height:36px;border-radius:10px;background:#1d6f4a;color:#fff;
-  display:grid;place-items:center;font-weight:700}
-.marke b{font-size:16px}
+.marke span{color:#12513f;display:grid;place-items:center}
+.marke span svg{display:block}
+.marke b{font-size:19px;font-weight:700;letter-spacing:-.035em}
 h1{font-size:23px;letter-spacing:-.02em;margin:0 0 8px}
 .text{color:#5b6360;margin:0 0 22px}
 .karte{background:#fff;border:1px solid #e3e6e4;border-radius:14px;padding:22px;margin-bottom:18px}
@@ -249,7 +249,7 @@ input:focus,select:focus{outline:2px solid #1d6f4a33;border-color:#1d6f4a}
 .haken input{margin-top:3px}
 @media(max-width:540px){.paar{grid-template-columns:1fr}}
 </style></head><body><div class="huelle">
-<div class="marke"><span>G</span><b>GolfPro CMS</b></div>
+<div class="marke"><span><?= Marke::zeichen(34) ?></span><b><?= Marke::NAME ?></b></div>
 <h1><?= htmlspecialchars($titel, ENT_QUOTES, 'UTF-8') ?></h1>
 <?php
 }

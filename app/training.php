@@ -62,7 +62,7 @@ require __DIR__ . '/partials/kopf.php';
                 <td>
                   <span class="haupt"><?= Util::h((string) $p['name']) ?></span>
                   <?php if ((string) $p['quelle'] === 'ai'): ?>
-                    <span class="pille pille--lila"><?= Icon::svg('ai', 11) ?> KI</span>
+                    <span class="pille pille--ki"><?= Icon::svg('ai', 11) ?> KI</span>
                   <?php endif; ?>
                   <div class="winzig gedimmt-2"><?= Util::h(Util::kuerzen((string) $p['ziel'], 60)) ?></div>
                 </td>

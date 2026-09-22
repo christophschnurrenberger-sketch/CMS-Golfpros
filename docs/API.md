@@ -1,16 +1,16 @@
 # Schnittstelle: Empfänger abholen
 
 Diese Beschreibung ist zum Weitergeben gedacht – an den, der das
-Newslettersystem (Acumen Mail) mit GolfPro CMS verbindet.
+Newslettersystem (Acumen Mail) mit TeePilot verbindet.
 
-In einem Satz: **GolfPro CMS liefert die Empfänger als JSON, das
+In einem Satz: **TeePilot liefert die Empfänger als JSON, das
 Newslettersystem holt sie ab.** Es wird nichts von hier aus verschickt.
 
 ---
 
 ## Warum abholen und nicht schieben
 
-GolfPro CMS weiß nicht, wann das Newslettersystem erreichbar ist, ob es
+TeePilot weiß nicht, wann das Newslettersystem erreichbar ist, ob es
 gerade umzieht oder ob sein Zugang noch gilt. Ein Abruf liegt dagegen
 vollständig in der Hand dessen, der die Daten braucht: Er holt, so oft er
 mag, wiederholt bei einem Fehler und bestimmt selbst, wann ein Abgleich als
@@ -101,7 +101,7 @@ GET /api.php?was=empfaenger&pro_seite=200
 
 Geliefert wird, wer die Newsletter-Einwilligung gesetzt hat, eine
 E-Mail-Adresse hat und den Status `aktiv` trägt. Genau dieselbe Auswahl
-bekommt auch eine Kampagne aus GolfPro CMS selbst.
+bekommt auch eine Kampagne aus TeePilot selbst.
 
 ```json
 {
@@ -139,7 +139,7 @@ bekommt auch eine Kampagne aus GolfPro CMS selbst.
 }
 ```
 
-`id` ist die Kundennummer in GolfPro CMS. Sie ist der stabile Bezug: Eine
+`id` ist die Kundennummer in TeePilot. Sie ist der stabile Bezug: Eine
 E-Mail-Adresse kann sich ändern, die Nummer nicht.
 
 `abmelde_url` gehört in jede Aussendung – auch in die aus dem anderen

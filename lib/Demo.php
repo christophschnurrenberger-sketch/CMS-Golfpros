@@ -65,8 +65,8 @@ final class Demo
         mt_srand(20260913);
 
         $name  = (string) ($o['name'] ?? 'Golf Academy Bergmann');
-        $email = (string) ($o['email'] ?? 'demo@golfpro-cms.de');
-        $pass  = (string) ($o['passwort'] ?? 'demo1234!GolfPro');
+        $email = (string) ($o['email'] ?? 'demo@teepilot.golf');
+        $pass  = (string) ($o['passwort'] ?? 'demo1234!TeePilot');
 
         return DB::transaktion(static function () use ($name, $email, $pass) {
             self::$ws = DB::insert('workspaces', [

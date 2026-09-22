@@ -215,7 +215,7 @@ require __DIR__ . '/partials/kopf.php';
             <div style="padding:9px 11px;background:var(--flaeche);border-radius:var(--radius);
                         border:1px solid var(--rand)">
               <div class="reihe reihe--eng">
-                <span class="pille pille--lila"><?= Util::h((string) ($h['bereich'] ?? '')) ?></span>
+                <span class="pille pille--ki"><?= Util::h((string) ($h['bereich'] ?? '')) ?></span>
                 <?php if (!empty($h['sicherheit'])): ?>
                   <div class="fueller"></div>
                   <span class="winzig gedimmt-2">Sicherheit: <?= Util::h((string) $h['sicherheit']) ?></span>

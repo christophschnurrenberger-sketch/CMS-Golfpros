@@ -1,54 +1,87 @@
 /* ==========================================================================
-   GolfPro CMS – Design-System
+   TeePilot – Design-System
    --------------------------------------------------------------------------
    Ein Satz Merkmale, überall dieselben. Farben, Abstände, Radien und
    Schatten stehen als Variablen oben; keine Komponente unten erfindet
    eigene Werte. Das ist der Unterschied zwischen einer Oberfläche, die
    gebaut wurde, und einer, die gewachsen ist.
 
-   Die Marke des Pros überschreibt --marke zur Laufzeit. Die Anwendung selbst
-   bleibt neutral – Werkzeug, nicht Werbefläche.
+   Die Anwendung trägt die Farben von TeePilot, nicht die des Golfpros.
+   Vorher war das andersherum: --marke wurde zur Laufzeit mit der
+   Markenfarbe des Workspace überschrieben, und die Software sah bei jedem
+   Kunden anders aus – mal tannengrün, mal blau. Ein Werkzeug, das kein
+   eigenes Gesicht hat, wirkt auch nicht wie eins.
+
+   Die Farbe des Pros gilt weiterhin dort, wo sie hingehört: in der
+   Vorschau seiner Website (`Website::stilVariablen()` setzt sie als
+   Inline-Stil auf `.seite`) und auf der Website selbst.
    ========================================================================== */
 
 /* ------------------------------------------------------------- Merkmale */
 
 :root {
-  /* Neutralton – leicht warm, damit Weiß nicht klinisch wirkt */
-  --n-0:   #ffffff;
-  --n-25:  #fcfcfb;
-  --n-50:  #f7f7f5;
-  --n-100: #f0f0ed;
-  --n-150: #e7e7e3;
-  --n-200: #dcdcd7;
-  --n-300: #c3c3bd;
-  --n-400: #9d9d97;
-  --n-500: #76766f;
-  --n-600: #5a5a54;
-  --n-700: #42423d;
-  --n-800: #2b2b28;
-  --n-900: #1a1a18;
-  --n-950: #0f0f0e;
+  /*
+   * Neutralton – warm und eine Spur grünlich, abgestimmt auf Pine.
+   * Ein kühles Grau neben einem tiefen Grün sieht immer schmutzig aus.
+   */
+  --n-0:   #ffffff;   /* Paper */
+  --n-25:  #fbfaf6;
+  --n-50:  #f6f5f0;   /* Chalk – Grund der Anwendung */
+  --n-100: #f0efe9;
+  --n-150: #e6e5de;
+  --n-200: #dedcd6;   /* Mist – Linien */
+  --n-300: #c4c4bc;
+  --n-400: #a4a79e;   /* nie Text: 2,2:1 */
+  --n-500: #6b6e66;   /* Stone – Nebentext, 4,75:1 auf Chalk */
+  --n-600: #55584f;
+  --n-700: #40433c;
+  --n-800: #2a2d28;
+  --n-900: #1c201d;   /* Anthracite – Fließtext */
+  --n-950: #0e110f;
 
-  /* Marke – tiefes Grün, kein Rasengrün. Vom Workspace überschreibbar. */
-  --marke:        #0d6b4f;
-  --marke-dunkel: #0a543e;
-  --marke-hell:   #e6f2ed;
-  --marke-rand:   #bfded1;
+  /* Marke – Pine und Fairway. Fest, nicht überschreibbar. */
+  --pine:         #0b2b22;
+  --marke:        #12513f;   /* Fairway – Knöpfe, Links, aktive Zustände */
+  --marke-dunkel: #0b2b22;
+  --marke-hell:   #e8f0ec;
+  --marke-rand:   #c2d8ce;
   --auf-marke:    #ffffff;
-  --akzent:       #b08829;
-  --akzent-hell:  #fdf6e6;
 
-  /* Zustände */
-  --erfolg:       #17794f;
-  --erfolg-hell:  #e6f4ec;
-  --warnung:      #a6640d;
-  --warnung-hell: #fdf1e0;
-  --gefahr:       #b4242b;
-  --gefahr-hell:  #fceceb;
-  --info:         #1d5fa8;
-  --info-hell:    #e8f1fb;
-  --lila:         #6b4ea8;
-  --lila-hell:    #f1ecfa;
+  /*
+   * Signal ist die Akzentfarbe der Marke – aber nur als Fläche auf
+   * Dunkel. Als Schrift auf Hell liegt sie bei 1,3:1 und fällt durch
+   * jeden Test. Wo ein Akzent lesbar sein muss, steht Olive: dieselbe
+   * Familie, nur so weit abgedunkelt, dass sie trägt (4,9:1).
+   */
+  --signal:       #c3e35c;
+  --auf-signal:   #0b2b22;
+  --horizon:      #8fcbb4;
+  --sand:         #e4dac4;
+  --akzent:       #5f7320;
+  --akzent-hell:  #f1f5e3;
+
+  /*
+   * Zustände. `--auf-zustand` ist die Schrift auf einer vollflächigen
+   * Zustandsfarbe. Im Hellen ist das Weiß; im Dunkeln sind die Farben
+   * selbst hell, und Weiß darauf wäre unlesbar – dort steht Pine.
+   */
+  --auf-zustand:  #ffffff;
+  --erfolg:       #2a7353;
+  --erfolg-hell:  #e7f0ea;
+  --warnung:      #8f5c0e;
+  --warnung-hell: #fbf0df;
+  --gefahr:       #b23b32;
+  --gefahr-hell:  #f9ebe9;
+  --info:         #3b6e8f;
+  --info-hell:    #e9f1f5;
+  /*
+   * Die Marke der KI-Funktionen. War Lila – eine Farbe, die in dieser
+   * Palette nirgends vorkommt und neben Pine fremd wirkt. Jetzt ein
+   * tiefes Teal: nah genug an Horizon, um dazuzugehören, und weit genug
+   * von Fairway, um „das hat der Assistent vorgeschlagen" zu sagen.
+   */
+  --ki:           #26666a;
+  --ki-hell:      #e7f1f1;
 
   /* Flächen */
   --grund:     var(--n-50);
@@ -59,11 +92,23 @@
   --rand-2:    var(--n-200);
   --rand-stark:var(--n-300);
 
-  /* Text */
+  /*
+   * Text – drei Stufen, nicht vier.
+   *
+   * `--text-4` war #a4a79e und kam auf 2,2:1: In Tabellenköpfen, in
+   * Zeitangaben und unter jedem zweiten Listeneintrag stand damit Text,
+   * den man bei Sonne auf einem Laptop nicht mehr lesen konnte. Eine
+   * vierte, hellere und trotzdem lesbare Stufe gibt es rechnerisch nicht –
+   * unterhalb von `--text-3` ist bei 4,5:1 Schluss. Deshalb zeigt
+   * `--text-4` jetzt dorthin. Der Name bleibt, damit die 41 Stellen, die
+   * ihn benutzen, nicht einzeln angefasst werden müssen.
+   *
+   * Für reine Zier ohne Text – Trennlinien, Rahmen – gibt es `--rand`.
+   */
   --text:   var(--n-900);
   --text-2: var(--n-600);
   --text-3: var(--n-500);
-  --text-4: var(--n-400);
+  --text-4: var(--n-500);
 
   /* Raster – 4px-Schritte, damit nichts „fast" ausgerichtet ist */
   --r1: 4px;  --r2: 8px;  --r3: 12px; --r4: 16px;
@@ -82,48 +127,73 @@
   --schatten-4: 0 24px 64px rgba(16,20,18,.18);
   --ring: 0 0 0 3px color-mix(in srgb, var(--marke) 22%, transparent);
 
-  --schrift: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-             "Helvetica Neue", Arial, sans-serif;
+  /*
+   * Schibsted Grotesk trägt die Oberfläche, IBM Plex Mono alles, was
+   * Zahl ist: Uhrzeiten, Preise, Handicaps, Kennungen. Beide liegen auf
+   * diesem Server – siehe assets/css/schriften.css.
+   */
+  --schrift: "Schibsted Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI",
+             "Helvetica Neue", sans-serif;
   --schrift-titel: var(--schrift);
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --seitenleiste: 244px;
   --kopf-hoehe: 60px;
   --tempo: 160ms;
 }
 
+/*
+ * Dunkler Modus: kein neutrales Schwarz, sondern die Tiefe von Pine.
+ * Die Grüntöne bleiben damit auch im Dunkeln zu Hause.
+ */
 [data-theme="dunkel"] {
-  --n-0:   #16181a;
-  --n-25:  #1a1d1f;
-  --n-50:  #101214;
-  --n-100: #202326;
-  --n-150: #282c30;
-  --n-200: #33383d;
-  --n-300: #454b52;
-  --n-400: #6b727a;
-  --n-500: #8d949c;
-  --n-600: #aab1b8;
-  --n-700: #c6ccd2;
-  --n-800: #e0e4e8;
-  --n-900: #f2f4f6;
+  --n-0:   #14211c;
+  --n-25:  #17261f;
+  --n-50:  #0e1a15;
+  --n-100: #1c2f27;
+  --n-150: #23382f;
+  --n-200: #2d453a;
+  --n-300: #3f5b4d;
+  --n-400: #67806f;
+  --n-500: #8ba394;
+  --n-600: #a9bfb2;
+  --n-700: #c6d6cc;
+  --n-800: #dfe9e2;
+  --n-900: #f0f5f1;
   --n-950: #ffffff;
 
-  --marke-hell: #0f2b23;
-  --marke-rand: #1d5843;
-  --akzent-hell: #2a2317;
+  /* Auf Dunkel darf Signal endlich tun, wofür es gedacht ist. */
+  --marke:       #6fbf94;
+  --marke-hell:  #10312a;
+  --marke-rand:  #1d5843;
+  --auf-marke:   #06170f;
+  --akzent:      #c3e35c;
+  --akzent-hell: #24301a;
 
+  /*
+   * Die Zustandsfarben brauchen im Dunkeln eigene Werte, nicht nur
+   * dunklere Tönungen. Vorher wurde nur der Hintergrund getauscht und
+   * die Schrift blieb dunkelgrün auf dunkelgrün – eine Pille „Bestätigt"
+   * kam so auf 2,7:1 und war praktisch unlesbar.
+   */
+  --auf-zustand:  #08130f;
+  --erfolg:       #7fc9a2;
   --erfolg-hell:  #10291f;
+  --warnung:      #e0a34a;
   --warnung-hell: #2b2012;
+  --gefahr:       #e88a80;
   --gefahr-hell:  #2c1618;
+  --info:         #84b8d6;
   --info-hell:    #131f2e;
-  --lila-hell:    #1e1a2b;
+  --ki:           #6fc0c4;
+  --ki-hell:      #16302f;
 
-  --grund:     #0b0d0e;
-  --flaeche:   #16181a;
-  --flaeche-2: #1a1d1f;
-  --flaeche-3: #202326;
-  --rand:      #26292d;
-  --rand-2:    #31353a;
+  --grund:     #08130f;
+  --flaeche:   #14211c;
+  --flaeche-2: #17261f;
+  --flaeche-3: #1c2f27;
+  --rand:      #22362d;
+  --rand-2:    #2d453a;
 
   --schatten-1: 0 1px 2px rgba(0,0,0,.4);
   --schatten-2: 0 2px 6px rgba(0,0,0,.45), 0 8px 20px rgba(0,0,0,.35);
@@ -222,10 +292,28 @@ small, .klein { font-size: 12.5px; }
 
 /* ------------------------------------------------------- Seitenleiste -- */
 
+/*
+ * Die Seitenleiste ist das Gesicht von TeePilot.
+ *
+ * Sie war hell und nahm die Markenfarbe des jeweiligen Golfpros an –
+ * damit sah die Software bei jedem Kunden anders aus und bei keinem nach
+ * sich selbst. Jetzt trägt sie Pine, unabhängig von Thema und Kunde.
+ *
+ * Die Farben stehen als eigene Merkmale an der Leiste, nicht als globale
+ * Variablen: Der Rest der Anwendung folgt hell und dunkel, die Leiste
+ * bleibt in beiden Fällen dieselbe.
+ */
 .seitenleiste {
+  --sl-grund:      var(--pine);
+  --sl-text:       #d5ddd8;
+  --sl-text-2:     #7d9c8c;   /* 5,07:1 auf Pine */
+  --sl-aktiv:      #164537;
+  --sl-aktiv-text: #f6f5f0;
+  --sl-rand:       #164537;
+
   grid-column: 1;
-  background: var(--flaeche);
-  border-right: 1px solid var(--rand);
+  background: var(--sl-grund);
+  border-right: 0;
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -241,27 +329,34 @@ small, .klein { font-size: 12.5px; }
   gap: 10px;
   padding: 0 var(--r4);
   height: var(--kopf-hoehe);
-  border-bottom: 1px solid var(--rand);
+  border-bottom: 1px solid var(--sl-rand);
   flex: none;
 }
+/*
+ * Kein Verlauf mehr. Die Bildmarke steht als Zeichen da, in Signal auf
+ * Pine – und wo ein Workspace ein eigenes Logo hinterlegt hat, steht
+ * dieses. Der Kunde darf sein Zeichen zeigen, die Farbe der Leiste
+ * gehört aber TeePilot.
+ */
 .marke__zeichen {
   width: 30px; height: 30px; border-radius: 9px;
-  background: linear-gradient(140deg, var(--marke), color-mix(in srgb, var(--marke) 62%, #000));
-  color: var(--auf-marke);
+  color: var(--signal);
   display: grid; place-items: center;
-  font-weight: 700; font-size: 13px; letter-spacing: -.02em;
-  box-shadow: var(--schatten-1);
   flex: none;
   overflow: hidden;
 }
-.marke__zeichen img { width: 100%; height: 100%; object-fit: cover; }
+.marke__zeichen svg { width: 26px; height: 26px; display: block; }
+.marke__zeichen img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; }
 .marke__text { min-width: 0; flex: 1; }
 .marke__name {
   font-weight: 620; font-size: 13.5px; letter-spacing: -.015em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  display: block; color: var(--text);
+  display: block; color: var(--sl-aktiv-text);
 }
-.marke__plan { font-size: 11px; color: var(--text-3); display: block; margin-top: -2px; }
+.marke__plan {
+  font-family: var(--mono); font-size: 10.5px; color: var(--sl-text-2);
+  display: block; margin-top: -1px;
+}
 
 .navi {
   flex: 1;
@@ -271,46 +366,81 @@ small, .klein { font-size: 12.5px; }
 .navi__gruppe { margin-bottom: 2px; }
 .navi__titel {
   padding: var(--r4) 10px var(--r2);
-  font-size: 10.5px; font-weight: 640; letter-spacing: .07em;
-  text-transform: uppercase; color: var(--text-4);
+  font-family: var(--mono);
+  font-size: 9.5px; font-weight: 500; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--sl-text-2);
 }
 .navi__gruppe:first-child .navi__titel { padding-top: var(--r2); }
 
 .navi__link {
   display: flex; align-items: center; gap: 10px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  color: var(--text-2);
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: var(--sl-text);
   font-size: 13.5px;
   font-weight: 500;
   transition: background var(--tempo), color var(--tempo);
   position: relative;
   margin-bottom: 1px;
 }
-.navi__link .ico { color: var(--text-4); transition: color var(--tempo); }
-.navi__link:hover { background: var(--flaeche-3); color: var(--text); }
-.navi__link:hover .ico { color: var(--text-2); }
+.navi__link .ico { color: var(--sl-text-2); transition: color var(--tempo); }
+.navi__link:hover { background: color-mix(in srgb, #ffffff 7%, transparent); color: #fff; }
+.navi__link:hover .ico { color: var(--sl-text); }
+/*
+ * Der aktive Punkt ist nicht nur eine Farbe: Die Fläche hebt sich nur um
+ * 1,4:1 von Pine ab, das allein trüge die Auskunft nicht. Deshalb kommen
+ * das Signal-Icon und die Schriftstärke dazu – drei Merkmale statt einem.
+ */
 .navi__link.ist-aktiv {
-  background: var(--marke-hell);
-  color: var(--marke);
-  font-weight: 580;
+  background: var(--sl-aktiv);
+  color: var(--sl-aktiv-text);
+  font-weight: 600;
 }
-.navi__link.ist-aktiv .ico { color: var(--marke); }
+.navi__link.ist-aktiv .ico { color: var(--signal); }
 .navi__zahl {
   margin-left: auto;
-  background: var(--flaeche-3);
-  color: var(--text-3);
-  font-size: 11px; font-weight: 600;
+  font-family: var(--mono);
+  background: color-mix(in srgb, #ffffff 10%, transparent);
+  color: var(--sl-text);
+  font-size: 10.5px; font-weight: 500;
   padding: 1px 6px; border-radius: 20px;
   min-width: 20px; text-align: center;
 }
-.navi__link.ist-aktiv .navi__zahl { background: var(--marke); color: var(--auf-marke); }
-.navi__zahl--signal { background: var(--gefahr); color: #fff; }
+.navi__link.ist-aktiv .navi__zahl { background: var(--signal); color: var(--auf-signal); }
+.navi__zahl--signal { background: var(--gefahr); color: var(--auf-zustand); }
 
 .seitenleiste__fuss {
   flex: none;
-  border-top: 1px solid var(--rand);
+  border-top: 1px solid var(--sl-rand);
   padding: var(--r2);
+}
+
+/*
+ * Was in der Leiste steht, liest sich auf Pine – die allgemeinen Regeln
+ * dieser Bausteine gelten weiter überall sonst. Ohne diese sechs Zeilen
+ * stünde der Name des Angemeldeten dunkelgrau auf dunkelgrün.
+ */
+.seitenleiste .profil { color: var(--sl-aktiv-text); }
+.seitenleiste .profil:hover { background: color-mix(in srgb, #ffffff 7%, transparent); }
+.seitenleiste .profil__rolle { font-family: var(--mono); font-size: 10.5px; color: var(--sl-text-2); }
+.seitenleiste .avatar { background: var(--sl-aktiv); color: var(--signal); }
+.seitenleiste .rundknopf { color: var(--sl-text-2); }
+.seitenleiste .rundknopf:hover { background: color-mix(in srgb, #ffffff 9%, transparent); color: #fff; }
+
+.leiste-marke {
+  display: flex; align-items: center; gap: 7px;
+  padding: 10px 10px 2px;
+  margin-top: var(--r2);
+  border-top: 1px solid var(--sl-rand);
+  color: var(--signal);
+}
+.leiste-marke__name {
+  font-size: 12px; font-weight: 700; letter-spacing: -.035em;
+  color: var(--sl-text);
+}
+.leiste-marke__version {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 10px; color: var(--sl-text-2);
 }
 
 .profil {
@@ -387,7 +517,7 @@ kbd {
 .rundknopf__punkt {
   position: absolute; top: 6px; right: 6px;
   min-width: 15px; height: 15px; padding: 0 3px;
-  background: var(--gefahr); color: #fff;
+  background: var(--gefahr); color: var(--auf-zustand);
   border-radius: 20px;
   font-size: 9.5px; font-weight: 700; line-height: 15px;
   text-align: center;
@@ -458,7 +588,7 @@ kbd {
 }
 .btn--primaer:hover { background: var(--marke-dunkel); border-color: var(--marke-dunkel); color: var(--auf-marke); }
 
-.btn--gefahr { background: var(--gefahr); border-color: var(--gefahr); color: #fff; }
+.btn--gefahr { background: var(--gefahr); border-color: var(--gefahr); color: var(--auf-zustand); }
 .btn--gefahr:hover { background: color-mix(in srgb, var(--gefahr) 84%, #000); border-color: transparent; color: #fff; }
 
 .btn--geist { background: none; border-color: transparent; box-shadow: none; color: var(--text-2); }
@@ -749,7 +879,15 @@ a.kennzahl:hover { box-shadow: var(--schatten-2); border-color: var(--rand-2); c
 .kennzahl__symbol { color: var(--text-4); margin-left: auto; }
 .kennzahl__wert {
   font-size: 27px; font-weight: 660; letter-spacing: -.028em;
-  line-height: 1.1; font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  /*
+   * Proportionalziffern, keine Tabellenziffern. In einer Spalte
+   * untereinander wären tabellarische richtig – hier stehen die Zahlen
+   * nebeneinander, und Schibsted gibt dem Komma dann die volle Zeichen-
+   * breite: „2.602,00" reißt sichtbar auseinander. Tabellen behalten
+   * ihre Tabellenziffern, die stehen weiter unten.
+   */
+  font-variant-numeric: proportional-nums lining-nums;
   color: var(--text);
 }
 .kennzahl__wert small { font-size: 16px; font-weight: 600; color: var(--text-3); letter-spacing: -.01em; }
@@ -779,7 +917,7 @@ a.kennzahl:hover { box-shadow: var(--schatten-2); border-color: var(--rand-2); c
 .pille--gefahr  { background: var(--gefahr-hell);  color: var(--gefahr); }
 .pille--info    { background: var(--info-hell);    color: var(--info); }
 .pille--marke   { background: var(--marke-hell);   color: var(--marke); }
-.pille--lila    { background: var(--lila-hell);    color: var(--lila); }
+.pille--ki      { background: var(--ki-hell);    color: var(--ki); }
 .pille--akzent  { background: var(--akzent-hell);  color: var(--akzent); }
 .pille--offen   { background: none; border-color: var(--rand-2); color: var(--text-3); }
 .pille--punkt::before {
@@ -1348,7 +1486,7 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
   width: 9px; height: 9px; border-radius: 3px; flex: none;
   background: var(--marke);
 }
-.farblegende__punkt--lila   { background: var(--lila); }
+.farblegende__punkt--ki     { background: var(--ki); }
 .farblegende__punkt--info   { background: var(--info); }
 .farblegende__punkt--akzent { background: var(--akzent); }
 
@@ -1389,7 +1527,7 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
 }
 .kalender__jetzt-zeit {
   position: absolute; right: 3px; top: -8px;
-  background: var(--gefahr); color: #fff;
+  background: var(--gefahr); color: var(--auf-zustand);
   font-size: 9.5px; font-weight: 640;
   padding: 1px 5px; border-radius: 999px;
 }
@@ -1712,7 +1850,7 @@ dialog.modal[open] { animation: modal-auf .2s cubic-bezier(.2,.9,.3,1); }
    man eine Zeile der Liste auf der Zeitleiste ohne Suchen wieder. */
 .tagesliste__strich { align-self: stretch; border-radius: 999px; background: var(--marke); }
 .tagesliste__strich.termin--info    { background: var(--info); }
-.tagesliste__strich.termin--lila    { background: var(--lila); }
+.tagesliste__strich.termin--ki      { background: var(--ki); }
 .tagesliste__strich.termin--akzent  { background: var(--akzent); }
 .tagesliste__strich.termin--warnung { background: var(--warnung); }
 
@@ -1817,7 +1955,7 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
 }
 .termin--kompakt { padding: 2px 6px; }
 .termin--info    { background: var(--info-hell);    color: var(--info);    border-left-color: var(--info); }
-.termin--lila    { background: var(--lila-hell);    color: var(--lila);    border-left-color: var(--lila); }
+.termin--ki      { background: var(--ki-hell);    color: var(--ki);    border-left-color: var(--ki); }
 .termin--akzent  { background: var(--akzent-hell);  color: var(--akzent);  border-left-color: var(--akzent); }
 .termin--warnung { background: var(--warnung-hell); color: var(--warnung); border-left-color: var(--warnung); }
 
@@ -1914,15 +2052,16 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
 
 /* ============================================================= KI-Block = */
 
+/* Flächig statt mit Verlauf – Verläufe sind im Markenhandbuch ausgeschlossen. */
 .ki-block {
-  border: 1px solid color-mix(in srgb, var(--lila) 25%, transparent);
-  background: linear-gradient(180deg, var(--lila-hell), transparent 82%);
+  border: 1px solid color-mix(in srgb, var(--ki) 22%, transparent);
+  background: var(--ki-hell);
   border-radius: var(--radius-m);
   padding: var(--r4);
 }
 .ki-block__kopf {
   display: flex; align-items: center; gap: 8px;
-  font-size: 12px; font-weight: 620; color: var(--lila);
+  font-size: 12px; font-weight: 620; color: var(--ki);
   text-transform: uppercase; letter-spacing: .05em;
   margin-bottom: var(--r3);
 }
@@ -2126,7 +2265,7 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
 .bau-eintrag-weg {
   position: absolute; inset: 6px 6px auto auto;
   width: 24px; height: 24px; border-radius: 50%;
-  border: 0; background: var(--gefahr); color: #fff;
+  border: 0; background: var(--gefahr); color: var(--auf-zustand);
   font-size: 12px; line-height: 1; cursor: pointer;
   opacity: 0; transition: opacity var(--tempo);
   display: grid; place-items: center; z-index: 3;
@@ -2156,8 +2295,8 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
   transition: opacity var(--tempo), transform var(--tempo);
 }
 .bau-stand.ist-da { opacity: 1; transform: translateX(-50%) translateY(0); }
-.bau-stand--gut { background: var(--erfolg); color: #fff; }
-.bau-stand--fehler { background: var(--gefahr); color: #fff; pointer-events: auto; }
+.bau-stand--gut { background: var(--erfolg); color: var(--auf-zustand); }
+.bau-stand--fehler { background: var(--gefahr); color: var(--auf-zustand); pointer-events: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   .bau-feld, .bau-stand, .bau-marker, .bau-bild__wechseln, .bau-eintrag-weg { transition: none; }

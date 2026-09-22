@@ -41,7 +41,7 @@ if (!$angemeldet) {
         Api::fehler($code, $text, 429);
     }
     /* WWW-Authenticate sagt dem Aufrufer, wie er es richtig macht. */
-    header('WWW-Authenticate: Bearer realm="GolfPro CMS"');
+    header('WWW-Authenticate: Bearer realm="TeePilot"');
     Api::fehler($code, $text, 401);
 }
 

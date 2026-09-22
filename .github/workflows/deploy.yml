@@ -1,5 +1,5 @@
 # ==========================================================================
-# GolfPro CMS – automatischer Upload auf den Webspace
+# TeePilot – automatischer Upload auf den Webspace
 # --------------------------------------------------------------------------
 # Jeder Push auf den Hauptzweig landet auf dem Server. Es wird nichts
 # gebaut: Das System hat weder Composer noch Node, die Dateien im

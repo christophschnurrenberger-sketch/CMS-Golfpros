@@ -95,7 +95,7 @@ $meldungen = App::meldungen();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Anmelden · GolfPro CMS</title>
+<title>Anmelden · TeePilot</title>
 <?php /* Schrift vom eigenen Server: keine Verbindung zu Google beim Anmelden. */ ?>
 <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/schriften.css')) ?>">
 <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/app.css')) ?>">
@@ -106,25 +106,27 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
 .anmeldung { min-height:100dvh; display:grid; grid-template-columns: 1fr 1fr; }
 .anmeldung__form { display:grid; place-items:center; padding:var(--r6); }
 .anmeldung__karte { width:100%; max-width:384px; }
+/*
+ * Kein Verlauf, kein Lichtschein. Die Bühne ist eine Fläche in Pine, auf
+ * der zwei Bahnen liegen – dieselbe Geste wie im Zeichen. Alles andere
+ * wäre Dekoration, und das Markenhandbuch verbietet sie ausdrücklich.
+ */
 .anmeldung__marke { display:flex; align-items:center; gap:10px; margin-bottom:var(--r8); }
-.anmeldung__zeichen { width:34px;height:34px;border-radius:10px;
-  background:linear-gradient(140deg,var(--marke),color-mix(in srgb,var(--marke) 60%,#000));
-  color:#fff;display:grid;place-items:center;font-weight:700;font-size:15px; }
+.anmeldung__zeichen { color:var(--marke); display:grid; place-items:center; }
 .anmeldung__buehne {
-  background:linear-gradient(160deg, color-mix(in srgb,var(--marke) 96%,#000), color-mix(in srgb,var(--marke) 55%,#000));
-  color:#fff; padding:var(--r9); display:flex; flex-direction:column; justify-content:space-between;
+  background:var(--pine);
+  color:#f6f5f0; padding:var(--r9); display:flex; flex-direction:column; justify-content:space-between;
   position:relative; overflow:hidden;
 }
-.anmeldung__buehne::after {
-  content:""; position:absolute; inset:0;
-  background:radial-gradient(1000px 520px at 78% 8%, rgba(255,255,255,.13), transparent 62%);
-  pointer-events:none;
-}
-.anmeldung__spruch { font-size:30px; font-weight:640; letter-spacing:-.028em; line-height:1.22; max-width:15em; }
-.anmeldung__liste { list-style:none; padding:0; margin:var(--r6) 0 0; display:grid; gap:12px; max-width:26em; }
-.anmeldung__liste li { display:flex; gap:11px; align-items:flex-start; font-size:14.5px; opacity:.93; line-height:1.5; }
-.anmeldung__liste .ico { margin-top:2px; opacity:.72; }
-.anmeldung__fuss { font-size:12.5px; opacity:.7; position:relative; }
+.anmeldung__bahnen { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.anmeldung__spruch { font-size:34px; font-weight:700; letter-spacing:-.035em; line-height:1.14; max-width:14em; position:relative; }
+.anmeldung__spruch em { font-style:normal; color:var(--signal); }
+.anmeldung__liste { list-style:none; padding:0; margin:var(--r6) 0 0; display:grid; gap:12px; max-width:26em; position:relative; }
+.anmeldung__liste li { display:flex; gap:11px; align-items:flex-start; font-size:14.5px; color:#a8b5ae; line-height:1.55; }
+.anmeldung__liste .ico { margin-top:2px; color:var(--signal); }
+.anmeldung__fuss { font-family:var(--mono); font-size:11.5px; color:#7d9c8c; position:relative; }
+.anmeldung__oben { position:relative; display:flex; align-items:center; gap:11px; color:var(--signal); }
+.anmeldung__oben b { font-size:19px; font-weight:700; letter-spacing:-.035em; color:#f6f5f0; }
 @media (max-width: 900px) { .anmeldung { grid-template-columns:1fr; } .anmeldung__buehne { display:none; } }
 </style>
 </head>
@@ -133,10 +135,10 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
   <div class="anmeldung__form">
     <div class="anmeldung__karte">
       <div class="anmeldung__marke">
-        <span class="anmeldung__zeichen">G</span>
+        <span class="anmeldung__zeichen"><?= Marke::zeichen(32) ?></span>
         <div>
-          <div style="font-weight:640;letter-spacing:-.02em">GolfPro CMS</div>
-          <div class="klein gedimmt" style="margin-top:-2px">Dein digitales Golf-Business</div>
+          <div style="font-weight:700;letter-spacing:-.035em;font-size:19px"><?= Marke::NAME ?></div>
+          <div class="klein gedimmt" style="margin-top:-2px"><?= Util::h(Marke::CLAIM_DE) ?></div>
         </div>
       </div>
 
@@ -204,9 +206,17 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
   </div>
 
   <div class="anmeldung__buehne">
+    <?php /* Zwei Bahnen, angeschnitten, sehr schwach – die Geste des Zeichens. */ ?>
+    <svg class="anmeldung__bahnen" viewBox="0 0 720 900" fill="none" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+      <path d="M-40 840C120 760 320 600 520 380C600 292 660 214 720 140" stroke="#164537" stroke-width="1.5"/>
+      <path d="M-40 940C140 850 360 676 570 444C650 356 700 280 760 210" stroke="#164537" stroke-width="1.5"/>
+      <circle cx="520" cy="380" r="4.5" fill="#c3e35c"/>
+    </svg>
+    <div class="anmeldung__oben">
+      <?= Marke::zeichen(26) ?><b><?= Marke::NAME ?></b>
+    </div>
     <div style="position:relative">
-      <div class="versal" style="opacity:.62;margin-bottom:var(--r4)">Ein System statt sieben Werkzeuge</div>
-      <div class="anmeldung__spruch">Deine Website, deine Kunden, dein ganzes Golf-Business.</div>
+      <div class="anmeldung__spruch">Deine Website, deine Kunden, <em>dein ganzes Golf-Business.</em></div>
       <ul class="anmeldung__liste">
         <li><?= Icon::svg('check', 17) ?><span>Website und Online-Buchung, die zusammenarbeiten –
             der Termin landet direkt im Kalender.</span></li>
@@ -219,7 +229,7 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
       </ul>
     </div>
     <div class="anmeldung__fuss">
-      GolfPro CMS <?= Util::h(GP_VERSION) ?> · Gebaut für Golf Professionals, Coaches und Academies.
+      <?= Marke::NAME ?> <?= Util::h(GP_VERSION) ?> · Gebaut für Golf Professionals, Coaches und Academies.
     </div>
   </div>
 </div>

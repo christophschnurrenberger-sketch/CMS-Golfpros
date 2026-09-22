@@ -34,24 +34,41 @@ $logo       = (string) (Tenant::workspace()['logo'] ?? '');
 <?php /* Schrift vom eigenen Server: keine Verbindung zu Google beim Anmelden. */ ?>
 <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/schriften.css')) ?>">
 <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/app.css')) ?>">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230d6b4f'/><text x='16' y='22' font-family='Helvetica' font-size='16' font-weight='bold' fill='white' text-anchor='middle'>G</text></svg>">
+<link rel="icon" href="<?= Util::attr(Marke::favicon()) ?>">
 <script>
 /* Thema vor dem ersten Anstrich setzen – sonst blitzt Weiß auf. */
 (function(){try{var t=localStorage.getItem('gp-thema')||'system';
 var d=t==='dunkel'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);
 document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){}})();
 </script>
+<?php
+/*
+ * Die Farbe des Golfpros – aber nicht mehr für die ganze Anwendung.
+ *
+ * Bis hierher wurde `--marke` an dieser Stelle mit `branding['primaer']`
+ * überschrieben. Damit war die Software bei jedem Kunden anders eingefärbt
+ * und hatte selbst kein Gesicht. Jetzt trägt die Anwendung Pine und
+ * Fairway aus app.css; die Farbe des Pros steht als `--kunde` bereit und
+ * gilt nur dort, wo tatsächlich seine Marke gemeint ist: in der Vorschau
+ * seiner Website und in den Feldern, die sie einstellen.
+ *
+ * Die Vorschau im Baukasten holt sich ihre Werte ohnehin aus
+ * `Website::stilVariablen()`, als Inline-Stil auf `.seite`. Sie bleibt
+ * davon unberührt.
+ */
+$kunde  = Util::attr((string) $branding['primaer']);
+$kAkzent = Util::attr((string) $branding['akzent']);
+?>
 <style>
 :root{
-  --marke: <?= Util::attr((string) $branding['primaer']) ?>;
-  --marke-dunkel: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 82%, #000);
-  --marke-hell: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 10%, #fff);
-  --marke-rand: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 28%, #fff);
-  --akzent: <?= Util::attr((string) $branding['akzent']) ?>;
+  --kunde: <?= $kunde ?>;
+  --kunde-hell: color-mix(in srgb, <?= $kunde ?> 10%, #fff);
+  --kunde-rand: color-mix(in srgb, <?= $kunde ?> 28%, #fff);
+  --kunde-akzent: <?= $kAkzent ?>;
 }
 [data-theme="dunkel"]{
-  --marke-hell: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 22%, #0b0d0e);
-  --marke-rand: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 42%, #0b0d0e);
+  --kunde-hell: color-mix(in srgb, <?= $kunde ?> 22%, #0e1a15);
+  --kunde-rand: color-mix(in srgb, <?= $kunde ?> 42%, #0e1a15);
 }
 </style>
 </head>
@@ -61,11 +78,17 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
 
 <aside class="seitenleiste">
   <div class="marke">
+    <?php /*
+     * Hat der Workspace ein eigenes Logo, steht seines hier – es ist sein
+     * Arbeitsplatz. Sonst die Bildmarke von TeePilot statt des früheren
+     * Anfangsbuchstabens im Farbverlauf. Unten im Fuß steht die Marke in
+     * jedem Fall, damit das Produkt nicht unsichtbar wird.
+     */ ?>
     <span class="marke__zeichen">
       <?php if ($logo !== '' && is_file(GP_ROOT . '/' . ltrim($logo, '/'))): ?>
         <img src="<?= Util::attr(App::url($logo)) ?>" alt="">
       <?php else: ?>
-        <?= Util::h(mb_substr(Tenant::name(), 0, 1)) ?>
+        <?= Marke::zeichen(26) ?>
       <?php endif; ?>
     </span>
     <span class="marke__text">
@@ -118,7 +141,13 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
   <div class="seitenleiste__fuss">
     <div class="aufklapp" style="display:block">
       <button class="profil" data-aufklapp aria-haspopup="true">
-        <span class="avatar avatar--klein" style="background:<?= Util::attr(Util::avatarFarbe(Auth::name())) ?>">
+        <?php /*
+         * Hier ohne die Zufallsfarbe aus `Util::avatarFarbe()`. Die ist
+         * dafür da, in Listen viele Personen auseinanderzuhalten – in der
+         * Leiste steht nur eine, und ein blauer Kreis auf Pine sieht aus
+         * wie ein Versehen. Die Farbe kommt aus dem Stilblatt.
+         */ ?>
+        <span class="avatar avatar--klein">
           <?= Util::h(Util::initialen(Auth::name())) ?>
         </span>
         <span class="profil__text">
@@ -150,6 +179,19 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
         <a class="aufklapp__eintrag aufklapp__eintrag--gefahr" href="<?= Util::attr(App::url('/abmelden.php')) ?>">
           <?= Icon::svg('logout', 16) ?> Abmelden</a>
       </div>
+    </div>
+    <?php /*
+     * Die Marke ganz unten, klein und ruhig.
+     *
+     * Oben steht der Arbeitsplatz des Kunden – mit seinem Logo, wenn er
+     * eins hat. Damit das Produkt darüber nicht unsichtbar wird, steht es
+     * hier: eine Zeile, in der Farbe der Leiste, ohne Anspruch. Genau so
+     * wie auf der Website eines Pros, wo TeePilot auch nur im Fuß steht.
+     */ ?>
+    <div class="leiste-marke">
+      <?= Marke::zeichen(15) ?>
+      <span class="leiste-marke__name"><?= Marke::NAME ?></span>
+      <span class="leiste-marke__version"><?= Util::h(GP_VERSION) ?></span>
     </div>
   </div>
 </aside>

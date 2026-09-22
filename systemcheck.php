@@ -157,7 +157,7 @@ foreach ($gruppen as $eintraege) {
 <html lang="de"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Systemprüfung · GolfPro CMS</title>
+<title>Systemprüfung · TeePilot</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f6f7f6;color:#16191a;

@@ -1,6 +1,6 @@
 # Architektur
 
-Dieses Dokument erklärt, wie GolfPro CMS aufgebaut ist – und vor allem,
+Dieses Dokument erklärt, wie TeePilot aufgebaut ist – und vor allem,
 warum. Wer nur installieren will, ist mit der README schneller fertig.
 
 ## Die Randbedingung, aus der alles folgt
@@ -203,6 +203,68 @@ sich nie ganz schließen lässt.
 
 Gerendert wird auf dem Server. Das hält die Website schnell, macht sie für
 Suchmaschinen lesbar und funktioniert ohne JavaScript.
+
+## Zwei Marken, die sich nicht in die Quere kommen
+
+TeePilot ist das Werkzeug. Die Website, die damit entsteht, gehört dem
+Golfpro. Beide haben eine Gestalt, und die wichtigste Regel des
+Markenhandbuchs lautet, dass sie sich nicht vermischen.
+
+Bis zur Umbenennung taten sie genau das: `app/partials/kopf.php`
+überschrieb `--marke` zur Laufzeit mit `branding['primaer']`, der
+Markenfarbe des Mandanten. Die Software war damit bei jedem Kunden anders
+eingefärbt — und hatte selbst kein Gesicht. Wer zwei Workspaces
+nebeneinander offen hatte, sah zwei verschiedene Programme.
+
+Heute gilt:
+
+* **Die Anwendung** trägt Pine `#0B2B22`, Fairway `#12513F` und Signal
+  `#C3E35C` aus `assets/css/app.css`. Fest. Die Seitenleiste ist dunkel,
+  in jedem Thema. Schrift ist Schibsted Grotesk, Zahlen laufen in IBM
+  Plex Mono.
+* **Die Farbe des Mandanten** steht als `--kunde` bereit und wirkt dort,
+  wo tatsächlich seine Marke gemeint ist: in der Vorschau seiner Website
+  (die holt sie sich ohnehin über `Website::stilVariablen()` als
+  Inline-Stil auf `.seite`), in seinen E-Mails, auf seinen Rechnungen.
+* **Die öffentliche Website** bleibt unverändert beim Entwurf
+  „Sonnenhang": Tannengrün, Archivo und Caveat. Sie ist sein Auftritt,
+  nicht unserer. Die Umbenennung hat an ihrer Ausgabe kein Byte geändert
+  — geprüft mit einem Abdruck über 65 Fälle.
+
+Name, Zeichen und Claim stehen in `lib/Marke.php`, nicht als Zeichenkette
+in elf Dateien verteilt. Das Zeichen ist ein Punkt und eine Linie: der
+Ball auf dem Tee und die Bahn, die er nimmt; dieselbe Form liest sich auf
+einer Karte als Standort mit geplanter Route. Es liegt als SVG-Pfad vor,
+erbt damit die Textfarbe und kostet keine zweite Anfrage.
+
+### Kontrast wird gemessen, nicht geschätzt
+
+Beim Umbau lief ein Messskript über neun Seiten der Anwendung, hell und
+dunkel: Für jeden sichtbaren Text die Schriftfarbe gegen die erste
+Fläche darüber, die nicht durchsichtig ist. Vorher: **434 Verstöße im
+hellen Modus, 535 im dunklen.** Nachher: keiner.
+
+Drei Ursachen steckten dahinter, und alle drei waren älter als die
+Umbenennung:
+
+* `--text-4` war mit 2,2:1 als Textfarbe im Einsatz — in Tabellenköpfen,
+  Zeitangaben, unter jedem zweiten Listeneintrag. Eine vierte, hellere
+  und trotzdem lesbare Stufe gibt es rechnerisch nicht: unterhalb von
+  `--text-3` ist bei 4,5:1 Schluss. Deshalb zeigt `--text-4` jetzt dorthin.
+* Im dunklen Modus wurden nur die Tönungen getauscht, nicht die
+  Zustandsfarben selbst. Eine Pille „Bestätigt" stand dunkelgrün auf
+  dunkelgrün und kam auf 2,7:1. Jetzt haben `--erfolg`, `--warnung`,
+  `--gefahr`, `--info` und `--ki` eigene helle Werte für Dunkel, und
+  `--auf-zustand` sagt, welche Schrift auf einer vollflächigen
+  Zustandsfarbe steht.
+* Acht der zehn Avatarfarben in `Util::avatarFarbe()` trugen weiße
+  Initialen nicht (das hellste Türkis kam auf 3,0:1). Die neue Reihe ist
+  gedeckter; der schlechteste Wert liegt bei 5,9:1.
+
+Lila ist ganz verschwunden. Es markierte die KI-Funktionen, kam in der
+Palette aber nirgends vor. An seiner Stelle steht ein tiefes Teal
+(`--ki`): nah genug an Horizon, um dazuzugehören, weit genug von Fairway,
+um „das hat der Assistent vorgeschlagen" zu sagen.
 
 ## Gestaltung
 

@@ -1,9 +1,16 @@
-Archivo und Caveat stehen unter der SIL Open Font License, Version 1.1.
+Alle vier Schriften stehen unter der SIL Open Font License, Version 1.1.
 
-  Archivo  Copyright (c) Omnibus-Type
-           https://github.com/Omnibus-Type/Archivo
-  Caveat   Copyright (c) Impallari Type
-           https://github.com/googlefonts/caveat
+  Archivo            Copyright (c) Omnibus-Type
+                     https://github.com/Omnibus-Type/Archivo
+  Caveat             Copyright (c) Impallari Type
+                     https://github.com/googlefonts/caveat
+  Schibsted Grotesk  Copyright (c) Schibsted Media Group
+                     https://github.com/schibsted/schibsted-grotesk
+  IBM Plex Mono      Copyright (c) IBM Corp.
+                     https://github.com/IBM/plex
+
+Archivo und Caveat tragen die oeffentliche Website eines Golfpros,
+Schibsted Grotesk und IBM Plex Mono die Anwendung TeePilot selbst.
 
 Die Lizenz erlaubt Verwendung, Weitergabe und Einbettung – auch
 kommerziell – unter drei Bedingungen: Dieser Hinweis bleibt bei den
