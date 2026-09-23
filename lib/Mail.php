@@ -53,7 +53,10 @@ final class Mail
 
     private static function protokollieren(string $an, string $betreff, string $text, array $o, bool $ok): void
     {
-        if (!Tenant::gesetzt()) {
+        /* Mails mit einem Zugangslink tragen 'protokoll' => false: Der Link
+           ist ein Schlüssel, und der gehört nicht im Klartext in einen
+           Verlauf, den das ganze Team lesen kann. */
+        if (!Tenant::gesetzt() || ($o['protokoll'] ?? true) === false) {
             return;
         }
         try {

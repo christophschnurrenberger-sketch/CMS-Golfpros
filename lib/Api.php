@@ -118,7 +118,7 @@ final class Api
             return [false, 'schluessel_ungueltig', 'Dieser Schlüssel stimmt nicht.'];
         }
 
-        $workspace = DB::one('SELECT id, aktiv FROM workspaces WHERE id = :i', ['i' => (int) $teile[1]]);
+        $workspace = DB::one('SELECT id, aktiv, status FROM workspaces WHERE id = :i', ['i' => (int) $teile[1]]);
         /*
          * Auch ohne Workspace wird verglichen – gegen einen Abdruck, der zu
          * nichts passt. Sonst antwortet die Schnittstelle auf eine erfundene
@@ -126,7 +126,11 @@ final class Api
          * welche Nummern vergeben sind.
          */
         $gespeichert = str_repeat('0', 64);
-        if ($workspace !== null && (int) $workspace['aktiv'] === 1) {
+        /* Pausiert, gesperrt oder archiviert: Die Schnittstelle antwortet
+           wie auf einen falschen Schlüssel. Wer den Status kennen muss,
+           erfährt ihn vom Support, nicht von einem Skript. */
+        if ($workspace !== null && (int) $workspace['aktiv'] === 1
+            && Instanzen::zugangErlaubt((string) $workspace['status'])) {
             $gespeichert = (string) DB::value(
                 'SELECT wert FROM settings WHERE workspace_id = :w AND schluessel = :s',
                 ['w' => (int) $workspace['id'], 's' => 'api_schluessel_hash'],

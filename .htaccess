@@ -65,8 +65,25 @@ Options -Indexes
   RewriteRule ^blog/([A-Za-z0-9_-]+)/?$ site.php?beitrag=$1 [QSA,L]
   RewriteRule ^blog/?$ site.php?s=blog [QSA,L]
 
+  # Betreiberzentrale: sprechende Adressen zusätzlich zu den echten.
+  # /master/instances/12 und /master/instanz.php?id=12 zeigen dasselbe –
+  # ohne mod_rewrite funktioniert nur die zweite Form, und die Anwendung
+  # verlinkt deshalb selbst immer die zweite.
+  RewriteRule ^master/dashboard/?$ master/index.php [QSA,L]
+  RewriteRule ^master/instances/?$ master/instanzen.php [QSA,L]
+  RewriteRule ^master/instances/new/?$ master/instanz-neu.php [QSA,L]
+  RewriteRule ^master/instances/([0-9]+)/?$ master/instanz.php?id=$1 [QSA,L]
+  RewriteRule ^master/instances/([0-9]+)/(activity|users|subscription|usage|settings)/?$ master/instanz.php?id=$1&reiter=$2 [QSA,L]
+  RewriteRule ^master/packages/?$ master/pakete.php [QSA,L]
+  RewriteRule ^master/users/?$ master/benutzer.php [QSA,L]
+  RewriteRule ^master/analytics/?$ master/auswertung.php [QSA,L]
+  RewriteRule ^master/activity/?$ master/aktivitaet.php [QSA,L]
+  RewriteRule ^master/audit-log/?$ master/protokoll.php [QSA,L]
+  RewriteRule ^master/settings/?$ master/einstellungen.php [QSA,L]
+  RewriteRule ^master/system/?$ master/system.php [QSA,L]
+
   # Anwendung, Portal und die Endpunkte behalten ihre echten Pfade.
-  RewriteRule ^(app|portal|assets|uploads)(/.*)?$ - [L]
+  RewriteRule ^(app|portal|assets|uploads|master|bin|tests)(/.*)?$ - [L]
 
   # Alles andere ist eine Seite der Website.
   RewriteRule ^([A-Za-z0-9_-]+)/?$ site.php?s=$1 [QSA,L]

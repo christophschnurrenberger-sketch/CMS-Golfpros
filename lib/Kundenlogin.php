@@ -76,6 +76,14 @@ final class Kundenlogin
         }
         $_SESSION[self::ZEIT] = time();
 
+        /* Eine gesperrte oder archivierte Instanz hat keine Website mehr –
+           und damit auch kein Kundenportal, selbst für eine Sitzung, die
+           schon vorher bestand. */
+        if (DB::int('SELECT aktiv FROM workspaces WHERE id = :id', ['id' => $workspaceId]) !== 1) {
+            self::abmelden(false);
+            return null;
+        }
+
         Tenant::setzen($workspaceId);
         $treffer = Tenant::find('customers', $kundeId);
 

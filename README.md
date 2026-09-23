@@ -50,8 +50,9 @@ regelbasierten Generator weiter, ohne Cronjob läuft die Wartung beim
 ## Aufbau
 
 ```
-lib/          46 Klassen – je Datei eine, Autoloader ohne Composer
+lib/          61 Klassen – je Datei eine, Autoloader ohne Composer
 app/          Die Anwendung: 54 Seiten, eine je Bereich
+master/       Betreiberzentrale: alle Instanzen, Pakete, Support Mode
 portal/       Kundenportal und Registrierung, mobil zuerst gedacht
 site.php      Die öffentliche Website aller Mandanten
 buchen.php    Online-Buchung – angemeldet oder als Gast, nie mit Zwang
@@ -61,6 +62,9 @@ datei.php     Videos und Unterlagen – erst prüfen, dann herausgeben
 cron.php      Wartung für alle, die einen Cronjob haben
 webhook.php   Stripe meldet Zahlungen hierher
 install.php   Einrichtung, danach löschen
+passwort.php  Passwort setzen – über den Link aus Einladung oder Reset
+bin/          Kommandozeile: Betreiber anlegen (php bin/betreiber.php)
+tests/        php tests/betreiber.php – Prüfungen gegen eine Wegwerf-Datenbank
 assets/       Stylesheets, Skripte und die Schriften auf eigenem Server
 docs/         Architektur, Betrieb und Upload im Detail
 .github/      Ein Workflow: Syntax prüfen, dann per FTPS hochladen
@@ -131,6 +135,8 @@ eigenen Daten anzufassen.
   Webspace: was einzurichten ist und was er nicht anfasst
 * [docs/API.md](docs/API.md) – die Schnittstelle, über die ein
   Newslettersystem die Empfänger abholt. Zum Weitergeben gedacht
+* [docs/BETREIBER.md](docs/BETREIBER.md) – die Betreiberzentrale: ersten
+  Master Admin anlegen, Instanzen, Pakete, Support Mode, Audit-Log
 
 ## Lizenz
 

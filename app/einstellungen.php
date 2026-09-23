@@ -58,6 +58,12 @@ if (App::istPost()) {
         App::melden('Erinnerungen gespeichert.'
             . ($geplant > 0 ? ' ' . $geplant . ' Erinnerungen für kommende Termine neu geplant.' : ''));
     }
+    /* Ein Schnittstellenschlüssel steht einmal im Klartext auf dem
+       Bildschirm. Im Support Mode sähe ihn der Betreiber – also nicht dort. */
+    if (in_array($aktion, ['api_schluessel', 'api_widerrufen'], true) && Support::aktiv()) {
+        App::melden('Den Schnittstellenschlüssel kann im Support Mode niemand erzeugen oder widerrufen – das bleibt dem Inhaber.', 'fehler');
+        App::weiter('/app/einstellungen.php#schnittstelle');
+    }
     if ($aktion === 'api_schluessel') {
         /*
          * Der Schlüssel steht genau einmal auf dem Bildschirm. Gespeichert

@@ -987,6 +987,59 @@ xref-Verweise. Gut 230 Zeilen – deutlich weniger Aufwand, als eine
 Bibliothek ohne Composer aktuell zu halten, und ohne die Annahme, dass der
 Hoster irgendetwas installiert hat.
 
+## Eine Ebene über allen Instanzen
+
+Die Betreiberzentrale unter `/master/` ist keine zweite Anwendung. Sie
+liest dieselben Tabellen, benutzt dieselbe Anmeldemaske, dieselbe Bremse,
+dasselbe CSRF-Merkmal und dieselben Bausteine der Oberfläche. Getrennt
+ist nur, was getrennt sein muss:
+
+**Betreiber stehen nicht in `users`.** Eine Rolle „master_admin" in der
+Benutzertabelle hätte jede Stelle, die eine Rolle schreibt, zu einem
+möglichen Weg nach oben gemacht – Teamverwaltung, Import, eine künftige
+Schnittstelle. In der eigenen Tabelle `betreiber` gibt es diesen Weg
+nicht: Keine Seite einer Instanz schreibt dorthin. Die Sitzung trägt
+`gp_betreiber` statt `gp_user`, und eine Sitzung ist entweder das eine
+oder das andere.
+
+**Die Tür steht in einer Datei.** Jede Seite der Zentrale bindet
+`master/partials/start.php` ein, und das ruft `Betreiber::fordern()`.
+Eine neue Seite kann die Prüfung nicht vergessen. Ein Golfpro bekommt
+dort 403 statt einer Weiterleitung – er hat sich nicht verklickt.
+
+**Freischaltung an genau einer Stelle.** Was ein Paket enthält, steht in
+`pakete`, und `Pakete::erlaubt()` beantwortet die Frage für alle:
+`Tenant::modul()` fürs Menü, `Auth::darf('modul.x')` für die Seiten. Bis
+dahin war ein Modul, das der Pro ausgeschaltet hatte, nur aus dem Menü
+verschwunden und über die Adresszeile weiter erreichbar.
+
+**Das Protokoll überlebt die Instanz.** `betreiber_log` hat
+`instanz_id`, nicht `workspace_id`: Das Löschen einer Instanz räumt jede
+Tabelle mit `workspace_id` ab, und die Zeile „Instanz gelöscht" soll
+bleiben. Geändert oder gelöscht wird dort nichts – nicht von der
+Anwendung und, per Auslöser, auch nicht von Hand.
+
+**Nichts erfinden.** Bestandsinstanzen bekamen beim Update keinen Vertrag,
+Demo-Instanzen zählen in keiner Plattformzahl, und wo es keine Abrechnung
+gibt, heißt die Kachel „Subscription-Wert" und sagt dazu, dass es keine
+ist. Die Systemseite zeigt nur Prüfungen, die in dem Moment wirklich
+laufen, und kein Gesamturteil.
+
+**Support Mode ohne Passwort.** Die Sitzung wird auf dem Server auf den
+Inhaber umgestellt, trägt aber mit, wer dahintersteht: `Audit::schreiben()`
+setzt dann `audit_log.betreiber_id`. Was einen Zugang übernehmen könnte –
+Passwort, E-Mail des Inhabers, neue Teammitglieder, API-Schlüssel –, ist
+in dieser Zeit gesperrt.
+
+Eine Lehre aus dem Bau: Die Kopfdateien der Seiten laufen im
+Gültigkeitsbereich der Seite. Die Schleife über das Menü hieß
+`$eintraege` und überschrieb die gleichnamige Liste des
+Änderungsprotokolls – das zeigte deshalb Menüpunkte statt Einträge. Alle
+Variablen in `app/partials/kopf.php` und `master/partials/*` beginnen
+seitdem mit `$k`.
+
+Ausführlich: [BETREIBER.md](BETREIBER.md).
+
 ## Wo die Grenzen liegen
 
 Ehrlichkeitshalber:

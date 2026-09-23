@@ -26,7 +26,16 @@ spl_autoload_register(static function (string $klasse): void {
     }
 });
 
-Config::load();
+/*
+ * Eine andere config.php nur für Tests: GP_CONFIG zeigt auf eine Datei mit
+ * einer Wegwerf-Datenbank. Gilt ausschließlich auf der Kommandozeile und
+ * im eingebauten Entwicklungsserver – ein Webserver im Betrieb ignoriert
+ * die Variable, damit sie niemand von außen ins Spiel bringen kann.
+ */
+$gpTestKonfig = getenv('GP_CONFIG');
+Config::load(in_array(PHP_SAPI, ['cli', 'cli-server'], true) && is_string($gpTestKonfig) && $gpTestKonfig !== ''
+    ? $gpTestKonfig : null);
+unset($gpTestKonfig);
 
 date_default_timezone_set('Europe/Berlin');
 

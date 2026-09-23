@@ -9,6 +9,11 @@
  *   $brotkrumen   [['Kunden', '/app/kunden.php'], ['Thomas Berger', null]]
  *   $inhaltKlasse zusätzliche Klasse für den Inhaltsbereich
  *   $ohneKopf     true blendet den Seitenkopf aus (z. B. Baukasten)
+ *
+ * Alle eigenen Variablen hier beginnen mit $k. Diese Datei läuft im
+ * Gültigkeitsbereich der Seite: Hieß die Schleife über das Menü
+ * `$eintraege`, überschrieb sie die gleichnamige Liste der Seite – das
+ * Änderungsprotokoll zeigte deshalb die Menüpunkte statt der Einträge.
  */
 if (!defined('GP_ROOT')) {
     exit;
@@ -30,7 +35,7 @@ $logo       = (string) (Tenant::workspace()['logo'] ?? '');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title><?= Util::h($titel) ?> · <?= Util::h(Tenant::name()) ?></title>
+<title><?= Support::vermerkt() ? '[Support] ' : '' ?><?= Util::h($titel) ?> · <?= Util::h(Tenant::name()) ?></title>
 <?php /* Schrift vom eigenen Server: keine Verbindung zu Google beim Anmelden. */ ?>
 <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/schriften.css')) ?>">
 <link rel="stylesheet" href="<?= Util::attr(App::asset('assets/css/app.css')) ?>">
@@ -100,19 +105,19 @@ $kAkzent = Util::attr((string) $branding['akzent']);
 
   <nav class="navi" aria-label="Hauptmenü">
     <?php
-    $zaehler = [
+    $kZaehler = [
         'leads'    => Tenant::count('leads', "stufe NOT IN ('kunde','verloren')"),
         'invoices' => Tenant::count('invoices', "status IN ('offen','ueberfaellig')"),
     ];
-    foreach (Module::menue() as $gruppe => $eintraege):
-        $gruppenName = Module::gruppenname((string) $gruppe);
+    foreach (Module::menue() as $kGruppe => $kEintraege):
+        $kGruppenName = Module::gruppenname((string) $kGruppe);
     ?>
       <div class="navi__gruppe">
-        <?php if ($gruppenName !== ''): ?>
-          <div class="navi__titel"><?= Util::h($gruppenName) ?></div>
+        <?php if ($kGruppenName !== ''): ?>
+          <div class="navi__titel"><?= Util::h($kGruppenName) ?></div>
         <?php endif; ?>
-        <?php foreach ($eintraege as $e):
-            $ziel = [
+        <?php foreach ($kEintraege as $kE):
+            $kZiel = [
                 'dashboard' => '/app/', 'customers' => '/app/kunden.php', 'leads' => '/app/leads.php',
                 'calendar' => '/app/kalender.php', 'bookings' => '/app/buchungen.php',
                 'packages' => '/app/pakete.php',
@@ -125,13 +130,13 @@ $kAkzent = Util::attr((string) $branding['akzent']);
                 'automations' => '/app/automationen.php', 'community' => '/app/community.php',
                 'analytics' => '/app/auswertung.php', 'ai' => '/app/ki.php',
                 'settings' => '/app/einstellungen.php',
-            ][$e['key']] ?? '/app/';
-            $zahl = $zaehler[$e['key']] ?? 0;
+            ][$kE['key']] ?? '/app/';
+            $kZahl = $kZaehler[$kE['key']] ?? 0;
         ?>
-          <a class="navi__link<?= $bereich === $e['key'] ? ' ist-aktiv' : '' ?>" href="<?= Util::attr(App::url($ziel)) ?>">
-            <?= Icon::svg((string) $e['icon'], 17) ?>
-            <span><?= Util::h((string) $e['name']) ?></span>
-            <?php if ($zahl > 0): ?><span class="navi__zahl"><?= $zahl ?></span><?php endif; ?>
+          <a class="navi__link<?= $bereich === $kE['key'] ? ' ist-aktiv' : '' ?>" href="<?= Util::attr(App::url($kZiel)) ?>">
+            <?= Icon::svg((string) $kE['icon'], 17) ?>
+            <span><?= Util::h((string) $kE['name']) ?></span>
+            <?php if ($kZahl > 0): ?><span class="navi__zahl"><?= $kZahl ?></span><?php endif; ?>
           </a>
         <?php endforeach; ?>
       </div>
@@ -197,6 +202,25 @@ $kAkzent = Util::attr((string) $branding['akzent']);
 </aside>
 
 <div class="haupt">
+  <?php
+  /*
+   * Support Mode: auf jeder Seite, oben, nicht wegklickbar. Wer hier
+   * arbeitet, ist nicht der Inhaber – und soll das in keinem Moment
+   * vergessen, auch nicht nach einer Stunde in den Einstellungen.
+   */
+  $supportSitzung = Support::daten();
+  if ($supportSitzung !== null): ?>
+    <div class="support-leiste" role="status">
+      <span class="support-leiste__marke">Support Mode</span>
+      <span class="support-leiste__text">Du greifst gerade als TeePilot Master Admin auf diese Instanz zu.
+        <b><?= Util::h(Tenant::name()) ?></b> · angemeldet als <?= Util::h((string) ($benutzer['name'] ?? '')) ?>
+        · noch <?= Support::restMinuten() ?> Min.</span>
+      <form method="post" action="<?= Util::attr(App::url('/master/support.php')) ?>">
+        <?= Auth::csrfFeld() ?><input type="hidden" name="aktion" value="ende">
+        <button class="btn btn--klein btn--primaer" type="submit">Support Mode beenden</button>
+      </form>
+    </div>
+  <?php endif; ?>
   <header class="kopf">
     <button class="rundknopf mobil-knopf" data-menue-auf aria-label="Menü öffnen"><?= Icon::svg('menu', 19) ?></button>
 
@@ -214,7 +238,7 @@ $kAkzent = Util::attr((string) $branding['akzent']);
         <div class="aufklapp__menue">
           <div class="aufklapp__titel">Schnell anlegen</div>
           <?php
-          $schnell = [
+          $kSchnell = [
               ['Kunde', '/app/kunde.php?id=neu', 'user-plus', 'customers.write'],
               ['Termin', '/app/buchung.php?id=neu', 'calendar', 'bookings.write'],
               ['Rechnung', '/app/rechnung.php?id=neu', 'invoices', 'invoices.write'],
@@ -222,9 +246,9 @@ $kAkzent = Util::attr((string) $branding['akzent']);
               ['Trainingsplan', '/app/trainingsplan.php?id=neu', 'training', 'training.write'],
               ['Seite', '/app/seite.php?id=neu', 'website', 'website.write'],
           ];
-          foreach ($schnell as [$name, $url, $icon, $recht]):
-              if (!Auth::darf($recht)) { continue; } ?>
-            <a class="aufklapp__eintrag" href="<?= Util::attr(App::url($url)) ?>"><?= Icon::svg($icon, 16) ?> <?= Util::h($name) ?></a>
+          foreach ($kSchnell as [$kName, $kUrl, $kIcon, $kRecht]):
+              if (!Auth::darf($kRecht)) { continue; } ?>
+            <a class="aufklapp__eintrag" href="<?= Util::attr(App::url($kUrl)) ?>"><?= Icon::svg($kIcon, 16) ?> <?= Util::h($kName) ?></a>
           <?php endforeach; ?>
         </div>
       </div>
@@ -244,22 +268,22 @@ $kAkzent = Util::attr((string) $branding['akzent']);
             <?php endif; ?>
           </div>
           <?php
-          $meldungenListe = Notify::fuerBenutzer(Auth::id(), 7);
-          if ($meldungenListe === []): ?>
+          $kListe = Notify::fuerBenutzer(Auth::id(), 7);
+          if ($kListe === []): ?>
             <div style="padding:var(--r5);text-align:center;color:var(--text-3);font-size:13px">
               Nichts Neues. Hier landen Buchungen, Zahlungen und Empfehlungen.
             </div>
           <?php else:
-            foreach ($meldungenListe as $m): ?>
-            <a class="aufklapp__eintrag" href="<?= Util::attr(App::url(($m['link'] ?: '/app/benachrichtigungen.php'))) ?>"
-               style="align-items:flex-start<?= $m['gelesen'] ? '' : ';background:var(--marke-hell)' ?>">
-              <?= Icon::svg(Notify::kategorieIcon((string) $m['kategorie']), 16) ?>
+            foreach ($kListe as $kM): ?>
+            <a class="aufklapp__eintrag" href="<?= Util::attr(App::url(($kM['link'] ?: '/app/benachrichtigungen.php'))) ?>"
+               style="align-items:flex-start<?= $kM['gelesen'] ? '' : ';background:var(--marke-hell)' ?>">
+              <?= Icon::svg(Notify::kategorieIcon((string) $kM['kategorie']), 16) ?>
               <span style="flex:1;min-width:0">
-                <span style="display:block;font-weight:550;color:var(--text)"><?= Util::h((string) $m['titel']) ?></span>
-                <?php if ($m['text']): ?>
-                  <span class="klein gedimmt" style="display:block"><?= Util::h(Util::kuerzen((string) $m['text'], 72)) ?></span>
+                <span style="display:block;font-weight:550;color:var(--text)"><?= Util::h((string) $kM['titel']) ?></span>
+                <?php if ($kM['text']): ?>
+                  <span class="klein gedimmt" style="display:block"><?= Util::h(Util::kuerzen((string) $kM['text'], 72)) ?></span>
                 <?php endif; ?>
-                <span class="winzig gedimmt-2"><?= Util::h(Util::relativ((string) $m['erstellt'])) ?></span>
+                <span class="winzig gedimmt-2"><?= Util::h(Util::relativ((string) $kM['erstellt'])) ?></span>
               </span>
             </a>
             <?php endforeach;
@@ -283,13 +307,13 @@ $kAkzent = Util::attr((string) $branding['akzent']);
   </header>
 
   <main class="inhalt <?= Util::attr($inhaltKlasse ?? '') ?>">
-    <?php $meldungen = App::meldungen(); if ($meldungen !== []): ?>
+    <?php $kMeldungen = App::meldungen(); if ($kMeldungen !== []): ?>
       <div class="meldungen">
-        <?php foreach ($meldungen as $m):
-          $icons = ['erfolg' => 'check', 'fehler' => 'alert', 'warnung' => 'alert', 'info' => 'info']; ?>
-          <div class="meldung meldung--<?= Util::attr($m['typ']) ?>">
-            <?= Icon::svg($icons[$m['typ']] ?? 'info', 17) ?>
-            <div class="meldung__text"><?= Util::h($m['text']) ?></div>
+        <?php foreach ($kMeldungen as $kM):
+          $kIcons = ['erfolg' => 'check', 'fehler' => 'alert', 'warnung' => 'alert', 'info' => 'info']; ?>
+          <div class="meldung meldung--<?= Util::attr($kM['typ']) ?>">
+            <?= Icon::svg($kIcons[$kM['typ']] ?? 'info', 17) ?>
+            <div class="meldung__text"><?= Util::h($kM['text']) ?></div>
           </div>
         <?php endforeach; ?>
       </div>
@@ -298,12 +322,12 @@ $kAkzent = Util::attr((string) $branding['akzent']);
     <?php if (empty($ohneKopf)): ?>
       <?php if ($brotkrumen !== []): ?>
         <nav class="brotkrumen">
-          <?php foreach ($brotkrumen as $i => [$name, $url]): ?>
-            <?php if ($i > 0): ?><?= Icon::svg('chevron-right', 13) ?><?php endif; ?>
-            <?php if ($url): ?>
-              <a href="<?= Util::attr(App::url($url)) ?>"><?= Util::h($name) ?></a>
+          <?php foreach ($brotkrumen as $kI => [$kName, $kUrl]): ?>
+            <?php if ($kI > 0): ?><?= Icon::svg('chevron-right', 13) ?><?php endif; ?>
+            <?php if ($kUrl): ?>
+              <a href="<?= Util::attr(App::url($kUrl)) ?>"><?= Util::h($kName) ?></a>
             <?php else: ?>
-              <span><?= Util::h($name) ?></span>
+              <span><?= Util::h($kName) ?></span>
             <?php endif; ?>
           <?php endforeach; ?>
         </nav>

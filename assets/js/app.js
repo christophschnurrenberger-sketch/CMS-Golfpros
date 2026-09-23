@@ -630,7 +630,9 @@
     },
 
     serverSuche(q) {
-      const url = (window.gpBasis || '') + '/app/suche.php?q=' + encodeURIComponent(q) + '&format=json';
+      /* Die Betreiberzentrale sucht über ihre eigene Adresse – dort gibt es
+         keinen Mandanten, dessen Kunden /app/suche.php durchsuchen könnte. */
+      const url = (window.gpSuche || ((window.gpBasis || '') + '/app/suche.php')) + '?q=' + encodeURIComponent(q) + '&format=json';
       fetch(url, { headers: { 'X-Requested-With': 'fetch' } })
         .then(r => r.ok ? r.json() : null)
         .then(daten => {

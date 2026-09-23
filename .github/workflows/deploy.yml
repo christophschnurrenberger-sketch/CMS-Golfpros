@@ -205,6 +205,8 @@ jobs:
           #       soll danach vom Server verschwinden. Ein Upload, der ihn
           #       jedes Mal zurückbringt, macht die Empfehlung wertlos.
           #       Für die erste Einrichtung siehe docs/DEPLOY.md.
+          #   tests/                         Prüfungen laufen lokal, nicht
+          #       auf dem Webspace.
           #   docs/, README.md               Interne Unterlagen gehören
           #       nicht unter die eigene Domain.
           exclude: |
@@ -224,6 +226,7 @@ jobs:
             uploads/*/**
             install.php
             docs/**
+            tests/**
             README.md
 
       # ------------------------------------------------------------------
@@ -298,6 +301,7 @@ jobs:
           aus="$aus --exclude ^uploads/[^/]+/"
           aus="$aus --exclude ^install\.php$"
           aus="$aus --exclude ^docs/"
+          aus="$aus --exclude ^tests/"
           aus="$aus --exclude ^README\.md$"
 
           # Aufraeumen ist Absicht, nicht Voreinstellung.

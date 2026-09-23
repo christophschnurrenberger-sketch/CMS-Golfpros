@@ -83,7 +83,10 @@ require __DIR__ . '/partials/kopf.php';
         </tr></thead>
         <tbody>
         <?php foreach ($eintraege as $e):
-          $name = $namen[(int) $e['user_id']] ?? ((int) $e['user_id'] === 0 ? 'System' : 'Gelöschter Zugang'); ?>
+          /* Im Support Mode entstanden: Die Zeile gehört nicht dem Inhaber,
+             auch wenn sie unter seinem Zugang geschrieben wurde. */
+          $name = (int) ($e['betreiber_id'] ?? 0) > 0 ? 'TeePilot Support'
+                : ($namen[(int) $e['user_id']] ?? ((int) $e['user_id'] === 0 ? 'System' : 'Gelöschter Zugang')); ?>
           <tr>
             <td class="umbruch-nein klein gedimmt">
               <?= Util::h(Util::datumZeit((string) $e['erstellt'])) ?>

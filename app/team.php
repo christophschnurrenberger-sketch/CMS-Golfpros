@@ -20,6 +20,15 @@ if (App::istPost()) {
     $id     = App::postInt('id');
     $aktion = App::aktion();
 
+    /* Zugänge sind Sache des Inhabers. Im Support Mode legt niemand
+       Personen an, ändert Adressen oder Rollen oder verschickt Links zum
+       Passwortsetzen – sonst könnte sich ein Zugang ergeben, den der
+       Inhaber nicht kennt. */
+    if (Support::aktiv()) {
+        App::melden('Im Support Mode lässt sich das Team nicht ändern. Das bleibt dem Inhaber vorbehalten.', 'fehler');
+        App::weiter('/app/team.php');
+    }
+
     if ($aktion === 'speichern') {
         $email  = strtolower(trim(App::post('email')));
         $rolle  = App::post('rolle', 'trainer');
@@ -72,19 +81,23 @@ if (App::istPost()) {
              * Eingeladene bekommen kein Passwort, sondern einen Reset-Token:
              * Das Passwort kennt danach nur die Person selbst.
              */
+            /* In der Datenbank steht nur der Abdruck des Tokens; der Link
+               führt auf passwort.php, das genau diesen Abdruck sucht. */
+            $token = Util::token(24);
             $daten['passwort']    = Auth::hash(Util::token(12));
-            $daten['reset_token'] = Util::token(24);
+            $daten['reset_token'] = hash('sha256', $token);
             $daten['reset_bis']   = date('Y-m-d H:i:s', time() + 7 * 86400);
             $daten['erstellt']    = Util::jetzt();
             $neu = Tenant::insert('users', $daten);
             Audit::schreiben('erstellt', 'user', $neu, $daten['name']);
 
-            $link = App::absolut('/login.php?token=' . $daten['reset_token']);
+            $link = App::absolut('/passwort.php?token=' . $token);
             Mail::senden($email, 'Dein Zugang zu ' . Tenant::name(),
                 "Hallo " . $daten['name'] . ",\n\n"
                 . "du wurdest zu " . Tenant::name() . " eingeladen. Über diesen Link "
                 . "vergibst du dein Passwort:\n\n" . $link . "\n\n"
-                . "Der Link gilt sieben Tage.");
+                . "Der Link gilt sieben Tage.",
+                ['knopf_text' => 'Passwort vergeben', 'knopf_url' => $link, 'protokoll' => false]);
             App::melden('Einladung an ' . $email . ' verschickt.');
         }
     }
@@ -110,12 +123,14 @@ if (App::istPost()) {
         if ($u !== null) {
             $token = Util::token(24);
             Tenant::update('users', $id, [
-                'reset_token' => $token,
+                'reset_token' => hash('sha256', $token),
                 'reset_bis'   => date('Y-m-d H:i:s', time() + 7 * 86400),
             ]);
+            $link = App::absolut('/passwort.php?token=' . $token);
             Mail::senden((string) $u['email'], 'Neuer Zugangslink für ' . Tenant::name(),
                 "Hallo " . $u['name'] . ",\n\nhier ist dein neuer Link zum Setzen des Passworts:\n\n"
-                . App::absolut('/login.php?token=' . $token) . "\n\nDer Link gilt sieben Tage.");
+                . $link . "\n\nDer Link gilt sieben Tage.",
+                ['knopf_text' => 'Passwort vergeben', 'knopf_url' => $link, 'protokoll' => false]);
             App::melden('Neuer Zugangslink verschickt.');
         }
     }
@@ -126,12 +141,7 @@ if (App::istPost()) {
 $team = Tenant::all('users', '', [], 'aktiv DESC, rolle, name');
 
 /* Wie viele Personen der Tarif erlaubt – begrenzt, aber nie mitten im Betrieb. */
-$grenze = match (Tenant::plan()) {
-    'starter' => 1,
-    'pro'     => 3,
-    'business'=> 8,
-    default   => 0,          // 0 = unbegrenzt
-};
+$grenze = Pakete::teamGrenze(Tenant::plan());     // 0 = unbegrenzt; steht am Paket
 $aktive = count(array_filter($team, static fn ($u) => (int) $u['aktiv'] === 1));
 $voll   = $grenze > 0 && $aktive >= $grenze;
 

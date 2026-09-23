@@ -75,7 +75,10 @@ final class Diagramm
      *
      * @param string[] $labels
      * @param float[]  $werte
-     * @param array{hoehe?:int,format?:string,vergleich?:float[],einheit?:string} $o
+     * @param array{hoehe?:int,format?:string,vergleich?:float[],einheit?:string,ganz?:bool} $o
+     *
+     * `ganz`: Die Werte sind Stückzahlen. Dann endet die Achse auf einem
+     * Vielfachen von vier, und keine Beschriftung zeigt „0,25 Instanzen".
      */
     public static function saeulen(array $labels, array $werte, array $o = []): string
     {
@@ -95,7 +98,7 @@ final class Diagramm
         $nutzH   = $hoehe - $untenRand - $obenRand;
 
         $max = max(array_merge([0.0], array_map('floatval', $werte), $vergl ? array_map('floatval', $vergl) : []));
-        $max = self::rundeHoch($max);
+        $max = !empty($o['ganz']) ? max(4.0, ceil(self::rundeHoch($max) / 4) * 4) : self::rundeHoch($max);
         $schritt = $nutzB / $n;
         $breiteSaeule = min(46, $schritt * ($vergl ? 0.34 : 0.56));
 

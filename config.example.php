@@ -43,6 +43,14 @@ return [
     // demo.php gelöscht – der Schalter ist die zweite Sicherung.
     'demo_zugang' => false,
 
+    // Nur zum Anlegen des ERSTEN Master Admins auf Hosting ohne
+    // Kommandozeile: einen langen Zufallswert (mindestens 24 Zeichen)
+    // eintragen, master/einrichten.php?k=<Wert> öffnen, danach den Eintrag
+    // wieder löschen. Sobald ein Betreiber existiert, ist die Seite ohnehin
+    // gesperrt. Mit SSH geht es ohne: php bin/betreiber.php anlegen …
+    // Siehe docs/BETREIBER.md.
+    // 'betreiber_einrichtung' => '',
+
     // Absender für Systemmails.
     'mail' => [
         'from_name'  => 'TeePilot',

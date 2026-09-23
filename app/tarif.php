@@ -19,24 +19,21 @@ if (App::istPost()) {
     Auth::csrfFordern();
     $aktion = App::aktion();
 
+    /*
+     * Selbst wechseln geht nur, solange TeePilot keine Vertragsdaten für
+     * diese Instanz führt – so wie bisher bei jeder Anlage ohne
+     * Betreiberzentrale. Steht ein Vertrag in der Betreiberzentrale,
+     * gehört der Wechsel dorthin; sonst liefen Paket und Vertrag
+     * auseinander. Der Wechsel selbst geht durch Pakete::zuweisen(),
+     * dieselbe Stelle wie aus der Zentrale – samt Protokoll dort.
+     */
     if ($aktion === 'plan' && Auth::istInhaber()) {
         $neu = App::post('plan');
-        if (isset($plaene[$neu])) {
+        if (Abos::aktuell(Tenant::id()) !== null || Support::aktiv()) {
+            App::melden('Dein Paket verwaltet TeePilot. Für einen Wechsel wende dich bitte an den Support.', 'fehler');
+        } elseif (isset($plaene[$neu]) && (int) (Pakete::finden($neu)['aktiv'] ?? 0) === 1) {
             $alt = Tenant::plan();
-            Tenant::aktualisieren(['plan' => $neu]);
-            /*
-             * Beim Wechsel nach unten werden Module abgeschaltet, die der
-             * neue Tarif nicht mehr enthält – die Daten bleiben aber
-             * vollständig erhalten. Ein Wechsel zurück macht alles sichtbar.
-             */
-            $module = Tenant::einstellung('module', null);
-            if (is_array($module)) {
-                $gefiltert = array_values(array_filter(
-                    $module,
-                    static fn ($k) => Module::istKern((string) $k) || Module::imPlan((string) $k, $neu)
-                ));
-                Tenant::einstellungSetzen('module', $gefiltert);
-            }
+            Pakete::zuweisen(Tenant::id(), $neu, ['art' => 'benutzer', 'id' => Auth::id(), 'name' => Auth::name()]);
             Audit::schreiben('geaendert', 'workspace', Tenant::id(), 'Tarif ' . $alt . ' → ' . $neu);
             App::melden('Tarif auf ' . Module::planName($neu) . ' gestellt.');
         }
@@ -58,7 +55,8 @@ if (App::istPost()) {
 }
 
 $plan     = Tenant::plan();
-$rang     = ['starter' => 1, 'pro' => 2, 'business' => 3, 'academy' => 4];
+$rang     = array_flip(array_keys($plaene));      // Reihenfolge der Pakete = Rangfolge
+$vertrag  = Abos::aktuell(Tenant::id());
 $module   = Module::alle();
 $anzahlAn = 0;
 foreach ($module as $key => $info) {
@@ -97,7 +95,7 @@ require __DIR__ . '/partials/kopf.php';
           <?php endforeach; ?>
         </ul>
       </div>
-      <?php if (Auth::istInhaber() && !$istAktuell): ?>
+      <?php if (Auth::istInhaber() && !$istAktuell && $vertrag === null && !Support::vermerkt()): ?>
         <div class="karte__fuss">
           <form method="post" style="width:100%"
                 data-bestaetigen="<?= $istHoeher
@@ -116,7 +114,15 @@ require __DIR__ . '/partials/kopf.php';
   <?php endforeach; ?>
 </div>
 
-<?php if (!Auth::istInhaber()): ?>
+<?php if ($vertrag !== null): ?>
+  <div class="hinweis hinweis--still mb-4">
+    <?= Icon::svg('info', 17) ?>
+    <div class="hinweis__text">Dein Paket verwaltet TeePilot<?php
+      if ((string) $vertrag['laufzeit'] === 'test' && $vertrag['test_bis']): ?> – die Testphase läuft bis
+      <?= Util::h(Util::datum((string) $vertrag['test_bis'])) ?><?php endif; ?>. Für einen Wechsel wende dich bitte an den Support.
+      Welche der enthaltenen Bereiche im Menü erscheinen, stellst du unten selbst ein.</div>
+  </div>
+<?php elseif (!Auth::istInhaber()): ?>
   <div class="hinweis hinweis--still mb-4">
     <?= Icon::svg('lock', 17) ?>
     <div class="hinweis__text">Den Tarif kann nur der Inhaber des Workspace wechseln.</div>
@@ -143,14 +149,14 @@ require __DIR__ . '/partials/kopf.php';
               $kern     = Module::istKern($key);
               $imPlan   = Module::imPlan($key, $plan);
               $an       = Tenant::modul($key); ?>
-              <label class="haken<?= !$imPlan ? ' nur-lesbar' : '' ?>">
+              <label class="haken<?= !$imPlan ? ' ist-gesperrt' : '' ?>">
                 <input type="checkbox" name="module[]" value="<?= Util::attr($key) ?>"
                        <?= $an ? ' checked' : '' ?>
                        <?= $kern || !$imPlan ? ' disabled' : '' ?>>
                 <span class="haken__text">
                   <?= Util::h((string) $info['name']) ?>
                   <?php if ($kern): ?> <?= pille('Kern') ?>
-                  <?php elseif (!$imPlan): ?> <?= pille('ab ' . Module::planName((string) $info['plan']), 'warnung') ?>
+                  <?php elseif (!$imPlan): ?> <?= pille('nicht im Paket', 'warnung') ?>
                   <?php endif; ?>
                   <span class="haken__hinweis"><?= Util::h((string) $info['beschreibung']) ?></span>
                 </span>

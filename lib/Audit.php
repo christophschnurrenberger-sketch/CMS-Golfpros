@@ -19,6 +19,10 @@ final class Audit
                 'objekt_id'    => $objektId,
                 'beschreibung' => $beschreibung,
                 'ip'           => Util::ip(),
+                /* Im Support Mode steht hier, welcher Betreiber es war. Die
+                   Zeile gehört dann nicht dem Inhaber, auch wenn sie unter
+                   seinem Zugang entstand. */
+                'betreiber_id' => Support::betreiberId(),
                 'erstellt'     => Util::jetzt(),
             ]);
         } catch (Throwable $e) {
@@ -55,6 +59,8 @@ final class Audit
         'ki_angenommen'    => 'KI-Vorschlag übernommen',
         'ki_abgelehnt'     => 'KI-Vorschlag verworfen',
         'export'           => 'Daten exportiert',
+        'support_beginn'   => 'Support-Zugriff begonnen',
+        'support_ende'     => 'Support-Zugriff beendet',
     ];
 
     public static function text(string $aktion): string

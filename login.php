@@ -10,8 +10,16 @@
  */
 require __DIR__ . '/lib/bootstrap.php';
 
+/*
+ * Eine Maske für beide: Golfpros landen in ihrer Instanz, Betreiber in
+ * der Betreiberzentrale. Wohin, entscheidet die Tabelle, in der die
+ * Adresse steht – nicht die Adresse selbst und keine Liste im Code.
+ */
 if (Auth::angemeldet()) {
     App::weiter('/app/');
+}
+if (Betreiber::angemeldet()) {
+    App::weiter('/master/');
 }
 
 $fehler = '';
@@ -23,26 +31,55 @@ if (App::istPost()) {
     $aktion = App::aktion();
 
     if ($aktion === 'reset_anfordern') {
-        $token = Auth::resetAnfordern(App::post('email'));
+        $adresse = strtolower(App::post('email'));
+        $text = static fn (string $name, string $token): string => "Hallo " . $name . ",\n\n"
+            . "du kannst dein Passwort über den folgenden Link neu setzen. Der Link ist eine Stunde gültig.\n\n"
+            . App::absolut('/passwort.php?token=' . $token) . "\n\n"
+            . "Wenn du das nicht warst, ignoriere diese Nachricht – dein Passwort bleibt unverändert.";
+        /* 'protokoll' => false: Der Link ist ein Schlüssel. Im
+           Kommunikationsverlauf der Instanz könnte ihn sonst jeder aus dem
+           Team lesen – und damit das Konto des Inhabers übernehmen. */
+        $token = Auth::resetAnfordern($adresse);
         if ($token !== null) {
-            $benutzer = DB::one('SELECT * FROM users WHERE email = :e', ['e' => strtolower(App::post('email'))]);
+            $benutzer = DB::one('SELECT * FROM users WHERE email = :e', ['e' => $adresse]);
             if ($benutzer) {
                 Tenant::setzen((int) $benutzer['workspace_id']);
-                Mail::senden((string) $benutzer['email'], 'Passwort zurücksetzen',
-                    "Hallo " . $benutzer['name'] . ",\n\n"
-                    . "du kannst dein Passwort über den folgenden Link neu setzen. Der Link ist eine Stunde gültig.\n\n"
-                    . App::absolut('/passwort.php?token=' . $token) . "\n\n"
-                    . "Wenn du das nicht warst, ignoriere diese Nachricht – dein Passwort bleibt unverändert.",
-                    ['knopf_text' => 'Neues Passwort setzen',
+                Mail::senden((string) $benutzer['email'], 'Passwort zurücksetzen', $text((string) $benutzer['name'], $token),
+                    ['knopf_text' => 'Neues Passwort setzen', 'protokoll' => false,
                      'knopf_url' => App::absolut('/passwort.php?token=' . $token)]);
             }
+        }
+        $token = Betreiber::resetAnfordern($adresse);
+        if ($token !== null) {
+            $betreiber = DB::one('SELECT name, email FROM betreiber WHERE email = :e', ['e' => $adresse]);
+            Mail::senden((string) $betreiber['email'], 'Passwort zurücksetzen', $text((string) $betreiber['name'], $token),
+                ['knopf_text' => 'Neues Passwort setzen', 'protokoll' => false,
+                 'knopf_url' => App::absolut('/passwort.php?token=' . $token)]);
         }
         // Immer dieselbe Rückmeldung – sonst wird die Maske zur Adressprüfung.
         App::melden('Wenn es ein Konto mit dieser Adresse gibt, ist die E-Mail unterwegs.', 'info');
         App::weiter('/login.php');
     }
 
-    [$ok, $meldung] = Auth::anmelden($email, App::postRoh('passwort'));
+    $eigenerPfad = static fn (string $ziel): bool => $ziel !== ''
+        && str_starts_with($ziel, '/')
+        && !str_starts_with($ziel, '//')
+        && !str_starts_with($ziel, '/\\')
+        && !preg_match('/[\r\n]/', $ziel);
+
+    $betreiber = Betreiber::anmelden($email, App::postRoh('passwort'));
+    if ($betreiber === true) {
+        if ($eigenerPfad($weiter) && str_contains($weiter, '/master/')) {
+            header('Location: ' . $weiter);
+            exit;
+        }
+        App::weiter('/master/');
+    }
+    [$ok, $meldung] = $betreiber === false
+        ? [false, Auth::versuchGesperrt(strtolower(trim($email)))
+            ? 'Zu viele Versuche. Bitte in 15 Minuten erneut probieren.'
+            : 'E-Mail-Adresse oder Passwort stimmt nicht.']
+        : Auth::anmelden($email, App::postRoh('passwort'));
     if ($ok) {
         /*
          * Wohin nach der Anmeldung?
@@ -65,11 +102,9 @@ if (App::istPost()) {
          * geraderückt. Ungeprüft wäre die Anmeldemaske ein Sprungbrett
          * fürs Phishing: echte Seite, echtes Passwort, fremdes Ziel.
          */
-        $eigen = $weiter !== ''
-              && str_starts_with($weiter, '/')
-              && !str_starts_with($weiter, '//')
-              && !str_starts_with($weiter, '/\\')
-              && !preg_match('/[\r\n]/', $weiter);
+        /* Ein Golfpro wird nie in die Betreiberzentrale weitergeleitet –
+           dort erwartete ihn ohnehin nur die Seite „Keine Berechtigung". */
+        $eigen = $eigenerPfad($weiter) && !str_contains($weiter, '/master/');
         if ($eigen) {
             header('Location: ' . $weiter);
             exit;
@@ -146,7 +181,7 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
       <p class="gedimmt mb-5">Weiter zu deinem Arbeitsbereich.</p>
 
       <?php foreach ($meldungen as $m): ?>
-        <div class="hinweis hinweis--<?= $m['typ'] === 'info' ? 'still' : 'erfolg' ?> mb-4">
+        <div class="hinweis hinweis--<?= ['info' => 'still', 'fehler' => 'gefahr', 'warnung' => 'warnung'][$m['typ']] ?? 'erfolg' ?> mb-4">
           <?= Icon::svg('info', 17) ?><div class="hinweis__text"><?= Util::h($m['text']) ?></div>
         </div>
       <?php endforeach; ?>

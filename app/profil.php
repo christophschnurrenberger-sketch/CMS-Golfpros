@@ -17,6 +17,14 @@ if (App::istPost()) {
     Auth::csrfFordern();
     $ich = Auth::id();
 
+    /* Im Support Mode bleiben Profil und Passwort des Inhabers unangetastet –
+       der Support arbeitet mit seinen Rechten, nicht mit seinem Zugang. Eine
+       geänderte E-Mail-Adresse wäre sonst der Weg, über „Passwort
+       vergessen" das Konto zu übernehmen. */
+    if (in_array(App::aktion(), ['passwort', 'profil'], true) && Support::aktiv()) {
+        App::melden('Im Support Mode lassen sich Profil und Passwort des Inhabers nicht ändern.', 'fehler');
+        App::weiter('/app/profil.php');
+    }
     if (App::aktion() === 'profil') {
         $email = strtolower(trim(App::post('email')));
         $belegt = $email !== ''

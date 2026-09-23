@@ -148,9 +148,19 @@ final class Tenant
         self::$einstellungen[$schluessel] = $text;
     }
 
-    /** Ist ein Modul für diesen Workspace eingeschaltet? */
+    /**
+     * Ist ein Modul für diesen Workspace eingeschaltet – und erlaubt?
+     *
+     * Beides muss stimmen. Die Liste in den Einstellungen sagt, was der
+     * Pro sehen will; das Paket, was er sehen darf. Stand ein Modul von
+     * früher noch in der Liste, obwohl das Paket inzwischen kleiner ist,
+     * bleibt es trotzdem aus.
+     */
     public static function modul(string $name): bool
     {
+        if (!Module::istKern($name) && !Pakete::erlaubt($name, self::plan())) {
+            return false;
+        }
         $module = self::einstellung('module', null);
         if (!is_array($module)) {
             $module = Module::standardFuerPlan(self::plan());

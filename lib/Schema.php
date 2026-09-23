@@ -53,8 +53,10 @@ final class Schema
      *      die Schnittstelle nur Neues ausliefern kann
      *   7  pages.parent_id - aus der Seitenliste wird ein Baum, und aus
      *      der Navigation ein Menue ueber mehrere Ebenen
+     *   8  Betreiberzentrale: betreiber, betreiber_log, pakete, abos,
+     *      betreiber_notizen; workspaces.status und audit_log.betreiber_id
      */
-    public const VERSION = 7;
+    public const VERSION = 8;
 
     public static function migrate(): void
     {
@@ -139,6 +141,85 @@ final class Schema
         } catch (Throwable $e) {
             Audit::schreiben('wartung_fehler', 'system', 0, 'geaendert nachtragen: ' . $e->getMessage());
         }
+
+        self::betreiberzentraleNachruesten();
+    }
+
+    /**
+     * Seit der Betreiberzentrale: Status je Instanz, Kennzeichen für
+     * Support-Zugriffe im Protokoll, Pakete aus der Datenbank.
+     *
+     * Der Status wird aus dem, was es schon gab, abgeleitet und nicht
+     * erfunden: `aktiv = 1` war bisher „die Website ist erreichbar", also
+     * wird daraus „aktiv". Ein Workspace mit `aktiv = 0` war abgeschaltet –
+     * er wird „gesperrt" und nicht „archiviert", damit er in der Liste
+     * sichtbar bleibt und jemand bewusst entscheidet, was mit ihm passiert.
+     * Beides läuft nur in dem Moment, in dem die Spalte entsteht; danach
+     * gehört der Status der Betreiberzentrale.
+     *
+     * Abos werden für Bestandsinstanzen ausdrücklich NICHT angelegt. Ein
+     * Vertrag, den es nie gab, wäre erfundene Buchhaltung – und würde im
+     * Dashboard als Umsatz auftauchen. Bestandsinstanzen behalten ihr
+     * Paket (`workspaces.plan`) und zeigen „keine Vertragsdaten", bis
+     * jemand in der Betreiberzentrale eine Laufzeit einträgt.
+     */
+    private static function betreiberzentraleNachruesten(): void
+    {
+        if (self::spalteSicherstellen('workspaces', 'status', '%STR(16)% NOT NULL DEFAULT "aktiv"')) {
+            DB::pdo()->exec("UPDATE workspaces SET status = 'gesperrt' WHERE aktiv = 0");
+        }
+        self::spalteSicherstellen('audit_log', 'betreiber_id', '%INT% NOT NULL DEFAULT 0');
+
+        /*
+         * Wann hat das Team einer Instanz zuletzt gearbeitet? Nachgetragen
+         * aus dem, was belegt ist: der letzten Anmeldung und dem letzten
+         * Eintrag, den eine Person ins Protokoll geschrieben hat. Wer nie
+         * etwas getan hat, bleibt leer – „noch nie genutzt" ist auch eine
+         * Auskunft, und eine richtige.
+         */
+        if (self::spalteSicherstellen('workspaces', 'letzte_aktivitaet', '%DT%')) {
+            foreach (DB::all('SELECT id FROM workspaces') as $w) {
+                $id = (int) $w['id'];
+                $login = (string) DB::value('SELECT MAX(letzter_login) FROM users WHERE workspace_id = :w',
+                    ['w' => $id], '');
+                $spur = (string) DB::value('SELECT MAX(erstellt) FROM audit_log
+                    WHERE workspace_id = :w AND user_id > 0 AND betreiber_id = 0', ['w' => $id], '');
+                $letzte = max($login, $spur);
+                if ($letzte !== '') {
+                    DB::update('workspaces', ['letzte_aktivitaet' => $letzte], 'id = :id', ['id' => $id]);
+                }
+            }
+        }
+
+        /*
+         * Das Betreiberprotokoll ist nur zum Anhängen da. Die Anwendung
+         * hat keine Funktion zum Ändern oder Löschen; die Auslöser sind
+         * die zweite Sicherung gegen ein UPDATE von Hand oder aus einem
+         * künftigen Fehler. Auf MySQL braucht CREATE TRIGGER je nach
+         * Hoster besondere Rechte – fehlen sie, bleibt es bei der ersten.
+         */
+        $ausloeser = DB::istSqlite()
+            ? [
+                "CREATE TRIGGER IF NOT EXISTS betreiber_log_kein_update BEFORE UPDATE ON betreiber_log
+                 BEGIN SELECT RAISE(ABORT, 'Das Betreiberprotokoll ist unveraenderlich.'); END",
+                "CREATE TRIGGER IF NOT EXISTS betreiber_log_kein_delete BEFORE DELETE ON betreiber_log
+                 BEGIN SELECT RAISE(ABORT, 'Das Betreiberprotokoll ist unveraenderlich.'); END",
+            ]
+            : [
+                "CREATE TRIGGER betreiber_log_kein_update BEFORE UPDATE ON betreiber_log FOR EACH ROW
+                 SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Das Betreiberprotokoll ist unveraenderlich.'",
+                "CREATE TRIGGER betreiber_log_kein_delete BEFORE DELETE ON betreiber_log FOR EACH ROW
+                 SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Das Betreiberprotokoll ist unveraenderlich.'",
+            ];
+        foreach ($ausloeser as $sql) {
+            try {
+                DB::pdo()->exec($sql);
+            } catch (Throwable $e) {
+                // Gibt es schon, oder der Hoster erlaubt keine Auslöser.
+            }
+        }
+
+        Pakete::grundausstattung();
     }
 
     /**
@@ -305,16 +386,23 @@ final class Schema
         }
     }
 
-    /** Ergänzt eine Spalte, wenn sie fehlt. Für Updates bestehender Installationen. */
-    public static function spalteSicherstellen(string $tabelle, string $spalte, string $definition): void
+    /**
+     * Ergänzt eine Spalte, wenn sie fehlt. Für Updates bestehender Installationen.
+     *
+     * @return bool true, wenn die Spalte eben erst angelegt wurde – dann
+     *              kann der Aufrufer Bestandsdaten einmalig nachtragen.
+     */
+    public static function spalteSicherstellen(string $tabelle, string $spalte, string $definition): bool
     {
         if (!DB::tabelleExistiert($tabelle)) {
-            return;
+            return false;
         }
         try {
             DB::pdo()->query('SELECT ' . $spalte . ' FROM ' . $tabelle . ' LIMIT 1');
+            return false;
         } catch (Throwable $e) {
             DB::pdo()->exec('ALTER TABLE ' . $tabelle . ' ADD COLUMN ' . $spalte . ' ' . self::uebersetzen($definition));
+            return true;
         }
     }
 
@@ -359,7 +447,9 @@ final class Schema
                 sprache %STR(8)% NOT NULL DEFAULT "de",
                 zeitzone %STR(48)% NOT NULL DEFAULT "Europe/Berlin",
                 onboarding_schritt %INT% NOT NULL DEFAULT 0,
-                aktiv %INT% NOT NULL DEFAULT 1,
+                aktiv %INT% NOT NULL DEFAULT 1,               -- 1 = Website erreichbar
+                status %STR(16)% NOT NULL DEFAULT "aktiv",    -- test|aktiv|pausiert|gesperrt|archiviert
+                letzte_aktivitaet %DT%,                       -- letzte Nutzung durch das eigene Team
                 demo %INT% NOT NULL DEFAULT 0,
                 erstellt %DT%
             )%ENGINE%',
@@ -395,6 +485,100 @@ final class Schema
                 objekt_id %INT% NOT NULL DEFAULT 0,
                 beschreibung %TEXT%,
                 ip %STR(64)% NOT NULL DEFAULT "",
+                betreiber_id %INT% NOT NULL DEFAULT 0,         -- >0: im Support Mode geschrieben
+                erstellt %DT%
+            )%ENGINE%',
+
+            /* ======================================= Betreiberzentrale === */
+
+            /*
+             * Die Betreiber stehen in einer eigenen Tabelle und nicht als
+             * Rolle in `users`. Damit gibt es keinen Weg vom Mandanten in
+             * die Betreiberzentrale: Kein Formular einer Instanz schreibt
+             * in diese Tabelle, und keine Rolle in `users` bedeutet dort
+             * etwas. Wer Betreiber wird, entscheidet die Kommandozeile oder
+             * ein anderer Betreiber – nie ein Mandant.
+             */
+            'CREATE TABLE IF NOT EXISTS betreiber (
+                id %PK%,
+                email %STR(190)% NOT NULL,
+                passwort %STR(255)% NOT NULL DEFAULT "",
+                name %STR(160)% NOT NULL DEFAULT "",
+                rolle %STR(24)% NOT NULL DEFAULT "master_admin",
+                aktiv %INT% NOT NULL DEFAULT 1,
+                letzter_login %DT%,
+                reset_token %STR(64)% NOT NULL DEFAULT "",
+                reset_bis %DT%,
+                erstellt %DT%
+            )%ENGINE%',
+
+            /* Nur zum Anhängen. Kein workspace_id: Beim Löschen einer
+               Instanz räumt die Schleife über alle Tabellen mit dieser
+               Spalte auf – das Protokoll darüber muss stehen bleiben. */
+            'CREATE TABLE IF NOT EXISTS betreiber_log (
+                id %PK%,
+                zeit %DT%,
+                betreiber_id %INT% NOT NULL DEFAULT 0,
+                akteur %STR(190)% NOT NULL DEFAULT "",         -- Name zum Zeitpunkt
+                aktion %STR(48)% NOT NULL DEFAULT "",          -- TENANT_CREATED, PLAN_CHANGED …
+                schwere %STR(12)% NOT NULL DEFAULT "INFO",     -- INFO|WARNING|CRITICAL
+                objekt %STR(32)% NOT NULL DEFAULT "",
+                objekt_id %INT% NOT NULL DEFAULT 0,
+                instanz_id %INT% NOT NULL DEFAULT 0,
+                ergebnis %STR(16)% NOT NULL DEFAULT "ok",      -- ok|fehler|verweigert
+                vorher %TEXT%,                                 -- JSON
+                nachher %TEXT%,                                -- JSON
+                grund %TEXT%,
+                beschreibung %TEXT%,
+                anfrage_id %STR(32)% NOT NULL DEFAULT "",
+                ip %STR(64)% NOT NULL DEFAULT ""
+            )%ENGINE%',
+
+            /* Pakete: was einschaltbar ist und was es kostet. `schluessel`
+               steht in workspaces.plan und ändert sich nie. */
+            'CREATE TABLE IF NOT EXISTS pakete (
+                id %PK%,
+                schluessel %STR(32)% NOT NULL,
+                name %STR(80)% NOT NULL DEFAULT "",
+                beschreibung %TEXT%,
+                preis_monat_cent %INT% NOT NULL DEFAULT 0,
+                preis_jahr_cent %INT% NOT NULL DEFAULT 0,      -- 0 = kein Jahrespreis festgelegt
+                module %TEXT%,                                 -- JSON: freigeschaltete Module
+                enthalten %TEXT%,                              -- JSON: Stichpunkte
+                team_grenze %INT% NOT NULL DEFAULT 0,          -- 0 = unbegrenzt
+                aktiv %INT% NOT NULL DEFAULT 1,
+                sortierung %INT% NOT NULL DEFAULT 0,
+                erstellt %DT%,
+                geaendert %DT%
+            )%ENGINE%',
+
+            /* Vertragsdaten je Instanz. Die offene Zeile ist die laufende,
+               die geschlossenen sind die Geschichte. Zahlungen stehen hier
+               nicht – eine Abrechnung ist noch nicht angeschlossen. */
+            'CREATE TABLE IF NOT EXISTS abos (
+                id %PK%,
+                workspace_id %INT% NOT NULL,
+                paket %STR(32)% NOT NULL DEFAULT "",
+                status %STR(16)% NOT NULL DEFAULT "aktiv",     -- test|aktiv|gekuendigt|beendet
+                laufzeit %STR(16)% NOT NULL DEFAULT "monat",   -- test|monat|jahr|individuell
+                preis_cent %INT% NOT NULL DEFAULT 0,           -- je Laufzeit; individuell: je Monat
+                beginn %DT%,
+                test_bis %DT%,
+                ende %DT%,
+                gekuendigt %DT%,
+                notiz %TEXT%,
+                erstellt %DT%,
+                erstellt_von %STR(190)% NOT NULL DEFAULT ""
+            )%ENGINE%',
+
+            /* Interne Notizen des Betreibers. Keine Seite einer Instanz
+               liest diese Tabelle. */
+            'CREATE TABLE IF NOT EXISTS betreiber_notizen (
+                id %PK%,
+                workspace_id %INT% NOT NULL,
+                betreiber_id %INT% NOT NULL DEFAULT 0,
+                akteur %STR(190)% NOT NULL DEFAULT "",
+                text %TEXT%,
                 erstellt %DT%
             )%ENGINE%',
 
@@ -1469,7 +1653,13 @@ final class Schema
     {
         $spalten = [
             'users' => ['workspace_id', 'email'],
-            'audit_log' => ['workspace_id', 'erstellt'],
+            'audit_log' => ['workspace_id', 'erstellt', 'aktion'],
+            'workspaces' => ['status'],
+            'betreiber' => ['email'],
+            'betreiber_log' => ['zeit', 'instanz_id', 'aktion', 'betreiber_id'],
+            'pakete' => ['schluessel'],
+            'abos' => ['workspace_id', 'status'],
+            'betreiber_notizen' => ['workspace_id'],
             'locations' => ['workspace_id'],
             'settings' => ['workspace_id', 'schluessel'],
             'notifications' => ['workspace_id', 'user_id'],

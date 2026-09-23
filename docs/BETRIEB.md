@@ -15,6 +15,10 @@ klemmt.
    Hostern `775`).
 4. **HTTPS erzwingen.** Fast jeder Hoster bietet ein kostenloses
    Zertifikat. Ohne HTTPS wandern Passwörter im Klartext durchs Netz.
+5. **Den ersten Master Admin anlegen**, wenn die Anlage mehrere Instanzen
+   betreuen soll: `php bin/betreiber.php anlegen <email> "<Name>"` oder,
+   ohne Kommandozeile, über `master/einrichten.php` mit einem Schlüssel
+   aus der `config.php`. Beides steht in [BETREIBER.md](BETREIBER.md).
 
 ## Sicherung
 

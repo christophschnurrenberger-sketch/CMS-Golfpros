@@ -119,12 +119,25 @@ final class Auth
             return [false, 'E-Mail-Adresse oder Passwort stimmt nicht.'];
         }
 
+        /*
+         * Pausierte, gesperrte und archivierte Instanzen: Das Passwort war
+         * richtig, also darf die Meldung sagen, woran es liegt. Ein
+         * Fehlversuch ist das nicht – die Bremse zählt ihn nicht mit.
+         */
+        $status = self::instanzStatus((int) $benutzer['workspace_id']);
+        if (!Instanzen::zugangErlaubt($status)) {
+            return [false, Instanzen::sperrText($status)];
+        }
+
         if (password_needs_rehash((string) $benutzer['passwort'], PASSWORD_DEFAULT)) {
             DB::update('users', ['passwort' => password_hash($passwort, PASSWORD_DEFAULT)],
                 'id = :id', ['id' => $benutzer['id']]);
         }
 
         session_regenerate_id(true);
+        /* Wer sich als Golfpro anmeldet, ist danach kein Betreiber mehr –
+           eine Sitzung trägt nie beide Rollen nebeneinander. */
+        unset($_SESSION['gp_betreiber'], $_SESSION['gp_betreiber_zeit'], $_SESSION['gp_support']);
         $_SESSION[self::SITZUNG] = (int) $benutzer['id'];
         $_SESSION['gp_zeit']     = time();
         self::$benutzer = $benutzer;
@@ -141,11 +154,12 @@ final class Auth
     {
         $benutzer = DB::one('SELECT u.* FROM users u JOIN workspaces w ON w.id = u.workspace_id
                              WHERE u.id = :id AND w.demo = 1 AND u.aktiv = 1', ['id' => $userId]);
-        if (!$benutzer) {
+        if (!$benutzer || !Instanzen::zugangErlaubt(self::instanzStatus((int) $benutzer['workspace_id']))) {
             return false;
         }
         self::start();
         session_regenerate_id(true);
+        unset($_SESSION['gp_betreiber'], $_SESSION['gp_betreiber_zeit'], $_SESSION['gp_support']);
         $_SESSION[self::SITZUNG] = (int) $benutzer['id'];
         $_SESSION['gp_zeit']     = time();
         self::$benutzer = $benutzer;
@@ -156,6 +170,13 @@ final class Auth
     public static function abmelden(): void
     {
         self::start();
+        /* Im Support Mode heißt „Abmelden": zurück in die Betreiberzentrale.
+           Die Betreibersitzung bleibt, nur die Sicht auf die Instanz endet. */
+        if (Support::vermerkt()) {
+            Support::beenden('abgemeldet');
+            self::$benutzer = null;
+            return;
+        }
         if (self::angemeldet()) {
             Audit::schreiben('logout', 'user', self::id(), 'Abmeldung');
         }
@@ -184,23 +205,75 @@ final class Auth
         if ($id <= 0) {
             return null;
         }
-        // Sitzungen laufen nach 12 Stunden Untätigkeit ab.
-        if (time() - (int) ($_SESSION['gp_zeit'] ?? 0) > 43200) {
-            self::abmelden();
+
+        /*
+         * Support Mode: Die Sitzung gehört einem Betreiber, der die Instanz
+         * mit den Rechten ihres Inhabers sieht. Ob das noch gilt – Zeit,
+         * Betreiber, Zugehörigkeit –, prüft Support bei jedem Aufruf. Die
+         * Sperre einer pausierten Instanz gilt hier nicht: Gerade dann
+         * muss der Support hineinschauen können.
+         */
+        $support = null;
+        if (Support::vermerkt()) {
+            $support = Support::pruefen();
+            if ($support === null) {
+                return null;
+            }
+        } elseif (time() - (int) ($_SESSION['gp_zeit'] ?? 0) > 43200) {
+            // Sitzungen laufen nach 12 Stunden Untätigkeit ab.
+            self::sitzungLeeren();
             return null;
         }
         $_SESSION['gp_zeit'] = time();
 
         $benutzer = DB::one('SELECT * FROM users WHERE id = :id AND aktiv = 1', ['id' => $id]);
         if (!$benutzer) {
-            self::abmelden();
+            $support !== null ? Support::beenden('ungültig') : self::sitzungLeeren();
             return null;
+        }
+        if ($support === null) {
+            /* Wird eine Instanz pausiert, während jemand angemeldet ist, endet
+               seine Sitzung mit dem nächsten Klick – nicht erst morgen. */
+            $status = self::instanzStatus((int) $benutzer['workspace_id']);
+            if (!Instanzen::zugangErlaubt($status)) {
+                self::sitzungLeeren();
+                App::melden(Instanzen::sperrText($status), 'fehler');
+                return null;
+            }
+            Instanzen::aktivitaetMerken((int) $benutzer['workspace_id']);
         }
         self::$benutzer = $benutzer;
         if (!Tenant::gesetzt()) {
             Tenant::setzen((int) $benutzer['workspace_id']);
         }
         return $benutzer;
+    }
+
+    /**
+     * Beendet eine Sitzung, die nicht mehr gilt – ohne abmelden().
+     *
+     * abmelden() fragt zuerst angemeldet(), und das führt zurück nach
+     * benutzer(). Aus benutzer() heraus aufgerufen, lief das bei einer
+     * abgelaufenen Sitzung oder einem inzwischen deaktivierten Zugang im
+     * Kreis, bis PHP abbrach. Hier wird nur geleert und die Kennung
+     * erneuert; eine Meldung für die Anmeldeseite passt danach hinein.
+     */
+    private static function sitzungLeeren(): void
+    {
+        $_SESSION = [];
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            @session_regenerate_id(true);
+        }
+        self::$benutzer = null;
+    }
+
+    private static function instanzStatus(int $workspaceId): string
+    {
+        try {
+            return (string) DB::value('SELECT status FROM workspaces WHERE id = :id', ['id' => $workspaceId], '');
+        } catch (Throwable $e) {
+            return '';      // vor dem Nachrüsten gibt es die Spalte noch nicht
+        }
     }
 
     public static function id(): int
@@ -230,7 +303,24 @@ final class Auth
 
     /* --------------------------------------------------------- Rechte --- */
 
+    /**
+     * Darf der angemeldete Benutzer das?
+     *
+     * Rechte der Form `modul.x` hängen zusätzlich am Paket der Instanz:
+     * Die Rolle kann erlauben, was das Paket nicht enthält – dann bleibt
+     * es zu. So greift ein Paketwechsel sofort auf jeder Seite, die mit
+     * `fordern('modul.x')` beginnt, und nicht nur im Menü.
+     */
     public static function darf(string $recht): bool
+    {
+        if (!self::rolleErlaubt($recht)) {
+            return false;
+        }
+        return !str_starts_with($recht, 'modul.') || Module::verfuegbar(substr($recht, 6));
+    }
+
+    /** Nur die Rolle (samt Einzelrechten) – ohne Blick aufs Paket. */
+    public static function rolleErlaubt(string $recht): bool
     {
         $benutzer = self::benutzer();
         if (!$benutzer) {

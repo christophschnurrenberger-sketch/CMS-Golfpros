@@ -18,7 +18,9 @@ final class Module
 
     /**
      * Reihenfolge hier = Reihenfolge im Menü.
-     * gruppe steuert die Zwischenüberschrift, plan die Mindeststufe.
+     * gruppe steuert die Zwischenüberschrift. plan war die Mindeststufe des
+     * Tarifs; seit die Pakete in der Datenbank stehen, dient es nur noch
+     * dazu, die vier ausgelieferten Pakete einmalig zu befüllen.
      */
     private const LISTE = [
         'dashboard' => [
@@ -128,8 +130,6 @@ final class Module
         'system'   => '',
     ];
 
-    private const PLAN_RANG = ['starter' => 1, 'pro' => 2, 'business' => 3, 'academy' => 4];
-
     /**
      * Unterpunkte: eigener Eintrag im Menü, aber kein eigenes Modul.
      *
@@ -193,11 +193,27 @@ final class Module
         return in_array($key, self::KERN, true);
     }
 
-    /** Erlaubt der Tarif dieses Modul überhaupt? */
+    /** Erlaubt das Paket dieses Modul überhaupt? Entscheidet Pakete, aus der Datenbank. */
     public static function imPlan(string $key, string $plan): bool
     {
-        $noetig = (string) (self::LISTE[$key]['plan'] ?? 'starter');
-        return (self::PLAN_RANG[$plan] ?? 1) >= (self::PLAN_RANG[$noetig] ?? 1);
+        return Pakete::erlaubt($key, $plan);
+    }
+
+    /**
+     * Ist das Modul in dieser Instanz verfügbar – im Paket und eingeschaltet?
+     *
+     * Kern und Schlüssel, die kein Modul sind (Unterpunkte, Bereiche wie
+     * „settings"), sind es immer. Die Frage stellt `Auth::darf()` bei
+     * jedem Recht der Form `modul.*` – damit ist ein abgeschaltetes Modul
+     * nicht nur aus dem Menü verschwunden, sondern auch über die
+     * Adresszeile nicht mehr zu erreichen.
+     */
+    public static function verfuegbar(string $key): bool
+    {
+        if (self::istKern($key) || !isset(self::LISTE[$key])) {
+            return true;
+        }
+        return Tenant::modul($key);
     }
 
     /** Was ein frischer Workspace in diesem Tarif eingeschaltet bekommt. */
@@ -250,35 +266,29 @@ final class Module
         return $menue;
     }
 
-    /** @return array<string,array<string,mixed>> Tarife für die Einstellungen. */
+    /**
+     * Pakete für die Tarifseite: alle, die vergeben werden dürfen, und
+     * das eigene, auch wenn es inzwischen nicht mehr angeboten wird.
+     *
+     * @return array<string,array<string,mixed>>
+     */
     public static function plaene(): array
     {
-        return [
-            'starter' => [
-                'name' => 'Starter', 'preis_cent' => 2900,
-                'zeile' => 'Website und Buchung – alles, um online zu starten.',
-                'enthalten' => ['Website-Baukasten', 'Online-Buchung', 'Kundenakte', 'Kalender', 'Blog'],
-            ],
-            'pro' => [
-                'name' => 'Pro', 'preis_cent' => 5900,
-                'zeile' => 'Das volle Geschäft: Verkauf, Rechnungen, Marketing.',
-                'enthalten' => ['Alles aus Starter', 'Leads & Pipeline', 'Produkte & Pakete', 'Zahlungen', 'Rechnungen', 'Newsletter', 'Trainingspläne', 'Kurse', 'Events'],
-            ],
-            'business' => [
-                'name' => 'Business', 'preis_cent' => 9900,
-                'zeile' => 'Mit KI, Videoanalyse und vollständiger Auswertung.',
-                'enthalten' => ['Alles aus Pro', 'KI-Assistent', 'Videoanalyse', 'Automationen', 'Auswertung', 'Community', 'Smart Pricing'],
-            ],
-            'academy' => [
-                'name' => 'Academy', 'preis_cent' => 19900,
-                'zeile' => 'Für Akademien: mehrere Trainer, Standorte, eigene Marke.',
-                'enthalten' => ['Alles aus Business', 'Mehrere Trainer', 'Mehrere Standorte', 'White Label', 'Eigene Domain', 'Rollen & Rechte', 'Vorrangiger Support'],
-            ],
-        ];
+        $aus = [];
+        foreach (Pakete::alle() as $key => $p) {
+            if ((int) $p['aktiv'] !== 1 && $key !== Tenant::plan()) {
+                continue;
+            }
+            $aus[$key] = [
+                'name' => (string) $p['name'], 'preis_cent' => (int) $p['preis_monat_cent'],
+                'zeile' => (string) $p['beschreibung'], 'enthalten' => (array) $p['enthalten'],
+            ];
+        }
+        return $aus;
     }
 
     public static function planName(string $plan): string
     {
-        return (string) (self::plaene()[$plan]['name'] ?? ucfirst($plan));
+        return Pakete::name($plan);
     }
 }

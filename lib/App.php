@@ -352,6 +352,15 @@ final class App
         $titel = 'Kein Zugriff';
         $text  = 'Deine Rolle „' . Util::h(Auth::rollenName()) . '“ hat für diesen Bereich keine Berechtigung. '
                . 'Wenn du sie brauchst, kann der Inhaber sie unter Einstellungen → Team freischalten.';
+        /* Die Rolle hätte es erlaubt – es fehlt am Paket oder am Schalter. */
+        if (str_starts_with($recht, 'modul.') && Auth::rolleErlaubt($recht)) {
+            $modul = substr($recht, 6);
+            $titel = 'Modul nicht aktiv';
+            $text  = '„' . Util::h(Module::name($modul)) . '“ ist in dieser Instanz nicht eingeschaltet'
+                   . (Pakete::erlaubt($modul, Tenant::plan())
+                      ? '. Unter Tarif &amp; Module lässt es sich einschalten.'
+                      : ' – es gehört nicht zum Paket ' . Util::h(Module::planName(Tenant::plan())) . '.');
+        }
         require GP_ROOT . '/app/partials/kopf.php';
         echo '<div class="leerzustand leerzustand--gross">'
            . '<div class="leerzustand__symbol">' . Icon::svg('lock', 30) . '</div>'
