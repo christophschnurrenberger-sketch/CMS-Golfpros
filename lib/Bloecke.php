@@ -414,6 +414,48 @@ final class Bloecke
         ],
     ];
 
+    /**
+     * Ein Satz je Baustein – für die Auswahl im Baukasten.
+     *
+     * Der Name allein sagt zu wenig: Ob „Karten" oder „Spalten" das Richtige
+     * für drei Angebote nebeneinander ist, weiß man erst, wenn man es
+     * ausprobiert hat. Dieser Satz erspart das Ausprobieren.
+     */
+    private const BESCHREIBUNG = [
+        'hero'         => 'Der große Einstieg: Überschrift, Text, Bild und Knöpfe.',
+        'ueberschrift' => 'Eine Überschrift mit kurzem Text, um einen Abschnitt zu beginnen.',
+        'text'         => 'Fließtext mit Überschrift, ein- oder zweispaltig.',
+        'spalten'      => 'Zwei bis vier Punkte nebeneinander, je mit Titel und Text.',
+        'trenner'      => 'Eine ruhige Linie zwischen zwei Abschnitten.',
+        'bild'         => 'Ein einzelnes Bild mit Bildunterschrift.',
+        'galerie'      => 'Mehrere Bilder im Raster.',
+        'video'        => 'Ein Video von YouTube oder Vimeo.',
+        'karten'       => 'Angebote oder Themen als Karten mit Bild.',
+        'zahlen'       => 'Große Zahlen, die etwas belegen: Jahre, Schüler, Handicap.',
+        'zitat'        => 'Ein Satz, der hängen bleiben soll.',
+        'leistungen'   => 'Deine Leistungen mit Preis, direkt buchbar.',
+        'preise'       => 'Preispakete nebeneinander zum Vergleichen.',
+        'testimonials' => 'Was Schülerinnen und Schüler über dich sagen.',
+        'faq'          => 'Häufige Fragen zum Aufklappen.',
+        'team'         => 'Die Menschen hinter der Golfschule.',
+        'logos'        => 'Partner, Clubs und Verbände als Logoleiste.',
+        'cta'          => 'Eine klare Aufforderung mit Knopf – buchen, anfragen, anrufen.',
+        'buchung'      => 'Freie Termine zum direkten Buchen.',
+        'konto'        => 'Anmeldung und Registrierung für deine Kundinnen und Kunden.',
+        'formular'     => 'Ein Anfrageformular – landet bei dir als Lead.',
+        'produkte'     => 'Gutscheine und Produkte zum Kaufen.',
+        'kurse'        => 'Deine Onlinekurse.',
+        'events'       => 'Kommende Events und Turniere.',
+        'blog'         => 'Die neuesten Beiträge.',
+        'reisen'       => 'Golfreisen mit Termin und Preis.',
+        'kontakt'      => 'Adresse, Karte und Wege zu dir.',
+    ];
+
+    public static function beschreibung(string $key): string
+    {
+        return self::BESCHREIBUNG[$key] ?? '';
+    }
+
     /** @return array<string,array<string,mixed>> */
     public static function typen(): array
     {

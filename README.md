@@ -64,7 +64,7 @@ webhook.php   Stripe meldet Zahlungen hierher
 install.php   Einrichtung, danach löschen
 passwort.php  Passwort setzen – über den Link aus Einladung oder Reset
 bin/          Kommandozeile: Betreiber anlegen (php bin/betreiber.php)
-tests/        php tests/betreiber.php – Prüfungen gegen eine Wegwerf-Datenbank
+tests/        php tests/betreiber.php, php tests/baukasten.php – Prüfungen gegen eine Wegwerf-Datenbank
 assets/       Stylesheets, Skripte und die Schriften auf eigenem Server
 docs/         Architektur, Betrieb und Upload im Detail
 .github/      Ein Workflow: Syntax prüfen, dann per FTPS hochladen

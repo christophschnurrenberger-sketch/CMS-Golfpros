@@ -716,7 +716,7 @@ final class Renderer
         }
         return '<div class="inhalt-breite">'
              . (self::zeigen(self::h($d, 'titel'))
-                ? '<p class="hand hand--gross" style="margin-bottom:clamp(30px,4vw,54px)"'
+                ? '<p class="hand hand--gross" style="margin-bottom:clamp(30px,calc(4 * var(--vw, 1vw)),54px)"'
                   . self::feld('titel') . self::leer('Überschrift') . '>'
                   . self::h($d, 'titel') . '</p>' : '')
              . '<div class="stimmen">' . $stimmen . '</div>'
@@ -822,9 +822,9 @@ final class Renderer
                   . Util::h((string) $u['name']) . '</p>'
                   . '</div>';
 
-            $html .= '<div class="zwei zwei--mitte" style="margin-top:clamp(40px,5vw,86px)">'
+            $html .= '<div class="zwei zwei--mitte" style="margin-top:clamp(40px,calc(5 * var(--vw, 1vw)),86px)">'
                    . '<div class="breit" style="flex:1 1 300px;'
-                   . ($links ? 'margin-left:clamp(-60px,-4vw,0px)' : 'margin-right:clamp(-60px,-4vw,0px)') . '">'
+                   . ($links ? 'margin-left:clamp(-60px,calc(-4 * var(--vw, 1vw)),0px)' : 'margin-right:clamp(-60px,calc(-4 * var(--vw, 1vw)),0px)') . '">'
                    . $bild . '</div>'
                    . $text . '</div>';
         }
@@ -855,7 +855,7 @@ final class Renderer
              . (self::zeigen(self::h($d, 'titel'))
                 ? '<p class="leise" style="margin-bottom:22px"' . self::feld('titel')
                   . self::leer('Kleine Zeile') . '>' . self::h($d, 'titel') . '</p>' : '')
-             . '<div style="display:flex;flex-wrap:wrap;gap:clamp(28px,4vw,60px);align-items:center">'
+             . '<div style="display:flex;flex-wrap:wrap;gap:clamp(28px,calc(4 * var(--vw, 1vw)),60px);align-items:center">'
              . $logos . '</div>' . self::plus('bilder', 'Logo') . '</div>';
     }
 
@@ -868,11 +868,11 @@ final class Renderer
         $notiz = trim((string) ($d['notiz'] ?? ''));
 
         return '<div class="abschnitt--band' . ($stil === 'still' ? '-2' : '') . '" '
-             . 'style="margin-inline:calc(50% - 50vw);width:100vw">'
-             . '<div class="inhalt-breite" style="padding-block:clamp(48px,6vw,104px)">'
+             . 'style="margin-inline:calc(50% - calc(50 * var(--vw, 1vw)));width:calc(100 * var(--vw, 1vw))">'
+             . '<div class="inhalt-breite" style="padding-block:clamp(48px,calc(6 * var(--vw, 1vw)),104px)">'
              . '<div class="zwei">'
              . '<div class="breit">'
-             . '<h2 style="font-size:clamp(30px,4.6vw,62px);line-height:1.02;letter-spacing:-0.03em;'
+             . '<h2 style="font-size:clamp(30px,calc(4.6 * var(--vw, 1vw)),62px);line-height:1.02;letter-spacing:-0.03em;'
              . 'max-width:18ch;margin-bottom:22px"' . self::feld('titel', 'marker') . self::leer('Überschrift')
              . '>' . self::mitMarker((string) ($d['titel'] ?? '')) . '</h2>'
              . '<div class="gedimmt eng-2" style="margin-bottom:26px"' . self::feld('text', 'mehrzeilig')

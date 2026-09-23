@@ -9,6 +9,7 @@
  *   $brotkrumen   [['Kunden', '/app/kunden.php'], ['Thomas Berger', null]]
  *   $inhaltKlasse zusätzliche Klasse für den Inhaltsbereich
  *   $ohneKopf     true blendet den Seitenkopf aus (z. B. Baukasten)
+ *   $vollbild     true blendet auch Seitenleiste und Kopfzeile aus (Baukasten)
  *
  * Alle eigenen Variablen hier beginnen mit $k. Diese Datei läuft im
  * Gültigkeitsbereich der Seite: Hieß die Schleife über das Menü
@@ -79,7 +80,9 @@ $kAkzent = Util::attr((string) $branding['akzent']);
 </head>
 <body>
 <div class="verdunkler" data-menue-zu></div>
-<div class="app">
+<?php /* Vollbild: Der Baukasten braucht die ganze Breite und bringt seine
+   eigene Kopfleiste mit. Seitenleiste und Kopfzeile treten zurück. */ ?>
+<div class="app<?= !empty($vollbild) ? ' app--vollbild' : '' ?>">
 
 <aside class="seitenleiste">
   <div class="marke">

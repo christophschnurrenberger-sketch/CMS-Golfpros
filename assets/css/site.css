@@ -57,7 +57,7 @@
   --hand: "Caveat", "Segoe Script", cursive;
 
   /* Ein einziger Seitenrand, überall derselbe. */
-  --rand-seite: clamp(18px, 4vw, 44px);
+  --rand-seite: clamp(18px, calc(4 * var(--vw, 1vw)), 44px);
   --breite: 1360px;
 
   margin: 0;
@@ -95,13 +95,13 @@
  * die bei 900px Fensterbreite umspringt, wirkt wie ein Fehler. clamp()
  * skaliert stattdessen stufenlos zwischen Telefon und großem Bildschirm.
  */
-.seite h1 { font-size: clamp(40px, 8.4vw, 126px); line-height: 0.96; letter-spacing: -0.035em; }
-.seite h2 { font-size: clamp(28px, 3.8vw, 52px);  line-height: 1.04; letter-spacing: -0.028em; }
-.seite h3 { font-size: clamp(20px, 2vw, 26px);    line-height: 1.18; letter-spacing: -0.022em; }
-.seite h4 { font-size: clamp(18px, 1.5vw, 21px);  line-height: 1.3;  letter-spacing: -0.015em; }
+.seite h1 { font-size: clamp(40px, calc(8.4 * var(--vw, 1vw)), 126px); line-height: 0.96; letter-spacing: -0.035em; }
+.seite h2 { font-size: clamp(28px, calc(3.8 * var(--vw, 1vw)), 52px);  line-height: 1.04; letter-spacing: -0.028em; }
+.seite h3 { font-size: clamp(20px, calc(2 * var(--vw, 1vw)), 26px);    line-height: 1.18; letter-spacing: -0.022em; }
+.seite h4 { font-size: clamp(18px, calc(1.5 * var(--vw, 1vw)), 21px);  line-height: 1.3;  letter-spacing: -0.015em; }
 
 /* Überschrift einer Unterseite: groß, aber nicht so groß wie der Aufmacher. */
-.seite .titel--unter { font-size: clamp(34px, 6vw, 84px); line-height: 0.98; letter-spacing: -0.03em; }
+.seite .titel--unter { font-size: clamp(34px, calc(6 * var(--vw, 1vw)), 84px); line-height: 0.98; letter-spacing: -0.03em; }
 
 .seite p { margin: 0 0 1.1em; }
 .seite p:last-child { margin-bottom: 0; }
@@ -128,8 +128,8 @@
   color: var(--marke);
   line-height: 1.35;
 }
-.seite .hand--gross  { font-size: clamp(30px, 3.2vw, 44px); line-height: 1.1; }
-.seite .hand--mittel { font-size: clamp(23px, 2vw, 28px); }
+.seite .hand--gross  { font-size: clamp(30px, calc(3.2 * var(--vw, 1vw)), 44px); line-height: 1.1; }
+.seite .hand--mittel { font-size: clamp(23px, calc(2 * var(--vw, 1vw)), 28px); }
 .seite .hand--klein  { font-size: 20px; }
 .seite .hand--schief { transform: rotate(-1.2deg); }
 
@@ -162,8 +162,8 @@
  * Scrollbereich erzeugt und damit position:sticky im Kopf zerstört.
  */
 .seite .abschnitt, .seite .abschnitt--hero { overflow-x: clip; }
-.seite .abschnitt { padding-top: clamp(56px, 7vw, 124px); padding-bottom: clamp(56px, 7vw, 124px); }
-.seite .abschnitt--eng { padding-top: clamp(40px, 5vw, 80px); padding-bottom: clamp(40px, 5vw, 80px); }
+.seite .abschnitt { padding-top: clamp(56px, calc(7 * var(--vw, 1vw)), 124px); padding-bottom: clamp(56px, calc(7 * var(--vw, 1vw)), 124px); }
+.seite .abschnitt--eng { padding-top: clamp(40px, calc(5 * var(--vw, 1vw)), 80px); padding-bottom: clamp(40px, calc(5 * var(--vw, 1vw)), 80px); }
 .seite .abschnitt--band { background: var(--flaeche); }
 .seite .abschnitt--band-2 { background: var(--flaeche-2); }
 
@@ -172,7 +172,7 @@
 .seite .zwei {
   display: flex;
   flex-wrap: wrap;
-  gap: clamp(30px, 5vw, 96px);
+  gap: clamp(30px, calc(5 * var(--vw, 1vw)), 96px);
   align-items: flex-end;
 }
 .seite .zwei--mitte { align-items: center; }
@@ -196,14 +196,14 @@
   margin-right: auto; min-width: 0;
 }
 .seite .kopf__name {
-  font-size: clamp(22px, 2.4vw, 30px); font-weight: 600; letter-spacing: -0.03em;
+  font-size: clamp(22px, calc(2.4 * var(--vw, 1vw)), 30px); font-weight: 600; letter-spacing: -0.03em;
 }
 .seite .kopf__zusatz { font-family: var(--hand); font-size: 20px; color: var(--marke); margin-left: 3px; }
 .seite .kopf__marke img { max-height: 44px; width: auto; }
 
 .seite .kopf__navi { padding-top: 8px; }
 .seite .navi { list-style: none; margin: 0; padding: 0; }
-.seite .navi--0 { display: flex; gap: clamp(12px, 1.6vw, 24px); flex-wrap: wrap; }
+.seite .navi--0 { display: flex; gap: clamp(12px, calc(1.6 * var(--vw, 1vw)), 24px); flex-wrap: wrap; }
 .seite .navi__punkt { position: relative; }
 .seite .kopf__link {
   display: inline-block;
@@ -418,7 +418,7 @@
 /* Die drei Formen, die in diesem Entwurf Bilder tragen. */
 .seite .form-blob   { aspect-ratio: 1/1; border-radius: 0 50% 50% 50%; overflow: hidden; }
 .seite .form-blob-r { aspect-ratio: 1/1; border-radius: 50% 0 50% 50%; overflow: hidden; }
-.seite .form-bogen  { border-radius: 0 0 0 clamp(60px, 10vw, 180px); overflow: hidden; }
+.seite .form-bogen  { border-radius: 0 0 0 clamp(60px, calc(10 * var(--vw, 1vw)), 180px); overflow: hidden; }
 .seite .form-karte  { border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein); overflow: hidden; }
 
 .seite .form-blob img, .seite .form-blob-r img,
@@ -437,7 +437,7 @@
 .seite .karte {
   background: var(--flaeche);
   border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
-  padding: clamp(24px, 2.6vw, 32px);
+  padding: clamp(24px, calc(2.6 * var(--vw, 1vw)), 32px);
 }
 .seite .karte--hell { background: var(--flaeche-2); }
 .seite .karte--rand { background: none; border: 1px solid var(--rand); }
@@ -446,11 +446,11 @@
 .seite .karten {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
-  gap: clamp(16px, 2.2vw, 30px);
+  gap: clamp(16px, calc(2.2 * var(--vw, 1vw)), 30px);
   align-items: start;
 }
-.seite .karten > :nth-child(2n)   { margin-top: min(26px, 3vw); }
-.seite .karten > :nth-child(4n+3) { margin-top: min(14px, 1.6vw); }
+.seite .karten > :nth-child(2n)   { margin-top: min(26px, calc(3 * var(--vw, 1vw))); }
+.seite .karten > :nth-child(4n+3) { margin-top: min(14px, calc(1.6 * var(--vw, 1vw))); }
 
 /* ------------------------------------------------ Liste statt Kacheln -- */
 
@@ -461,22 +461,22 @@
  */
 .seite .liste { border-bottom: 1px solid var(--rand); }
 .seite .liste__teil {
-  padding: clamp(30px, 3.4vw, 46px) 0;
+  padding: clamp(30px, calc(3.4 * var(--vw, 1vw)), 46px) 0;
   border-top: 1px solid var(--rand);
 }
-.seite .liste__teil:nth-child(2n) { margin-left: min(48px, 4vw); }
+.seite .liste__teil:nth-child(2n) { margin-left: min(48px, calc(4 * var(--vw, 1vw))); }
 .seite .liste__kopf { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .seite .liste__nummer { font-family: var(--hand); font-size: 22px; color: var(--text-3); }
 .seite .liste__titel {
   flex: 1 1 300px;
-  font-size: clamp(22px, 2.6vw, 34px); font-weight: 500;
+  font-size: clamp(22px, calc(2.6 * var(--vw, 1vw)), 34px); font-weight: 500;
   letter-spacing: -0.03em; line-height: 1.12; margin: 0;
 }
 .seite .liste__preis {
-  font-size: clamp(21px, 2.2vw, 30px); font-weight: 500;
+  font-size: clamp(21px, calc(2.2 * var(--vw, 1vw)), 30px); font-weight: 500;
   letter-spacing: -0.022em; white-space: nowrap;
 }
-.seite .liste__koerper { display: flex; flex-wrap: wrap; gap: clamp(20px, 4vw, 64px); margin-top: 14px; }
+.seite .liste__koerper { display: flex; flex-wrap: wrap; gap: clamp(20px, calc(4 * var(--vw, 1vw)), 64px); margin-top: 14px; }
 .seite .liste__text { flex: 1 1 360px; margin: 0; color: var(--text-2); max-width: 54ch; }
 .seite .liste__neben { flex: 0 1 240px; }
 .seite .liste__fuss { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 18px; }
@@ -516,14 +516,14 @@
 .seite .stimmen {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
-  gap: clamp(26px, 3vw, 48px) clamp(24px, 3vw, 54px);
+  gap: clamp(26px, calc(3 * var(--vw, 1vw)), 48px) clamp(24px, calc(3 * var(--vw, 1vw)), 54px);
   align-items: start;
 }
 .seite .stimme { margin: 0; max-width: 42ch; }
-.seite .stimme:nth-child(even) { margin-top: clamp(0px, 2.4vw, 34px); }
+.seite .stimme:nth-child(even) { margin-top: clamp(0px, calc(2.4 * var(--vw, 1vw)), 34px); }
 .seite .stimme__text {
   margin: 0 0 10px;
-  font-size: clamp(19px, 1.5vw, 25px); font-weight: 400; font-style: italic;
+  font-size: clamp(19px, calc(1.5 * var(--vw, 1vw)), 25px); font-weight: 400; font-style: italic;
   line-height: 1.32; letter-spacing: -0.015em;
   text-wrap: pretty;
 }
@@ -532,30 +532,30 @@
 /* Steht nur eine Stimme da, ist eine Spalte über die halbe Seite albern –
    dann darf sie die Breite eines Zitats haben und größer gesetzt sein. */
 .seite .stimme:only-child { max-width: 30ch; }
-.seite .stimme:only-child .stimme__text { font-size: clamp(21px, 2.2vw, 31px); }
+.seite .stimme:only-child .stimme__text { font-size: clamp(21px, calc(2.2 * var(--vw, 1vw)), 31px); }
 
 /* ------------------------------------------------------------- Zahlen - */
 
 .seite .zahlen {
   display: flex; flex-wrap: wrap;
-  gap: clamp(30px, 5vw, 90px);
+  gap: clamp(30px, calc(5 * var(--vw, 1vw)), 90px);
 }
 .seite .zahl-teil { flex: 0 1 200px; }
 .seite .zahl-teil__wert {
   display: block;
-  font-size: clamp(42px, 6vw, 82px); font-weight: 600;
+  font-size: clamp(42px, calc(6 * var(--vw, 1vw)), 82px); font-weight: 600;
   letter-spacing: -0.045em; line-height: 0.9;
 }
 .seite .zahl-teil__label { display: block; margin-top: 10px; font-size: 14.5px; color: var(--text-3); }
 
 /* --------------------------------------------------------- Aufmacher -- */
 
-.seite .hero { position: relative; padding-top: clamp(18px, 3vw, 40px); }
+.seite .hero { position: relative; padding-top: clamp(18px, calc(3 * var(--vw, 1vw)), 40px); }
 .seite .hero__bild-huelle { display: flex; justify-content: flex-end; }
 .seite .hero__bild {
-  width: clamp(280px, 64vw, 880px);
-  margin-right: clamp(-44px, -3vw, 0px);
-  height: clamp(300px, 38vw, 520px);
+  width: clamp(280px, calc(64 * var(--vw, 1vw)), 880px);
+  margin-right: clamp(-44px, calc(-3 * var(--vw, 1vw)), 0px);
+  height: clamp(300px, calc(38 * var(--vw, 1vw)), 520px);
   position: relative;
 }
 .seite .hero__bild .platzhalter__text { position: absolute; top: 18px; left: 24px; }
@@ -567,31 +567,31 @@
  */
 .seite .hero__titel-huelle {
   position: relative;
-  margin-top: clamp(-140px, -14vw, -56px);
+  margin-top: clamp(-140px, calc(-14 * var(--vw, 1vw)), -56px);
   padding: 0 var(--rand-seite);
   max-width: 1100px;
 }
 .seite .hero__titel { mix-blend-mode: multiply; }
 .seite .hero__unten {
-  padding: clamp(30px, 3.4vw, 50px) var(--rand-seite) 0;
+  padding: clamp(30px, calc(3.4 * var(--vw, 1vw)), 50px) var(--rand-seite) 0;
   display: flex; flex-wrap: wrap;
-  gap: clamp(30px, 5vw, 96px);
+  gap: clamp(30px, calc(5 * var(--vw, 1vw)), 96px);
   align-items: flex-end;
 }
 .seite .hero__text { flex: 0 1 430px; min-width: 0; }
 .seite .hero__notiz {
   flex: 0 1 300px; margin: 0;
-  font-family: var(--hand); font-size: clamp(24px, 2.1vw, 29px);
+  font-family: var(--hand); font-size: clamp(24px, calc(2.1 * var(--vw, 1vw)), 29px);
   line-height: 1.38; color: var(--marke); transform: rotate(-1.2deg);
 }
 .seite .hero__fakten {
-  margin: clamp(40px, 4.6vw, 68px) 0 0;
+  margin: clamp(40px, calc(4.6 * var(--vw, 1vw)), 68px) 0 0;
   padding: 0 var(--rand-seite);
   font-size: 14.5px; color: var(--text-3);
 }
 
 /* Aufmacher einer Unterseite: kein Bild, nur Zeile, Überschrift, Notiz. */
-.seite .kopfzeile { margin-bottom: clamp(30px, 4vw, 54px); }
+.seite .kopfzeile { margin-bottom: clamp(30px, calc(4 * var(--vw, 1vw)), 54px); }
 .seite .kopfzeile__ober { margin: 0 0 16px; font-family: var(--hand); font-size: 27px; color: var(--marke); }
 .seite .kopfzeile__text { margin: 22px 0 0; color: var(--text-2); max-width: 44ch; }
 .seite .kopfzeile--mitte { text-align: center; }
@@ -604,19 +604,19 @@
  * Einzug, die gewählte Zeit wird dunkel und bekommt rechts einen Bogen –
  * so sieht man die Wahl auch mit einem Blick von der Seite.
  */
-.seite .zeitliste { border-bottom: 1px solid var(--rand); margin-bottom: clamp(26px, 3vw, 40px); }
+.seite .zeitliste { border-bottom: 1px solid var(--rand); margin-bottom: clamp(26px, calc(3 * var(--vw, 1vw)), 40px); }
 .seite .zeit-zeile {
   width: 100%;
   font-family: var(--schrift); font-size: 17px; text-align: left;
-  display: flex; align-items: center; gap: clamp(16px, 2.4vw, 34px); flex-wrap: wrap;
+  display: flex; align-items: center; gap: clamp(16px, calc(2.4 * var(--vw, 1vw)), 34px); flex-wrap: wrap;
   padding: 22px 20px 22px 0;
   border: none; border-top: 1px solid var(--rand);
   background: transparent; color: var(--text);
   cursor: pointer;
   transition: background .18s, color .18s, padding-left .18s, border-radius .18s;
 }
-.seite .zeit-zeile:nth-child(3n+2) { margin-left: min(52px, 6vw); }
-.seite .zeit-zeile:nth-child(3n+3) { margin-left: min(18px, 2vw); }
+.seite .zeit-zeile:nth-child(3n+2) { margin-left: min(52px, calc(6 * var(--vw, 1vw))); }
+.seite .zeit-zeile:nth-child(3n+3) { margin-left: min(18px, calc(2 * var(--vw, 1vw))); }
 .seite .zeit-zeile:hover { background: var(--flaeche); padding-left: 16px; border-radius: 0 var(--ecke) var(--ecke) 0; }
 .seite .zeit-zeile.ist-gewaehlt {
   background: var(--text); color: var(--flaeche-2);
@@ -627,7 +627,7 @@
 }
 /* Eine leere Tageszelle behält ihre Breite, damit die Uhrzeiten fluchten. */
 .seite .zeit-zeile__tag { flex: 1 1 220px; font-weight: 500; min-height: 1px; }
-.seite .zeit-zeile__zeit { font-size: clamp(20px, 2vw, 26px); font-weight: 500; letter-spacing: -0.02em; }
+.seite .zeit-zeile__zeit { font-size: clamp(20px, calc(2 * var(--vw, 1vw)), 26px); font-weight: 500; letter-spacing: -0.02em; }
 .seite .zeit-zeile__art { flex: 1 1 200px; font-size: 15px; color: inherit; opacity: .72; }
 
 /* ------------------------------------------------------- Golfreisen ---- */
@@ -642,7 +642,7 @@
 .seite .reisekacheln {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-  gap: clamp(18px, 3vw, 30px);
+  gap: clamp(18px, calc(3 * var(--vw, 1vw)), 30px);
 }
 .seite .reisekachel {
   display: flex; flex-direction: column;
@@ -657,13 +657,13 @@
 .seite .reisekachel__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .seite .reisekachel__koerper {
   display: flex; flex-direction: column; gap: 6px; flex: 1;
-  padding: clamp(20px, 3vw, 26px);
+  padding: clamp(20px, calc(3 * var(--vw, 1vw)), 26px);
 }
 .seite .reisekachel__ort {
   font-size: 13px; letter-spacing: .07em; text-transform: uppercase; color: var(--marke);
 }
 .seite .reisekachel__titel {
-  font-size: clamp(20px, 2.2vw, 24px); font-weight: 500;
+  font-size: clamp(20px, calc(2.2 * var(--vw, 1vw)), 24px); font-weight: 500;
   letter-spacing: -0.025em; line-height: 1.15;
 }
 .seite .reisekachel__zeit { font-size: 15px; color: var(--text-2); font-variant-numeric: tabular-nums; }
@@ -683,12 +683,12 @@
 
 .seite .reise__bild {
   border-radius: var(--ecke) var(--ecke) var(--ecke) 6px;
-  overflow: hidden; margin-bottom: clamp(22px, 3vw, 32px);
+  overflow: hidden; margin-bottom: clamp(22px, calc(3 * var(--vw, 1vw)), 32px);
 }
 .seite .reise__bild img { width: 100%; display: block; aspect-ratio: 16 / 9; object-fit: cover; }
 .seite .reise__kurz {
-  font-size: clamp(18px, 2vw, 21px); line-height: 1.45;
-  margin: 0 0 clamp(22px, 3vw, 30px);
+  font-size: clamp(18px, calc(2 * var(--vw, 1vw)), 21px); line-height: 1.45;
+  margin: 0 0 clamp(22px, calc(3 * var(--vw, 1vw)), 30px);
 }
 
 /*
@@ -699,7 +699,7 @@
 .seite .reise__eck {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 2px 26px;
-  margin: 0 0 clamp(26px, 4vw, 36px);
+  margin: 0 0 clamp(26px, calc(4 * var(--vw, 1vw)), 36px);
   border-top: 1px solid var(--rand);
 }
 .seite .reise__eck-teil { padding: 14px 0; border-bottom: 1px solid var(--rand); }
@@ -711,12 +711,12 @@
 
 .seite .reise__text p { margin: 0 0 1em; }
 .seite .reise__untertitel {
-  font-size: clamp(20px, 2.4vw, 25px); font-weight: 500; letter-spacing: -0.025em;
-  margin: clamp(30px, 4vw, 44px) 0 16px;
+  font-size: clamp(20px, calc(2.4 * var(--vw, 1vw)), 25px); font-weight: 500; letter-spacing: -0.025em;
+  margin: clamp(30px, calc(4 * var(--vw, 1vw)), 44px) 0 16px;
 }
 .seite .reise__spalten {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-  gap: clamp(18px, 3vw, 36px);
+  gap: clamp(18px, calc(3 * var(--vw, 1vw)), 36px);
 }
 .seite .reise__liste { list-style: none; margin: 0; padding: 0; }
 .seite .reise__liste li {
@@ -732,7 +732,7 @@
 
 .seite .reise__programm { list-style: none; margin: 0; padding: 0; }
 .seite .reise__tag {
-  display: flex; gap: clamp(14px, 2.4vw, 26px);
+  display: flex; gap: clamp(14px, calc(2.4 * var(--vw, 1vw)), 26px);
   padding: 18px 0; border-top: 1px solid var(--rand);
 }
 .seite .reise__tag:last-child { border-bottom: 1px solid var(--rand); }
@@ -759,7 +759,7 @@
   margin-bottom: 14px;
 }
 .seite .buchkal__spanne {
-  font-size: clamp(18px, 2vw, 22px); font-weight: 500; letter-spacing: -0.02em;
+  font-size: clamp(18px, calc(2 * var(--vw, 1vw)), 22px); font-weight: 500; letter-spacing: -0.02em;
 }
 .seite .buchkal__hinweis { font-size: 15px; color: var(--text-3); }
 
@@ -828,7 +828,7 @@
   border-bottom: 2px solid currentColor; padding-bottom: 2px;
 }
 
-.seite .buchkal__zeiten { margin-top: clamp(20px, 3vw, 30px); }
+.seite .buchkal__zeiten { margin-top: clamp(20px, calc(3 * var(--vw, 1vw)), 30px); }
 /* Mit Fenster steht unter dem Gitter nichts mehr – dann auch kein Abstand
    für nichts. Die Klasse setzt das Skript, sonst klaffte ohne JavaScript
    eine Lücke vor den offenen Listen. */
@@ -843,17 +843,17 @@
  */
 .seite .buchkal__fenster {
   border: none; padding: 0;
-  width: min(440px, calc(100vw - 32px));
+  width: min(440px, calc(calc(100 * var(--vw, 1vw)) - 32px));
   border-radius: var(--ecke) var(--ecke) var(--ecke) 6px;
   background: var(--grund); color: var(--text);
   box-shadow: 0 24px 60px rgba(23, 39, 28, .22);
 }
 .seite .buchkal__fenster::backdrop { background: rgba(23, 39, 28, .42); }
-.seite .buchkal__fenster-inhalt { padding: clamp(24px, 4vw, 32px); }
+.seite .buchkal__fenster-inhalt { padding: clamp(24px, calc(4 * var(--vw, 1vw)), 32px); }
 /* Der Tag ist hier die Überschrift des Fensters, nicht eine Zeile in einer
    Liste – also größer und ohne den Abstand, den er unter dem Gitter hatte. */
 .seite .buchkal__fenster .buchkal__datum {
-  font-size: clamp(19px, 2.2vw, 22px); margin: 0 0 16px; padding-right: 30px;
+  font-size: clamp(19px, calc(2.2 * var(--vw, 1vw)), 22px); margin: 0 0 16px; padding-right: 30px;
 }
 .seite .buchkal__fenster .buchkal__tagzeiten + .buchkal__tagzeiten { margin-top: 0; }
 .seite .buchkal__fenster-zu {
@@ -868,13 +868,13 @@
 
 .seite .buchkal__tagzeiten + .buchkal__tagzeiten { margin-top: 22px; }
 .seite .buchkal__datum {
-  font-size: clamp(17px, 1.6vw, 20px); font-weight: 500;
+  font-size: clamp(17px, calc(1.6 * var(--vw, 1vw)), 20px); font-weight: 500;
   letter-spacing: -0.015em; margin: 0 0 12px;
 }
 .seite .buchkal__reihe { display: flex; flex-wrap: wrap; gap: 8px; }
 .seite .buchkal__reihe .zeitknopf { text-decoration: none; display: inline-block; }
 
-.seite .buchkal__wahl { margin-bottom: clamp(18px, 3vw, 26px); }
+.seite .buchkal__wahl { margin-bottom: clamp(18px, calc(3 * var(--vw, 1vw)), 26px); }
 .seite .buchkal__wahl .feld { margin-bottom: 0; }
 .seite .buchkal__alle { margin: 0; font-size: 15px; }
 .seite .buchkal__alle a { border-bottom: 1px solid var(--rand); }
@@ -893,7 +893,7 @@
 /* Der alte Name bleibt benutzbar – die Buchung verwendet beide. */
 .seite .zeitwahl { margin: 4px 0 30px; }
 .seite .zeitwahl__tag + .zeitwahl__tag { margin-top: 26px; padding-top: 26px; border-top: 1px solid var(--rand); }
-.seite .zeitwahl__datum { font-weight: 600; font-size: clamp(17px, 1.6vw, 20px); margin-bottom: 13px; letter-spacing: -0.015em; }
+.seite .zeitwahl__datum { font-weight: 600; font-size: clamp(17px, calc(1.6 * var(--vw, 1vw)), 20px); margin-bottom: 13px; letter-spacing: -0.015em; }
 .seite .zeitwahl__zeiten { display: flex; flex-wrap: wrap; gap: 8px; }
 .seite .zeitwahl__form { display: contents; }
 .seite .zeitknopf {
@@ -940,7 +940,7 @@
   outline: none; border-bottom-color: var(--marke); border-bottom-width: 1.5px;
 }
 .seite .feld :is(input, textarea)::placeholder { color: var(--text-3); opacity: .7; }
-.seite .feld-paar { display: flex; flex-wrap: wrap; gap: clamp(20px, 3vw, 40px); }
+.seite .feld-paar { display: flex; flex-wrap: wrap; gap: clamp(20px, calc(3 * var(--vw, 1vw)), 40px); }
 .seite .feld-paar > * { flex: 1 1 240px; min-width: 0; }
 
 .seite .einwilligung {
@@ -955,9 +955,9 @@
 
 /* ----------------------------------------------------------- Vorgänge -- */
 
-.seite .vorgang { padding: clamp(44px, 6vw, 96px) 0 clamp(64px, 8vw, 130px); }
+.seite .vorgang { padding: clamp(44px, calc(6 * var(--vw, 1vw)), 96px) 0 clamp(64px, calc(8 * var(--vw, 1vw)), 130px); }
 .seite .vorgang__titel { margin-bottom: 14px; }
-.seite .vorgang__unter { color: var(--text-2); font-size: clamp(17px, 1.4vw, 19.5px); margin: 0 0 clamp(30px, 4vw, 50px); max-width: 46ch; }
+.seite .vorgang__unter { color: var(--text-2); font-size: clamp(17px, calc(1.4 * var(--vw, 1vw)), 19.5px); margin: 0 0 clamp(30px, calc(4 * var(--vw, 1vw)), 50px); max-width: 46ch; }
 .seite .vorgang__text { color: var(--text-2); margin: 18px 0; max-width: 54ch; }
 .seite .vorgang__klein { color: var(--text-3); font-size: 14.5px; margin-top: 16px; max-width: 48ch; }
 .seite .vorgang__zurueck { margin-top: 30px; }
@@ -976,7 +976,7 @@
   border: 1px solid var(--rand);
   border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
   background: var(--flaeche-2);
-  padding: clamp(22px, 4vw, 36px);
+  padding: clamp(22px, calc(4 * var(--vw, 1vw)), 36px);
 }
 .seite .kontokasten .vorgang__form { margin: 0; }
 
@@ -1098,7 +1098,7 @@
 /* Schrittanzeige */
 .seite .ablauf {
   display: flex; align-items: center; gap: 0;
-  list-style: none; margin: 0 0 clamp(30px, 4vw, 46px); padding: 0;
+  list-style: none; margin: 0 0 clamp(30px, calc(4 * var(--vw, 1vw)), 46px); padding: 0;
 }
 .seite .ablauf__teil {
   display: flex; align-items: center; gap: 10px;
@@ -1106,7 +1106,7 @@
 }
 .seite .ablauf__teil + .ablauf__teil::before {
   content: ""; flex: 1; height: 1px; background: var(--rand);
-  margin: 0 clamp(10px, 2vw, 22px); min-width: 14px;
+  margin: 0 clamp(10px, calc(2 * var(--vw, 1vw)), 22px); min-width: 14px;
 }
 .seite .ablauf__zahl {
   flex: none; width: 27px; height: 27px; border-radius: 50%;
@@ -1153,14 +1153,14 @@
 .seite .vorgang__erfolg {
   background: var(--marke); color: var(--grund);
   border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
-  padding: clamp(28px, 3.4vw, 42px);
+  padding: clamp(28px, calc(3.4 * var(--vw, 1vw)), 42px);
   margin: 4px 0 10px;
 }
 .seite .vorgang__erfolg-datum {
-  font-size: clamp(26px, 3.4vw, 44px); font-weight: 500;
+  font-size: clamp(26px, calc(3.4 * var(--vw, 1vw)), 44px); font-weight: 500;
   letter-spacing: -0.03em; line-height: 1.04;
 }
-.seite .vorgang__erfolg-zeit { font-size: clamp(17px, 1.6vw, 20px); opacity: .9; margin-top: 8px; }
+.seite .vorgang__erfolg-zeit { font-size: clamp(17px, calc(1.6 * var(--vw, 1vw)), 20px); opacity: .9; margin-top: 8px; }
 .seite .vorgang__erfolg-ort { font-size: 15.5px; opacity: .8; margin-top: 14px; }
 
 /* Bestellübersicht */
@@ -1173,17 +1173,17 @@
 .seite .posten__text { flex: 1; min-width: 0; }
 .seite .posten__name { font-weight: 500; }
 .seite .posten__unter { display: block; color: var(--text-3); font-size: 14.5px; }
-.seite .posten__preis { font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; font-size: clamp(17px, 1.6vw, 21px); }
+.seite .posten__preis { font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; font-size: clamp(17px, calc(1.6 * var(--vw, 1vw)), 21px); }
 .seite .posten__summe { border-bottom-width: 0; font-size: 19px; }
 
 /* ------------------------------------------------------------ Beitrag -- */
 
-.seite .beitrag { padding: clamp(44px, 5vw, 86px) 0 clamp(56px, 7vw, 120px); }
-.seite .beitrag__kopf { max-width: 900px; margin: 0 auto clamp(30px, 4vw, 50px); padding: 0 var(--rand-seite); }
+.seite .beitrag { padding: clamp(44px, calc(5 * var(--vw, 1vw)), 86px) 0 clamp(56px, calc(7 * var(--vw, 1vw)), 120px); }
+.seite .beitrag__kopf { max-width: 900px; margin: 0 auto clamp(30px, calc(4 * var(--vw, 1vw)), 50px); padding: 0 var(--rand-seite); }
 .seite .beitrag__meta { font-family: var(--hand); font-size: 23px; color: var(--marke); margin-bottom: 12px; }
 .seite .beitrag__bild {
-  display: block; width: 100%; max-width: var(--breite); margin: 0 auto clamp(30px, 4vw, 54px);
-  border-radius: 0 0 0 clamp(40px, 7vw, 120px);
+  display: block; width: 100%; max-width: var(--breite); margin: 0 auto clamp(30px, calc(4 * var(--vw, 1vw)), 54px);
+  border-radius: 0 0 0 clamp(40px, calc(7 * var(--vw, 1vw)), 120px);
 }
 .seite .beitrag__text {
   max-width: 680px; margin: 0 auto; padding: 0 var(--rand-seite);
@@ -1194,9 +1194,9 @@
 .seite .beitrag__text ul, .seite .beitrag__text ol { padding-left: 1.3em; margin: 0 0 1.1em; }
 .seite .beitrag__text li { margin-bottom: .4em; }
 
-.seite .beitrag-liste { display: grid; gap: clamp(30px, 4vw, 54px); }
-.seite .beitrag-karte { display: flex; flex-wrap: wrap; gap: clamp(20px, 3vw, 44px); align-items: flex-start; }
-.seite .beitrag-karte:nth-child(2n) { margin-left: min(56px, 5vw); }
+.seite .beitrag-liste { display: grid; gap: clamp(30px, calc(4 * var(--vw, 1vw)), 54px); }
+.seite .beitrag-karte { display: flex; flex-wrap: wrap; gap: clamp(20px, calc(3 * var(--vw, 1vw)), 44px); align-items: flex-start; }
+.seite .beitrag-karte:nth-child(2n) { margin-left: min(56px, calc(5 * var(--vw, 1vw))); }
 .seite .beitrag-karte__bild { flex: 0 1 300px; min-width: 0; }
 .seite .beitrag-karte__text { flex: 1 1 380px; min-width: 0; }
 
@@ -1207,10 +1207,10 @@
 .seite .frage__knopf {
   width: 100%; text-align: left;
   display: flex; align-items: baseline; gap: 18px;
-  padding: clamp(22px, 2.4vw, 30px) 0;
+  padding: clamp(22px, calc(2.4 * var(--vw, 1vw)), 30px) 0;
   background: none; border: none; cursor: pointer;
   font-family: var(--titel-schrift);
-  font-size: clamp(19px, 1.9vw, 24px); font-weight: 500;
+  font-size: clamp(19px, calc(1.9 * var(--vw, 1vw)), 24px); font-weight: 500;
   letter-spacing: -0.02em; line-height: 1.25;
   color: var(--text);
 }
@@ -1221,23 +1221,23 @@
  * Skript stehen alle Antworten da – lesbar und für Suchmaschinen sichtbar.
  */
 .seite .frage__antwort {
-  padding: 0 0 clamp(22px, 2.4vw, 30px);
+  padding: 0 0 clamp(22px, calc(2.4 * var(--vw, 1vw)), 30px);
   color: var(--text-2); max-width: 62ch;
 }
 .seite .frage.ist-zu .frage__antwort { display: none; }
 .seite .frage.ist-zu.ist-offen .frage__antwort { display: block; }
 
 /* Der Aufmacher beginnt direkt unter der Kopfzeile. */
-.seite .abschnitt--hero { padding-bottom: clamp(40px, 5vw, 80px); }
+.seite .abschnitt--hero { padding-bottom: clamp(40px, calc(5 * var(--vw, 1vw)), 80px); }
 
 /* ----------------------------------------------------------- Fußzeile -- */
 
-.seite .fuss-band { border-top: 1px solid var(--rand); margin-top: clamp(40px, 5vw, 80px); }
+.seite .fuss-band { border-top: 1px solid var(--rand); margin-top: clamp(40px, calc(5 * var(--vw, 1vw)), 80px); }
 .seite .fuss-band__spalten {
-  display: flex; flex-wrap: wrap; gap: clamp(30px, 5vw, 90px);
-  padding-top: clamp(44px, 5vw, 76px); padding-bottom: clamp(30px, 4vw, 50px);
+  display: flex; flex-wrap: wrap; gap: clamp(30px, calc(5 * var(--vw, 1vw)), 90px);
+  padding-top: clamp(44px, calc(5 * var(--vw, 1vw)), 76px); padding-bottom: clamp(30px, calc(4 * var(--vw, 1vw)), 50px);
 }
-.seite .fuss-band__marke { font-size: clamp(22px, 2.4vw, 30px); font-weight: 600; letter-spacing: -0.03em; }
+.seite .fuss-band__marke { font-size: clamp(22px, calc(2.4 * var(--vw, 1vw)), 30px); font-weight: 600; letter-spacing: -0.03em; }
 .seite .fuss-band__adresse { font-style: normal; color: var(--text-2); margin-top: 10px; }
 .seite .fuss-band__navi { display: flex; flex-direction: column; gap: 9px; }
 .seite .fuss-band__navi span { font-size: 14.5px; color: var(--text-3); margin-bottom: 4px; }
@@ -1269,7 +1269,7 @@
 
 /* ---------------------------------------------------------- Kleinzeug -- */
 
-.seite .trenner { border: none; border-top: 1px solid var(--rand); margin: clamp(40px, 5vw, 80px) 0; }
+.seite .trenner { border: none; border-top: 1px solid var(--rand); margin: clamp(40px, calc(5 * var(--vw, 1vw)), 80px) 0; }
 .seite .mitte { text-align: center; }
 .seite .rechts { text-align: right; }
 .seite .kein-umbruch { white-space: nowrap; }

@@ -311,8 +311,9 @@ Ein paar Regeln, die von Fehlern kommen und deshalb aufgeschrieben sind:
   im Baukasten: Sie saß fest an der Oberkante des Bausteins, war bei einem
   hohen Baustein längst aus dem Bild – und der erste Versuch mit `sticky`
   wirkte nicht, weil `.seite` und `.bau__leinwand` beide `hidden` hatten.
-  Heute klebt die Leiste in einem unsichtbaren Anker über die ganze Höhe
-  des Bausteins (`.bau-block__anker`), der Zeiger durchlässt.
+  Heute liegt sie gar nicht mehr im Baustein, sondern in einer eigenen
+  Ebene über der Leinwand (siehe „Der Baukasten arbeitet an Ort und
+  Stelle").
 * Rasterspalten sind `minmax(0, 1fr)`, nicht `1fr`. Sonst wächst eine
   lange URL die Spalte über den Bildschirm hinaus.
 * Der Schrittanzeiger blendet unter 680 Pixeln alle Namen außer dem
@@ -325,11 +326,16 @@ Ein paar Regeln, die von Fehlern kommen und deshalb aufgeschrieben sind:
   nebeneinander stehen: Jeder Versuch im Stilblatt lief ins Leere, und
   keiner sah, warum. Abstände und Anordnung gehören in `site.css`.
 * Wie viele Spalten nebeneinander passen, entscheidet
-  `repeat(auto-fit, minmax(min(100%, 270px), 1fr))` – keine Haltepunkte
-  und **kein `vw`**. Im Baukasten ist die Leinwand schmaler als das
-  Fenster; eine Angabe in `vw` würde dort eine Breite behaupten, die die
-  Vorschau gar nicht hat, und die Vorschau zeigte etwas anderes als die
-  Website.
+  `repeat(auto-fit, minmax(min(100%, 270px), 1fr))` – keine Haltepunkte.
+* **Nie `4vw`, immer `calc(4 * var(--vw, 1vw))`.** Auf der Website ist
+  `--vw` nicht gesetzt, es gilt `1vw` – dieselben Werte wie zuvor,
+  nachgemessen Pixel für Pixel. Im Baukasten ist die Leinwand ein
+  Container und setzt `--vw: 1cqi`: Dort rechnet dieselbe Regel mit der
+  Breite der Leinwand statt mit der des Fensters. Ein nacktes `vw` würde im
+  Baukasten eine Breite behaupten, die die Vorschau gar nicht hat – so war
+  die Überschrift eines Titelbereichs dort doppelt so groß wie auf der
+  Website, und die Handy-Ansicht zeigte eine zusammengedrückte
+  Computerseite. Das gilt auch für Stilangaben im Renderer.
 
 ### Schriften liegen auf dem eigenen Server
 
@@ -883,6 +889,64 @@ anklickbar, nicht auswählbar – und damit auch nicht zu entfernen. Wer
 einen Baustein hinzufügt und nichts sieht, hält ihn für verschwunden.
 Deshalb bekommt ein Baustein, dessen Ausgabe leer ist, im Baukasten einen
 gestreiften Platzhalter mit seinem Namen. Auf der Website steht er nicht.
+
+## Der Baukasten arbeitet an Ort und Stelle
+
+Bis hierher war jede Handlung im Baukasten ein Formular mit Weiterleitung:
+auswählen, hinzufügen, kopieren, verschieben, entfernen, speichern. Nach
+jeder lud die ganze Seite neu, und man stand wieder oben – ohne zu sehen,
+wo der Baustein gelandet war. Gezogen wurde nur in der schmalen
+Namensliste links; die Einfügelinie schob beim Ziehen die Liste hin und
+her, und auf dem Tablet ging Ziehen gar nicht.
+
+**Nichts lädt mehr neu.** `app/bauen.php` nimmt die Handlungen als kleine
+POSTs an und antwortet mit genau dem HTML, das sich geändert hat: dem
+Baustein für die Leinwand und seiner Zeile für den Aufbau. Das HTML kommt
+aus denselben Teilstücken wie beim ersten Laden (`app/partials/bau-block.php`,
+`bau-teil.php`, `bau-panel.php`) – eine zweite Fassung liefe auseinander.
+Was an der Folge der Bausteine geändert wird, entscheidet an einer Stelle
+`lib/Baukasten.php`, für den Endpunkt wie für die Formulare.
+
+**Eine Anfrage nach der anderen.** Alle Anfragen des Baukastens laufen im
+Browser durch eine Warteschlange. Sonst lesen ein Verschieben und ein
+gleichzeitiges Speichern dieselbe alte Fassung der Seite, und eines von
+beiden geht verloren. Das Formular rechts wird erst gelesen, wenn seine
+Anfrage an der Reihe ist.
+
+**Die Leinwand zeigt echte Breiten.** Computer 1280, Tablet 768, Handy 390
+Pixel, dann verkleinert, bis es passt (`transform: scale()`, daneben
+„61 %"). Weil die Leinwand ein Container ist und die Website-Stile mit
+`var(--vw)` rechnen (siehe oben), ist die Handy-Ansicht wirklich die des
+Handys.
+
+**Was der Baukasten zeigt, liegt über der Seite, nicht in ihr.** Rahmen,
+Namensschild, Werkzeuge, das „+" an den Kanten und die Einfügelinie sind
+Elemente einer eigenen Ebene (`.bau__ueber`), deren Lage aus den Maßen der
+Bausteine gerechnet wird. In der Seite wären sie mitverkleinert, würden das
+HTML der Website berühren und die Seite beim Ziehen verschieben.
+
+**Ziehen mit Zeigerereignissen, nicht mit HTML-Drag-and-Drop.** Damit geht
+es mit Maus, Stift und Finger gleich. Gezogen wird am Namensschild eines
+Bausteins in der Seite, an einer Zeile im Aufbau (mit dem Finger am Griff)
+oder aus dem Vorrat. Die Linie steht in der Seite und im Aufbau zugleich
+und sagt, wohin („Zwischen Titelbereich und Leistungen"); über der
+eigenen Stelle sagt sie „Bleibt an seiner Stelle". Am Rand rollt es mit,
+Esc bricht ab.
+
+**Rückgängig ohne Vertrauen in den Aufrufer.** Ein entfernter Baustein
+liegt in einer Ablage der Sitzung (`Baukasten::entfernen()`), „Rückgängig"
+schickt nur seine Kennung zurück. Würde der Browser den Baustein selbst
+zurückschicken, könnte jeder beliebige Daten als wiederhergestellten
+Baustein einschleusen. Eine neue Reihenfolge wird nur angenommen, wenn sie
+genau dieselben Bausteine enthält – sonst 409, und nichts verschwindet.
+
+**Ohne JavaScript geht es weiter.** Die Zeilen im Aufbau sind Links, der
+Vorrat ist ein `<details>` mit Formularen, rechts steht ein Speicherknopf,
+und Hoch, Runter, Kopieren und Entfernen sind Formulare. Mit JavaScript
+übernimmt das Skript dieselben Knöpfe.
+
+Geprüft in `tests/baukasten.php`: Rechte,
+Mandantengrenze, Typen, Reihenfolge, Ablage, Felder, Maskierung.
 
 ## Persönliche Dateien gehen durch eine Tür
 

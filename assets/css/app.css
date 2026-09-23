@@ -2083,188 +2083,516 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
 
 /* ============================================================= Baukasten = */
 
+/*
+ * Der Baukasten ist eine Arbeitsfläche, keine Seite der Anwendung. Er
+ * nimmt den ganzen Bildschirm: Seitenleiste und Kopfzeile der Anwendung
+ * treten zurück, eine eigene Kopfleiste trägt, was man beim Bauen braucht.
+ *
+ * Alles, was der Baukasten über die Website legt – Rahmen, Namensschild,
+ * Werkzeuge, Einfügelinie –, ist blau und nicht in der Farbe der Marke:
+ * Die Website eines Golfpros ist fast immer grün. Ein grüner Rahmen auf
+ * einer grünen Fläche ist keiner. Blau ist, was jedes Werkzeug zum Bauen
+ * für „das bin ich, nicht deine Seite" verwendet.
+ */
 .bau {
+  --bau: #2f6fed;
+  --bau-dunkel: #1f55c7;
+  --bau-hell: rgba(47, 111, 237, .12);
+  --auf-bau: #ffffff;
+  --bau-links: 272px;
+  --bau-rechts: 320px;
+  --bau-kopf: 56px;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;           /* Schubladen am Rand dürfen die Seite nicht verbreitern */
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr) 288px;
-  height: calc(100dvh - var(--kopf-hoehe));
+  grid-template-columns: var(--bau-links) minmax(0, 1fr) var(--bau-rechts);
+  grid-template-rows: var(--bau-kopf) minmax(0, 1fr);
+  grid-template-areas: "kopf kopf kopf" "links buehne rechts";
+  background: var(--grund);
+}
+/* Die Überlagerung arbeitet mit `hidden` – das muss auch dort gelten, wo
+   eine Klasse `display` setzt. */
+.bau [hidden], .bau-zug[hidden], .bau-toast[hidden] { display: none !important; }
+[data-theme="dunkel"] .bau { --bau: #6b9cff; --bau-dunkel: #8fb4ff; --bau-hell: rgba(107, 156, 255, .16); --auf-bau: #0b1530; }
+
+.app--vollbild { grid-template-columns: minmax(0, 1fr); }
+.app--vollbild > .seitenleiste, .app--vollbild .kopf { display: none; }
+.app--vollbild .haupt { grid-column: 1; height: 100vh; height: 100dvh; }
+.app--vollbild .inhalt { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 !important; max-width: none; }
+.app--vollbild .meldungen { top: 66px; right: 50%; transform: translateX(50%); }
+
+/* ------------------------------------------------------- Kopfleiste --- */
+
+.bau-kopf {
+  grid-area: kopf;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 12px;
+  background: var(--flaeche);
+  border-bottom: 1px solid var(--rand);
+  min-width: 0;
+  z-index: 20;
+}
+.bau-kopf__seite { display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; }
+.bau-kopf__titel {
+  font-size: 14px; font-weight: 620; color: var(--text); text-decoration: none;
+  padding: 5px 8px; border-radius: 7px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.bau-kopf__titel:hover { background: var(--flaeche-3); color: var(--text); }
+.bau-kopf__mitte { display: flex; align-items: center; gap: 8px; flex: none; }
+.bau-kopf__rechts { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: 1 1 0; min-width: 0; }
+.bau-kopf__rechts form { display: contents; }
+.bau-kopf__verlauf { display: flex; gap: 2px; }
+.bau-kopf__verlauf .rundknopf:disabled { opacity: .35; cursor: default; background: none; }
+.bau-kopf__zoom {
+  font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-3);
+  background: none; border: 1px solid var(--rand); border-radius: 7px;
+  padding: 4px 8px; cursor: pointer; min-width: 52px;
+}
+.bau-kopf__zoom:hover { color: var(--text); border-color: var(--rand-2); }
+.bau-kopf__aufbau { display: none; }
+
+/* Speicherstand: ein Punkt und ein Wort. Grün heißt: alles ist da. */
+.bau-speicher {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; color: var(--text-3); white-space: nowrap;
+}
+.bau-speicher::before {
+  content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none;
+  background: var(--erfolg);
+}
+.bau-speicher[data-stand="laeuft"]::before { background: var(--warnung); animation: bau-puls 1s ease-in-out infinite; }
+.bau-speicher[data-stand="fehler"] { color: var(--gefahr); font-weight: 600; cursor: pointer; }
+.bau-speicher[data-stand="fehler"]::before { background: var(--gefahr); }
+@keyframes bau-puls { 50% { opacity: .35; } }
+
+/* ----------------------------------------------------- Seitenspalten --- */
+
+.bau__links, .bau__rechts {
+  background: var(--flaeche);
+  min-height: 0; min-width: 0;
+  display: flex; flex-direction: column;
   overflow: hidden;
 }
-.bau__spalte {
-  border-right: 1px solid var(--rand);
-  background: var(--flaeche);
-  overflow-y: auto;
-  display: flex; flex-direction: column;
-}
-.bau__spalte--rechts { border-right: 0; border-left: 1px solid var(--rand); }
-.bau__spalte-kopf {
-  padding: var(--r3) var(--r4);
+.bau__links { grid-area: links; border-right: 1px solid var(--rand); }
+.bau__rechts { grid-area: rechts; border-left: 1px solid var(--rand); }
+.bau__spalten-kopf {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 48px; padding: 8px 12px 8px 16px;
   border-bottom: 1px solid var(--rand);
-  font-size: 12px; font-weight: 620;
-  text-transform: uppercase; letter-spacing: .05em; color: var(--text-4);
-  position: sticky; top: 0; background: var(--flaeche); z-index: 2;
+  font-size: 11.5px; font-weight: 660; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3);
 }
-.bau__buehne {
-  background: var(--grund);
-  overflow-y: auto;
-  padding: var(--r5);
-  display: flex; justify-content: center;
+.bau__zahl {
+  display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px;
+  background: var(--flaeche-3); color: var(--text-2); font-size: 11px; letter-spacing: 0;
 }
-.bau__leinwand {
-  background: #fff;
-  width: 100%;
-  max-width: 1100px;
+
+/* Aufbau: die Bausteine der Seite, in ihrer Reihenfolge. */
+.bau-aufbau {
+  position: relative;
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 8px; display: flex; flex-direction: column; gap: 2px;
+}
+.bau-teil {
+  position: relative;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px 6px 2px; border-radius: 9px;
+  border: 1px solid transparent;
+  color: var(--text-2); text-decoration: none;
+  user-select: none; -webkit-user-select: none;
+  transition: background var(--tempo), border-color var(--tempo), opacity var(--tempo);
+}
+.bau-teil:hover, .bau-teil.ist-hover { background: var(--flaeche-3); color: var(--text); }
+.bau-teil.ist-gewaehlt { background: var(--bau-hell); border-color: color-mix(in srgb, var(--bau) 40%, transparent); color: var(--text); }
+.bau-teil.ist-gezogen { opacity: .35; }
+.bau-teil__griff {
+  display: grid; place-items: center; flex: none;
+  width: 20px; height: 30px; border-radius: 6px;
+  color: var(--text-4); cursor: grab; touch-action: none;
+}
+.bau-teil__griff:hover { color: var(--text-2); background: var(--flaeche-2); }
+.bau-teil__symbol {
+  display: grid; place-items: center; flex: none;
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--flaeche-2); color: var(--text-3);
+}
+.bau-teil.ist-gewaehlt .bau-teil__symbol { background: var(--bau); color: var(--auf-bau); }
+.bau-teil__text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.bau-teil__name { font-size: 13px; font-weight: 580; }
+.bau-teil__kurz { font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bau-aufbau__leer { margin: 0; padding: 24px 8px; text-align: center; font-size: 13px; color: var(--text-3); }
+.bau-aufbau__linie {
+  position: absolute; left: 10px; right: 10px; height: 3px; margin-top: -1.5px;
+  background: var(--bau); border-radius: 3px; pointer-events: none; z-index: 3;
+}
+.bau-aufbau__linie::before {
+  content: ""; position: absolute; left: -4px; top: -3px;
+  width: 9px; height: 9px; border-radius: 50%; background: var(--bau);
+}
+
+/* ------------------------------------------------------------ Vorrat --- */
+
+/*
+ * Ohne JavaScript klappt der Vorrat unten in der linken Spalte auf. Mit
+ * JavaScript wird er eine Auswahl mit Suche, die neben der Spalte aufgeht
+ * (Knopf „+ Baustein") oder genau dort, wo man auf „+" geklickt hat.
+ */
+.bau-vorrat { border-top: 1px solid var(--rand); background: var(--flaeche); }
+.bau-vorrat > summary {
+  display: flex; align-items: center; gap: 7px; cursor: pointer;
+  padding: 12px 16px; font-size: 13px; font-weight: 600; color: var(--marke);
+  list-style: none;
+}
+.bau-vorrat > summary::-webkit-details-marker { display: none; }
+.bau-vorrat__innen { max-height: 50vh; overflow-y: auto; padding: 4px 8px 12px; }
+.bau-vorrat__suche { position: relative; padding: 4px 4px 8px; }
+.bau-vorrat__suche .ico { position: absolute; left: 15px; top: 15px; color: var(--text-4); pointer-events: none; }
+.bau-vorrat__suche .eingabe { padding-left: 34px; }
+.bau-vorrat__gruppe {
+  padding: 12px 8px 4px; font-size: 10.5px; font-weight: 660;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--text-4);
+}
+.bau-vorrat__form { margin: 0; }
+.bau-vorrat__teil {
+  display: flex; align-items: flex-start; gap: 10px;
+  width: 100%; padding: 8px; border-radius: 10px;
+  border: 1px solid transparent; background: none;
+  font: inherit; text-align: left; color: var(--text-2); cursor: pointer;
+  transition: background var(--tempo), border-color var(--tempo);
+  touch-action: none;
+}
+.bau-vorrat__teil:hover, .bau-vorrat__teil:focus-visible, .bau-vorrat__teil.ist-aktiv {
+  background: var(--flaeche-3); border-color: var(--rand); color: var(--text); outline: 0;
+}
+.bau-vorrat__teil.ist-gezogen { opacity: .4; }
+.bau-vorrat__symbol {
+  display: grid; place-items: center; flex: none;
+  width: 32px; height: 32px; border-radius: 9px;
+  background: var(--flaeche-2); color: var(--text-3); border: 1px solid var(--rand);
+}
+.bau-vorrat__teil:hover .bau-vorrat__symbol, .bau-vorrat__teil.ist-aktiv .bau-vorrat__symbol { background: var(--bau); color: var(--auf-bau); border-color: var(--bau); }
+.bau-vorrat__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bau-vorrat__name { font-size: 13px; font-weight: 600; color: var(--text); }
+.bau-vorrat__satz { font-size: 11.5px; line-height: 1.4; color: var(--text-3); }
+.bau-vorrat__nichts { margin: 0; padding: 20px 8px; text-align: center; font-size: 13px; color: var(--text-3); }
+
+.bau.ist-js .bau-vorrat {
+  position: absolute; z-index: 45;
+  display: flex; flex-direction: column;
+  border: 1px solid var(--rand); border-radius: 14px;
+  box-shadow: var(--schatten-4);
+  visibility: hidden; opacity: 0; transform: translateY(6px) scale(.985);
+  transition: opacity .14s ease, transform .14s ease, visibility 0s linear .14s;
+}
+.bau.ist-js .bau-vorrat.ist-offen {
+  visibility: visible; opacity: 1; transform: none;
+  transition: opacity .14s ease, transform .14s ease;
+}
+.bau.ist-js .bau-vorrat > summary { display: none; }
+.bau.ist-js .bau-vorrat__innen { max-height: none; flex: 1; min-height: 0; padding-top: 8px; }
+.bau-vorrat__kopf {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 12px 4px 16px; font-size: 13px; font-weight: 640; color: var(--text);
+}
+.bau-vorrat__kopf small { display: block; font-size: 11.5px; font-weight: 400; color: var(--text-3); }
+
+/* ------------------------------------------------------------- Bühne --- */
+
+.bau__buehne { grid-area: buehne; position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.bau__rolle {
+  position: absolute; inset: 0;
+  overflow: auto; overscroll-behavior: contain;
+}
+.bau__flaeche {
   min-height: 100%;
+  padding: 32px 32px 40px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.bau__massstab { position: relative; flex: none; width: 100%; max-width: 1100px; }
+.bau__leinwand {
+  /* Die Leinwand ist ein Container: Darin rechnen die Stile der Website
+     mit ihrer Breite (`--vw: 1cqi`), nicht mit der des Fensters. */
+  container-type: inline-size;
+  width: 100%; min-height: 360px;
+  background: #fff;
+  border-radius: 10px;
   box-shadow: var(--schatten-3);
-  border-radius: var(--radius);
-  transition: max-width .3s cubic-bezier(.2,.9,.3,1);
-  /* clip und nicht hidden: hidden macht die Leinwand zu einem Rollbereich,
-     und die klebende Werkzeugleiste im Baustein klebt dann an ihr statt an
-     der Bühne. Geklippt wird mit beiden gleich. */
   overflow: clip;
 }
-.bau__leinwand[data-geraet="tablet"] { max-width: 768px; }
-.bau__leinwand[data-geraet="mobil"]  { max-width: 390px; }
+.bau__leinwand > .seite { --vw: 1cqi; min-height: 100%; }
+.bau.ist-js .bau__massstab { max-width: none; width: auto; }
+.bau.ist-js .bau__leinwand { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.bau.ist-js .bau__flaeche.ist-breit { align-items: flex-start; }
 
-.bau-block {
-  border: 2px solid transparent;
-  position: relative;
-  transition: border-color var(--tempo);
-  cursor: pointer;
+.bau-leer { padding: 88px 24px; text-align: center; color: #5d5d57; font-family: inherit; }
+.bau-leer__symbol { color: #a3a39b; margin-bottom: 14px; }
+.bau-leer h3 { margin: 0 0 8px; font-size: 20px; color: #1c1c1a; }
+.bau-leer p { max-width: 30em; margin: 0 auto 20px; font-size: 14.5px; line-height: 1.6; }
+
+.bau-ende {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: 22px; padding: 10px 18px;
+  border: 1.5px dashed var(--rand-2); border-radius: 999px;
+  background: none; color: var(--text-3);
+  font: inherit; font-size: 13px; font-weight: 580; cursor: pointer;
+  transition: border-color var(--tempo), color var(--tempo), background var(--tempo);
 }
-.bau-block:hover { border-color: color-mix(in srgb, var(--marke) 45%, transparent); }
-.bau-block.ist-gewaehlt { border-color: var(--marke); }
-/*
- * Die Werkzeuge bleiben am oberen Bildrand kleben.
- *
- * Vorher saßen sie fest an der Oberkante des Bausteins. Bei einem hohen
- * Baustein – Aufmacher, Leistungen, FAQ – ist die beim Hineinscrollen
- * längst aus dem Bild: Man zeigt auf den Baustein, es erscheint nichts,
- * und der Baustein sieht aus, als ließe er sich nicht mehr löschen.
- *
- * Gelöst mit einem unsichtbaren Anker über die ganze Höhe des Bausteins,
- * in dem die Leiste klebt. Der Anker lässt Zeiger durch (`pointer-events`),
- * damit er den Baustein darunter nicht blockiert; die Leiste selbst nimmt
- * sie wieder an.
- */
-.bau-block__anker {
-  position: absolute; inset: -1px -1px auto; height: calc(100% + 2px);
-  display: flex; align-items: flex-start;
-  pointer-events: none; z-index: 4;
+.bau-ende:hover { border-color: var(--bau); color: var(--bau); background: var(--flaeche); }
+.bau-ende[data-leer-versteckt] { display: none; }
+
+/* Ein Baustein trägt selbst nichts – Rahmen und Werkzeuge liegen darüber. */
+.bau-block { position: relative; }
+.bau.ist-js .bau-block { cursor: default; }
+.bau-block.ist-gezogen { opacity: .28; filter: saturate(.4); transition: opacity .12s; }
+.bau-block.ist-neu { animation: bau-neu 1.3s ease-out; }
+@keyframes bau-neu {
+  0% { box-shadow: inset 0 0 0 3px var(--bau), inset 0 0 0 9999px var(--bau-hell); }
+  100% { box-shadow: inset 0 0 0 3px transparent, inset 0 0 0 9999px transparent; }
 }
-.bau-block__leiste {
-  position: sticky; top: 0; margin-left: auto;
-  display: none; gap: 2px;
-  background: var(--marke); color: var(--auf-marke);
-  padding: 3px; border-radius: 0 0 0 8px;
-  pointer-events: auto;
-}
-.bau-block:hover .bau-block__leiste, .bau-block.ist-gewaehlt .bau-block__leiste { display: flex; }
-.bau-block__knopf {
-  width: 24px; height: 24px; display: grid; place-items: center;
-  background: none; border: 0; color: inherit; cursor: pointer; border-radius: 5px;
-}
-.bau-block__knopf:hover { background: rgba(255,255,255,.18); }
-.bau-block__marke {
-  position: sticky; top: 0;
-  background: var(--marke); color: var(--auf-marke);
-  font-size: 10.5px; font-weight: 620; padding: 2px 7px;
-  border-radius: 0 0 8px 0; display: none;
-  pointer-events: auto; align-self: flex-start;
-}
-.bau-block:hover .bau-block__marke, .bau-block.ist-gewaehlt .bau-block__marke { display: block; }
+/* Ohne Skript zeigt der Rand, welcher Baustein gewählt ist. */
+.bau:not(.ist-js) .bau-block.ist-gewaehlt { outline: 2px solid var(--bau); outline-offset: -2px; }
 
 /*
- * Ein Baustein ohne Inhalt.
- *
- * Galerie, Karten, Logoleiste und FAQ geben leer gar kein HTML aus. Ohne
- * diesen Platzhalter bliebe im Baukasten ein vier Pixel hoher Streifen –
- * den trifft niemand mit der Maus, und die Werkzeugleiste käme nie zum
- * Vorschein. Der Platzhalter steht nur hier, nicht auf der Website.
+ * Ein Baustein ohne Inhalt. Galerie, Karten, Logoleiste und FAQ geben
+ * leer gar kein HTML aus; ohne Platzhalter bliebe ein Streifen, den
+ * niemand trifft.
  */
 .bau-block__leer {
-  padding: var(--r5) var(--r4); text-align: center; color: var(--text-3);
-  background: repeating-linear-gradient(135deg,
-    var(--flaeche-2) 0 10px, var(--flaeche-3) 10px 20px);
+  padding: 36px 24px; text-align: center; color: #5d5d57;
+  background: repeating-linear-gradient(135deg, #f6f5f0 0 10px, #efeee7 10px 20px);
 }
-.bau-block__leer .ico { color: var(--text-4); margin-bottom: 6px; }
+.bau-block__leer .ico { color: #8d8d85; margin-bottom: 6px; }
 .bau-block__leer p { margin: 0; }
+
+/* ------------------------------------------------------ Überlagerung --- */
+
+.bau__ueber { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 6; }
+.bau-rahmen { position: absolute; border-radius: 4px; pointer-events: none; }
+.bau-rahmen--hover { border: 1.5px dashed var(--bau); opacity: .75; }
+.bau-rahmen--wahl { border: 2px solid var(--bau); box-shadow: 0 0 0 4px var(--bau-hell); }
+
+/* Namensschild: zeigt, welcher Baustein das ist, und ist sein Griff. */
+.bau-schild {
+  position: absolute;
+  display: flex; align-items: center; gap: 5px;
+  height: 26px; padding: 0 10px 0 5px;
+  background: var(--bau); color: var(--auf-bau);
+  border-radius: 7px 7px 0 0;
+  font-size: 12px; font-weight: 620; white-space: nowrap;
+  pointer-events: auto; cursor: grab; touch-action: none;
+  user-select: none; -webkit-user-select: none;
+}
+.bau-schild.ist-innen { border-radius: 0 0 7px 0; }
+.bau-schild .ico { opacity: .85; }
+.bau-schild:active { cursor: grabbing; }
+
+.bau-werkzeug {
+  position: absolute;
+  display: flex; gap: 2px; padding: 3px;
+  background: var(--flaeche); border: 1px solid var(--rand); border-radius: 10px;
+  box-shadow: var(--schatten-2);
+  pointer-events: auto;
+}
+.bau-werkzeug button {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  border: 0; border-radius: 7px; background: none; color: var(--text-2); cursor: pointer;
+}
+.bau-werkzeug button:hover { background: var(--flaeche-3); color: var(--text); }
+.bau-werkzeug button:disabled { opacity: .3; cursor: default; background: none; }
+.bau-werkzeug .ist-gefahr:hover { color: var(--gefahr); background: color-mix(in srgb, var(--gefahr) 10%, transparent); }
+.bau-werkzeug__trenner { width: 1px; margin: 5px 2px; background: var(--rand); }
+
+/* „+" zwischen zwei Bausteinen – an der Kante, an der er einsetzen würde. */
+.bau-einsetzer {
+  position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px;
+  display: grid; place-items: center;
+  border: 2px solid #fff; border-radius: 50%;
+  background: var(--bau); color: var(--auf-bau);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .22);
+  cursor: pointer; pointer-events: auto;
+  transition: transform .12s ease;
+}
+.bau-einsetzer:hover, .bau-einsetzer:focus-visible { transform: scale(1.15); outline: 0; }
+.bau-einsetzer__linie { position: absolute; height: 2px; margin-top: -1px; background: var(--bau); opacity: 0; pointer-events: none; transition: opacity .12s; }
+.bau-einsetzer__linie.ist-da { opacity: 1; }
+
+/* Beim Ziehen: die Linie, an der der Baustein landen würde – mit Wort dazu. */
+.bau-linie {
+  position: absolute; height: 4px; margin-top: -2px;
+  background: var(--bau); border-radius: 4px;
+  box-shadow: 0 0 0 3px var(--bau-hell), 0 2px 10px rgba(47, 111, 237, .35);
+  pointer-events: none;
+}
+.bau-linie::before, .bau-linie::after {
+  content: ""; position: absolute; top: -4px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--bau); border: 2px solid #fff;
+}
+.bau-linie::before { left: -6px; }
+.bau-linie::after { right: -6px; }
+.bau-linie__schild {
+  position: absolute; left: 50%; top: -34px; transform: translateX(-50%);
+  padding: 5px 11px; border-radius: 999px;
+  background: var(--bau); color: var(--auf-bau);
+  font-size: 12px; font-weight: 620; white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+}
+.bau-linie__schild.ist-unten { top: 14px; }
+.bau-linie.ist-gleich { height: 0; background: none; box-shadow: none; border-top: 2px dashed var(--bau); opacity: .7; }
+.bau-linie.ist-gleich::before, .bau-linie.ist-gleich::after { display: none; }
+.bau-linie.ist-gleich .bau-linie__schild { background: var(--flaeche); color: var(--bau); border: 1px solid var(--bau); }
+/* Liegt die Stelle außerhalb des Bildes, klebt die Linie am Rand – blass,
+   als Hinweis „weiter oben" oder „weiter unten". */
+.bau-linie.ist-ausserhalb { opacity: .55; }
+
+/* Was man gerade zieht: klein, nicht der ganze Baustein. */
+.bau-zug {
+  position: fixed; left: 0; top: 0; z-index: 300;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px 8px 8px; border-radius: 12px;
+  background: var(--flaeche); color: var(--text);
+  border: 1px solid var(--rand);
+  box-shadow: var(--schatten-4);
+  font-size: 13px; font-weight: 620; white-space: nowrap;
+  pointer-events: none;
+}
+.bau-zug__symbol {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px;
+  background: var(--bau); color: var(--auf-bau);
+}
+.bau-zug.ist-aus { opacity: .72; }
+.bau-zug.ist-aus .bau-zug__symbol { background: var(--text-4); }
+body.bau-zieht, body.bau-zieht * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
+
+/* Hinweis unten: „Baustein entfernt – Rückgängig". */
+.bau-toast {
+  position: fixed; left: 50%; bottom: 22px; z-index: 250;
+  display: flex; align-items: center; gap: 14px;
+  padding: 9px 10px 9px 16px; border-radius: 12px;
+  background: var(--text); color: var(--flaeche);
+  font-size: 13px; font-weight: 520;
+  box-shadow: var(--schatten-4);
+  transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+  transition: opacity .16s ease, transform .16s ease;
+}
+.bau-toast.ist-da { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+.bau-toast--fehler { background: var(--gefahr); color: var(--auf-zustand); }
+.bau-toast button {
+  border: 0; border-radius: 8px; padding: 6px 11px; cursor: pointer;
+  background: rgba(255, 255, 255, .16); color: inherit; font: inherit; font-weight: 640;
+}
+.bau-toast button:hover { background: rgba(255, 255, 255, .26); }
+
+/* ------------------------------------------------------ Eigenschaften --- */
+
+.bau-panel { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.bau-panel.ist-laedt { opacity: .55; transition: opacity .1s .08s; }
+.bau-panel__kopf {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 48px; padding: 8px 10px 8px 14px;
+  border-bottom: 1px solid var(--rand);
+}
+.bau-panel__symbol {
+  display: grid; place-items: center; flex: none;
+  width: 32px; height: 32px; border-radius: 9px;
+  background: var(--bau-hell); color: var(--bau);
+}
+.bau-panel__titel { flex: 1; min-width: 0; line-height: 1.25; }
+.bau-panel__titel h2 { margin: 0; font-size: 14.5px; font-weight: 640; }
+.bau-panel__form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.bau-panel__felder { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px 24px; }
+.bau-panel__fuss {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 14px; border-top: 1px solid var(--rand); background: var(--flaeche);
+}
+.bau-panel__aktionen { display: flex; align-items: center; gap: 4px; }
+.bau-panel__extra { padding: 0 14px 14px; }
+.bau-tipp {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-bottom: 16px; padding: 9px 11px; border-radius: 10px;
+  background: var(--bau-hell); color: var(--text-2);
+  font-size: 12.5px; line-height: 1.45;
+}
+.bau-tipp .ico { color: var(--bau); margin-top: 2px; flex: none; }
+.feld--eng { margin-bottom: 8px; }
+.feld__label--klein { font-size: 11.5px; }
+.segment--voll { display: flex; width: 100%; }
+.segment--voll .segment__teil { flex: 1; justify-content: center; text-align: center; cursor: pointer; }
+.segment__teil:has(input:checked) { background: var(--flaeche); color: var(--text); box-shadow: var(--schatten-1); font-weight: 580; }
+.segment__teil:has(input:focus-visible) { outline: 2px solid var(--bau); outline-offset: 1px; }
+.bau-listenfeld__kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.bau-listenfeld__kopf .feld__label { margin: 0; }
+.bau-listenfeld__zahl { padding: 1px 8px; border-radius: 999px; background: var(--flaeche-3); color: var(--text-2); font-size: 11.5px; font-weight: 600; }
+.bau-listenfeld__eintraege { display: flex; flex-direction: column; gap: 8px; }
+.bau-eintragkarte { border: 1px solid var(--rand); border-radius: 11px; padding: 8px 10px 2px; background: var(--flaeche); }
+.bau-eintragkarte__kopf {
+  display: flex; align-items: center; justify-content: space-between; min-height: 26px; margin-bottom: 2px;
+  font-size: 11px; font-weight: 660; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3);
+}
+.bau-eintragkarte__weg {
+  width: 26px; height: 26px; display: grid; place-items: center;
+  border: 0; border-radius: 7px; background: none; color: var(--text-3); cursor: pointer;
+}
+.bau-eintragkarte__weg:hover { color: var(--gefahr); background: color-mix(in srgb, var(--gefahr) 10%, transparent); }
+.bau-listenfeld__hinzu { margin-top: 8px; }
+.bau.ist-js [data-vorlage], .bau.ist-js [data-nur-ohne-js] { display: none !important; }
 
 /* ==========================================================================
    Direkt in der Vorschau schreiben
    --------------------------------------------------------------------------
-   Die Vorschau ist das Formular. Was sich anklicken und beschreiben lässt,
-   muss man sehen – aber nur, wenn man in der Nähe ist. Ein Baukasten, in
-   dem jedes Wort einen Rahmen trägt, sieht aus wie ein Formular und nicht
-   mehr wie die Seite, die er zeigen soll. Deshalb: nichts im Ruhezustand,
-   ein zarter Schimmer beim Darüberfahren, ein klarer Rahmen beim
-   Hineinschreiben.
+   Nichts im Ruhezustand, ein zarter Schimmer beim Darüberfahren, ein
+   klarer Rahmen beim Hineinschreiben. Ein Baukasten, in dem jedes Wort
+   einen Rahmen trägt, sieht aus wie ein Formular und nicht wie die Seite.
    ========================================================================== */
 
 .bau-feld {
   outline: 0;
   border-radius: 4px;
-  /* Der Rahmen liegt außerhalb des Textes, damit beim Hineinklicken nichts
-     springt – eine Umrandung würde die Zeile um zwei Pixel verschieben. */
   box-shadow: 0 0 0 0 transparent;
   transition: box-shadow var(--tempo), background var(--tempo);
   cursor: text;
 }
-.bau-feld:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--marke) 22%, transparent); }
-.bau-feld:focus {
-  box-shadow: 0 0 0 2px var(--marke);
-  background: color-mix(in srgb, var(--marke) 5%, transparent);
-}
+.bau-feld:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--bau) 30%, transparent); }
+.bau-feld:focus { box-shadow: 0 0 0 2px var(--bau); background: color-mix(in srgb, var(--bau) 6%, transparent); }
 .bau-feld.ist-fehler { box-shadow: 0 0 0 2px var(--gefahr); }
-
-/* Ein leeres Feld sagt, was hineingehört – sonst wäre da nichts zu sehen
-   und nichts zu treffen. */
-.bau-feld.ist-leer::before {
-  content: attr(data-leer);
-  opacity: .38;
-  font-style: italic;
-}
+.bau-feld.ist-leer::before { content: attr(data-leer); opacity: .38; font-style: italic; }
 .bau-feld.ist-leer { min-width: 6ch; min-height: 1em; display: inline-block; }
 .bau-feld.ist-leer:is(div, p, blockquote, h1, h2, h3) { display: block; }
 
-/* Bilder: anklicken heißt wechseln. */
 [data-art="bild"] { cursor: pointer; position: relative; }
-[data-art="bild"]:hover { outline: 2px solid var(--marke); outline-offset: 2px; }
+[data-art="bild"]:hover { outline: 2px solid var(--bau); outline-offset: 2px; }
 .bau-bild__plus {
   position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%);
   width: 46px; height: 46px; border-radius: 50%;
   display: grid; place-items: center;
-  background: var(--marke); color: var(--auf-marke);
+  background: var(--bau); color: var(--auf-bau);
   font-size: 26px; line-height: 1; font-weight: 300;
-  box-shadow: 0 6px 20px rgba(0,0,0,.22);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .22);
   pointer-events: none;
 }
 .bau-bild__wechseln {
   position: absolute; inset: auto auto 10px 10px;
-  background: rgba(0,0,0,.66); color: #fff;
+  background: rgba(0, 0, 0, .66); color: #fff;
   font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 999px;
   opacity: 0; transition: opacity var(--tempo); pointer-events: none;
 }
 [data-art="bild"]:hover .bau-bild__wechseln { opacity: 1; }
-.bau-logo-leer {
-  position: relative; display: inline-block; width: 110px; height: 44px;
-  border: 1px dashed var(--rand); border-radius: 8px;
-}
+.bau-logo-leer { position: relative; display: inline-block; width: 110px; height: 44px; border: 1px dashed #c9c8bf; border-radius: 8px; }
 .bau-logo-leer .bau-bild__plus { width: 30px; height: 30px; font-size: 18px; }
 
-/* Einen Eintrag anhängen. */
+/* Einen Eintrag anhängen – der Knopf kommt vom Renderer. */
 .bau-plus {
   display: inline-flex; align-items: center; gap: 7px;
   margin-top: 18px; padding: 8px 14px;
-  border: 1px dashed var(--rand); border-radius: 999px;
-  background: none; color: var(--text-3);
+  border: 1px dashed #c9c8bf; border-radius: 999px;
+  background: none; color: #6b6b64;
   font: inherit; font-size: 13px; cursor: pointer;
   transition: border-color var(--tempo), color var(--tempo), background var(--tempo);
 }
-.bau-plus:hover { border-color: var(--marke); color: var(--marke); background: var(--flaeche); }
+.bau-plus:hover { border-color: var(--bau); color: var(--bau); background: #fff; }
 .bau-plus__zeichen { font-size: 17px; line-height: 1; }
 
-/* Und einen entfernen. Das Kreuz erscheint erst beim Darüberfahren – sonst
-   stünde in einer Liste mit acht Einträgen achtmal ein Kreuz im Weg. */
 .bau-eintrag { position: relative; }
 .bau-eintrag-weg {
   position: absolute; inset: 6px 6px auto auto;
@@ -2286,86 +2614,53 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
   border: 0; border-radius: 7px; cursor: pointer;
   background: var(--text); color: var(--flaeche);
   font: inherit; font-size: 12px; font-weight: 600; padding: 6px 11px;
-  box-shadow: 0 6px 18px rgba(0,0,0,.24);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .24);
 }
 
-/* Was gerade passiert. Ohne Speicherknopf muss das jemand sagen. */
-.bau-stand {
-  position: fixed; inset: auto auto 18px 50%; transform: translateX(-50%) translateY(14px);
-  z-index: 70; padding: 8px 16px; border-radius: 999px;
-  background: var(--text); color: var(--flaeche);
-  font-size: 12.5px; font-weight: 600;
-  opacity: 0; pointer-events: none;
-  transition: opacity var(--tempo), transform var(--tempo);
-}
-.bau-stand.ist-da { opacity: 1; transform: translateX(-50%) translateY(0); }
-.bau-stand--gut { background: var(--erfolg); color: var(--auf-zustand); }
-.bau-stand--fehler { background: var(--gefahr); color: var(--auf-zustand); pointer-events: auto; }
+/* ---------------------------------------------------------- Schmaler --- */
 
+@media (max-width: 1320px) {
+  .bau { --bau-links: 240px; --bau-rechts: 300px; }
+  .bau-kopf__wort { display: none; }
+}
+/* Unter 1100 Pixeln rückt die rechte Spalte über die Bühne, sobald ein
+   Baustein gewählt ist – sonst bliebe für die Seite kaum Platz. */
+@media (max-width: 1100px) {
+  .bau { grid-template-columns: var(--bau-links) minmax(0, 1fr); grid-template-areas: "kopf kopf" "links buehne"; }
+  .bau__rechts {
+    position: absolute; right: 0; top: var(--bau-kopf); bottom: 0; width: min(340px, 92vw); z-index: 40;
+    box-shadow: var(--schatten-4);
+    transform: translateX(105%); transition: transform .18s ease;
+  }
+  .bau.ist-panel-offen .bau__rechts, .bau:not(.ist-js) .bau__rechts { transform: none; }
+  .bau:not(.ist-js) .bau__rechts { position: static; width: auto; box-shadow: none; }
+}
+@media (max-width: 820px) {
+  .bau { grid-template-columns: minmax(0, 1fr); grid-template-areas: "kopf" "buehne"; }
+  .bau__links {
+    position: absolute; left: 0; top: var(--bau-kopf); bottom: 0; width: min(300px, 88vw); z-index: 41;
+    box-shadow: var(--schatten-4);
+    transform: translateX(-105%); transition: transform .18s ease;
+  }
+  .bau.ist-aufbau-offen .bau__links { transform: none; }
+  .bau-kopf__aufbau { display: inline-grid; }
+  .bau-kopf__seite .pille { display: none; }
+  .bau__flaeche { padding: 16px 12px 32px; }
+  .bau-kopf { gap: 6px; padding: 0 8px; }
+}
+/* Auf dem Handy zeigt die Leinwand ohnehin das Handy – die Ansichtswahl
+   fällt weg, der Speicherstand wird zum Punkt. */
+@media (max-width: 640px) {
+  .bau-kopf__mitte { display: none; }
+  .bau-speicher { font-size: 0; gap: 0; }
+  .bau-kopf__titel { font-size: 13.5px; padding: 5px 4px; }
+  .bau-kopf .btn--klein { padding-inline: 8px; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .bau-feld, .bau-stand, .bau-marker, .bau-bild__wechseln, .bau-eintrag-weg { transition: none; }
+  .bau-feld, .bau-marker, .bau-bild__wechseln, .bau-eintrag-weg, .bau-teil, .bau-vorrat, .bau-toast,
+  .bau__rechts, .bau__links, .bau-einsetzer { transition: none; }
+  .bau-block.ist-neu, .bau-speicher::before { animation: none; }
 }
-
-.bau-vorrat { padding: var(--r2); display: flex; flex-direction: column; gap: 3px; }
-.bau-vorrat__teil {
-  display: flex; align-items: center; gap: 9px;
-  padding: 8px 9px; border-radius: 8px;
-  font-size: 13px; color: var(--text-2);
-  cursor: grab; border: 1px solid transparent;
-  background: none; width: 100%; text-align: left; font-family: inherit;
-  transition: background var(--tempo), border-color var(--tempo);
-}
-.bau-vorrat__teil:hover { background: var(--flaeche-3); color: var(--text); border-color: var(--rand); }
-.bau-vorrat__teil .ico { color: var(--text-4); }
-.bau-vorrat__gruppe { padding: var(--r3) 9px 4px; font-size: 10.5px; font-weight: 640; text-transform: uppercase; letter-spacing: .06em; color: var(--text-4); }
-
-.bau-liste { padding: var(--r2); display: flex; flex-direction: column; gap: 2px; }
-.bau-liste__teil {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 8px; border-radius: 7px;
-  font-size: 13px; color: var(--text-2); cursor: pointer;
-  border: 1px solid transparent;
-}
-.bau-liste__teil:hover { background: var(--flaeche-3); }
-.bau-liste__teil.ist-gewaehlt { background: var(--marke-hell); color: var(--marke); border-color: var(--marke-rand); }
-.bau-liste__griff { color: var(--text-4); cursor: grab; }
-
-/* ---------------------------------- Baustein aus dem Vorrat ziehen ---- */
-
-/*
- * Die Vorratsknoepfe sind zugleich Knoepfe und Ziehgut. grab zeigt das an,
- * ohne dass man es erklaeren muss.
- */
-.bau-vorrat__teil { cursor: grab; }
-.bau-vorrat__teil:active { cursor: grabbing; }
-.bau-vorrat__teil.wird-gezogen { opacity: .45; }
-
-/* Die Flaeche, die den Baustein gerade annehmen wuerde. */
-.ist-bau-ziel { outline: 2px dashed var(--marke); outline-offset: -4px; }
-
-/*
- * Die Linie zeigt, wo der Baustein landet. Ohne sie laesst man ihn
- * irgendwo fallen und sieht erst nach dem Neuladen, wo er hingerutscht
- * ist. Sie liegt im Fluss zwischen den Bausteinen, nicht darueber -
- * deshalb schiebt sie die Nachbarn ein wenig auseinander, was genau der
- * Eindruck ist, den man haben soll.
- */
-.einfuege-marke {
-  position: relative;
-  height: 3px;
-  margin: 3px 0;
-  border-radius: 999px;
-  background: var(--marke);
-  pointer-events: none;
-}
-.einfuege-marke::before {
-  content: '';
-  position: absolute; left: -4px; top: -3px;
-  width: 9px; height: 9px; border-radius: 50%;
-  background: var(--marke);
-}
-
-.geraete-wahl { display: flex; gap: 2px; }
 
 /* ========================================================= Videoanalyse = */
 
@@ -2524,8 +2819,6 @@ body.zieht-termin .termin:not(.ist-zug) { opacity: .55; }
   .suchknopf__taste { display: none; }
   .kopf { padding: 0 var(--r4); }
   .inhalt { padding: var(--r4) var(--r4) var(--r8); }
-  .bau { grid-template-columns: 1fr; height: auto; }
-  .bau__spalte { display: none; }
   .video-arbeit { grid-template-columns: 1fr; }
 }
 
