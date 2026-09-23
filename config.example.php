@@ -51,6 +51,10 @@ return [
     // Siehe docs/BETREIBER.md.
     // 'betreiber_einrichtung' => '',
 
+    // Wo die Rechnungen der Betreiberzentrale als PDF abgelegt werden.
+    // Leer = data/privat/betreiber/rechnungen. Gehört in jede Sicherung.
+    // 'rechnungsablage' => '',
+
     // Absender für Systemmails.
     'mail' => [
         'from_name'  => 'TeePilot',

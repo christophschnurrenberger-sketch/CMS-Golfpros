@@ -74,7 +74,7 @@ Die Anwendung verlinkt selbst immer die Dateinamen; mit `mod_rewrite`
 | `/master/instances/new` | `master/instanz-neu.php` |
 | `/master/instances/12` | `master/instanz.php?id=12` |
 | `/master/instances/12/users` · `/activity` · `/subscription` · `/usage` · `/settings` | Reiter der Instanz |
-| `/master/packages` · `/users` · `/analytics` · `/activity` · `/audit-log` · `/settings` · `/system` | die übrigen Seiten |
+| `/master/packages` · `/invoices` · `/users` · `/analytics` · `/activity` · `/audit-log` · `/settings` · `/system` | die übrigen Seiten |
 
 ## Was die Zentrale kann
 
@@ -86,8 +86,10 @@ die letzten Einträge im Audit-Log.
 
 **Subscription-Wert.** Summe der Listenpreise aus erfassten Verträgen, je
 Monat (Jahresverträge mit einem Zwölftel). Das ist ausdrücklich **kein
-Umsatz**: Eine Abrechnung ist nicht angeschlossen, und die Kachel sagt
-das. Instanzen ohne Vertragsdaten zählen nicht mit und werden genannt.
+Umsatz** und kein Zahlungseingang, und die Kachel sagt das. Instanzen
+ohne Vertragsdaten zählen nicht mit und werden genannt. Umsatz, offene
+und überfällige Rechnungen zeigen die Kacheln aus den ausgestellten
+Rechnungen (siehe unten).
 
 **Instanzen.** Suche über Name, Golfpro, E-Mail, Club, Domain,
 Kurzadresse und ID; Filter nach Status, Paket, Nutzung, Anlagedatum und
@@ -189,6 +191,81 @@ durchsetzt. Die Übersicht zeigt Kündigungen, die in 30 Tagen wirksam
 werden, und Testphasen, die in 7 Tagen enden. Was dann passiert,
 entscheidet ein Betreiber.
 
+## Rechnungen an die Instanzen
+
+Unter **Rechnungen** stellt die Zentrale Rechnungen an die Instanzen –
+für Pakete, Einrichtung, Sonderleistungen, was immer anfällt.
+
+**Einmal einrichten:** Unter Einstellungen → **Rechnungsabsender** Firma,
+Anschrift, Steuernummer oder USt-IdNr., Bankverbindung, Nummernkreis
+(Vorgabe `TP` → `TP-2026-0001`), Zahlungsziel und Steuersatz eintragen.
+Ohne Firma, Anschrift und Steuernummer/USt-IdNr. lässt sich keine
+Rechnung ausstellen (Pflichtangaben nach § 14 UStG); Entwürfe gehen schon.
+Kleinunternehmer nach § 19 UStG ist ein Haken.
+
+**Ablauf:**
+
+1. **Entwurf** – leer oder „aus Vertrag" (Paket, Betrag und
+   Leistungszeitraum des Monats aus den Vertragsdaten). Positionen mit
+   Menge, Einheit, Einzelpreis netto und Steuersatz; die Summen rechnet
+   die Seite mit, maßgeblich ist die Rechnung des Servers. Entwürfe sind
+   frei änderbar und löschbar. Unter **Monatsentwürfe** entstehen für
+   einen Monat Entwürfe aus allen laufenden Verträgen – nichts doppelt,
+   Demo-Instanzen nie.
+2. **Ausstellen** – vergibt die nächste fortlaufende Nummer, friert
+   Absender und Empfänger als Kopie ein, setzt Rechnungsdatum und
+   Fälligkeit und legt das PDF einmal ab (`data/privat/betreiber/
+   rechnungen/<Jahr>/<Nummer>.pdf`, mit SHA-256-Abdruck in der
+   Datenbank). Scheitert das Ablegen, bleibt es ein Entwurf und die
+   Nummer ist nicht verbraucht.
+3. **Danach unveränderlich** (GoBD). Möglich sind nur noch: per E-Mail
+   senden (PDF im Anhang, Absendername = Firma, Antwort an die
+   Rechnungs-E-Mail), Zahlungseingang vermerken (und zurücknehmen),
+   **stornieren**. Eine Stornorechnung ist eine eigene Rechnung mit
+   eigener Nummer, negativen Beträgen und dem Grund; die Ursprungsrechnung
+   wird als storniert markiert. Beide bleiben erhalten.
+
+Die Unveränderlichkeit steht zweimal: Die Anwendung hat keine Funktion
+dafür, und Datenbank-Auslöser weisen Änderungen an Nummer, Beträgen,
+Empfänger, Absender, Positionen und PDF-Verweis ebenso ab wie das Löschen.
+Ausgeliefert wird immer die abgelegte Datei – stimmt ihr Abdruck nicht
+mehr, verweigert die Zentrale die Auslieferung und zeigt das an.
+
+**Steuer:** je Rechnung ein Steuerfall, vorgeschlagen aus Land und
+USt-IdNr. des Empfängers – Regelbesteuerung (Sätze je Position,
+Steuer je Satz auf die Nettosumme gerundet), Kleinunternehmer (§ 19),
+Reverse Charge für Unternehmen im EU-Ausland mit USt-IdNr., nicht
+steuerbar für das Drittland (etwa die Schweiz). Der passende Hinweis
+steht automatisch auf der Rechnung. Welcher Fall zutrifft, entscheidet
+im Zweifel die Steuerberatung. Paketpreise gelten auf Rechnungen als
+Nettopreise.
+
+**Rechnungsanschrift** je Instanz im Reiter **Rechnungen** der Instanz
+(vorbelegt aus Instanz, Inhaber und Standort). Jede Rechnung kopiert sie
+beim Speichern und kann für sich abweichen.
+
+**Die Instanz sieht ihre Rechnungen** unter Einstellungen → Tarif &
+Module, mit PDF zum Herunterladen – nur ausgestellte, nur die eigenen,
+nie Entwürfe oder interne Notizen.
+
+**Löschen einer Instanz** lässt ihre Rechnungen samt PDF stehen: Sie
+tragen `instanz_id`, nicht `workspace_id`, und haben Empfänger und
+Absender als Kopie. Aufbewahrungspflicht zehn Jahre.
+
+**Kennzahlen:** Die Übersicht zeigt Umsatz laut Rechnungen (netto, Stornos
+abgezogen), offene und überfällige Rechnungen und die vermerkten
+Zahlungseingänge; überfällige Rechnungen stehen unter „Aufmerksamkeit
+erforderlich". Ein Zahlungsanbieter ist nicht angeschlossen – Eingänge
+werden von Hand vermerkt.
+
+**E-Rechnung:** Die Rechnungen sind PDF. Für Rechnungen an Unternehmen im
+Inland verlangt das Gesetz ab 2027 (Vorjahresumsatz über 800.000 €) bzw.
+ab 2028 (alle) eine E-Rechnung im strukturierten Format (XRechnung oder
+ZUGFeRD). Bis dahin ist PDF zulässig. ZUGFeRD ist noch nicht eingebaut.
+
+**Sicherung:** Der Ordner `data/privat/betreiber/rechnungen/` gehört in
+jede Sicherung, zusammen mit der Datenbank – zehn Jahre lang.
+
 ## Support Mode
 
 * Start aus der Instanz („Als Support öffnen"), mit optionalem Grund.
@@ -232,7 +309,9 @@ Aktionen: `TENANT_CREATED`, `TENANT_UPDATED`, `TENANT_ACTIVATED`,
 `PLAN_CHANGED`, `SUBSCRIPTION_CHANGED`, `PACKAGE_CREATED`,
 `PACKAGE_UPDATED`, `USER_CREATED`, `USER_UPDATED`, `USER_DISABLED`,
 `USER_INVITED`, `SUPPORT_SESSION_STARTED`, `SUPPORT_SESSION_ENDED`,
-`NOTE_ADDED`, `EXPORT_CREATED`, `SETTINGS_CHANGED`, `OPERATOR_CREATED`,
+`NOTE_ADDED`, `EXPORT_CREATED`, `SETTINGS_CHANGED`, `INVOICE_CREATED`,
+`INVOICE_UPDATED`, `INVOICE_DELETED`, `INVOICE_ISSUED`, `INVOICE_SENT`,
+`INVOICE_PAID`, `INVOICE_CANCELLED`, `BILLING_DATA_CHANGED`, `OPERATOR_CREATED`,
 `OPERATOR_UPDATED`, `MASTER_LOGIN`, `MASTER_LOGIN_FAILED`,
 `MASTER_LOGOUT`, `ACCESS_DENIED`.
 
@@ -265,7 +344,7 @@ Grund. Gelöscht wird jede Zeile jeder Tabelle mit dieser `workspace_id`
 `uploads/w<ID>` und `data/privat/w<ID>`. Unwiderruflich – darum ist
 Archivieren der Normalfall.
 
-## Datenmodell (Schema 8)
+## Datenmodell (Schema 8 und 9)
 
 | Tabelle / Spalte | Zweck |
 |---|---|
@@ -277,7 +356,10 @@ Archivieren der Normalfall.
 | `workspaces.status` | test, aktiv, pausiert, gesperrt, archiviert |
 | `workspaces.letzte_aktivitaet` | Letzte Nutzung durch das eigene Team |
 | `audit_log.betreiber_id` | > 0: im Support Mode entstanden |
-| `settings` (workspace_id 0, `master_*`) | Schwellen, Testphase, Standardpaket, Support-Dauer |
+| `settings` (workspace_id 0, `master_*`) | Schwellen, Testphase, Standardpaket, Support-Dauer, Rechnungsabsender (`master_rg_*`) |
+| `betreiber_rechnungen` | Rechnungen an Instanzen (Schema 9); `instanz_id`, Empfänger/Absender als Kopie, PDF-Verweis mit Abdruck |
+| `betreiber_rechnungspositionen` | Positionen; nach dem Ausstellen per Auslöser gesperrt |
+| `rechnungsdaten` | Rechnungsanschrift je Instanz (geht mit der Instanz) |
 
 Die Migration läuft wie jede andere beim ersten Aufruf nach dem Upload.
 Bestehende Instanzen erscheinen sofort in der Zentrale; ein Workspace mit
@@ -295,13 +377,17 @@ prüft über HTTP: Migration ohne Datenverlust, unveränderliches Log,
 Rechteausweitung, Mandantengrenze, Anlegen, Bearbeiten, Paketwechsel mit
 sofortiger Wirkung auf die Freischaltung, Pausieren/Sperren/Aktivieren,
 Support Mode samt Kennzeichnung und Sperren, Archivieren und Löschen,
-Export. Die echte Datenbank der Anlage wird nicht angefasst.
+Export – und Rechnungen: Rundung, Steuerfälle, fortlaufende Nummern,
+Unveränderlichkeit per Datenbank, Storno, Sichtbarkeit nur in der eigenen
+Instanz, Erhalt nach dem Löschen, Erkennen einer veränderten Ablagedatei.
+Die echte Datenbank und die echte Rechnungsablage der Anlage werden nicht
+angefasst.
 
 ## Bewusst noch nicht dabei
 
-* Abrechnung und Zahlungen (Stripe-Abos, Rechnungen an Instanzen) – die
-  Vertragsdaten sind so geschnitten, dass Zahlungen eine eigene Tabelle
-  bekommen.
+* Zahlungsanbieter (Lastschrift, Karte, automatischer Abgleich),
+  Mahnwesen und E-Rechnung (ZUGFeRD/XRechnung) – Rechnungen gibt es,
+  Zahlungseingänge werden von Hand vermerkt.
 * Zwei-Faktor-Anmeldung: Die Spalte `users.zwei_faktor` existiert, eine
   Anmeldung damit noch nicht – weder für Golfpros noch für Betreiber.
 * Weitere Betreiberrollen (Support, Auswertung), Schlagworte an

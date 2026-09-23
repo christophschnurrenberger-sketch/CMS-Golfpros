@@ -1038,6 +1038,15 @@ Gültigkeitsbereich der Seite. Die Schleife über das Menü hieß
 Variablen in `app/partials/kopf.php` und `master/partials/*` beginnen
 seitdem mit `$k`.
 
+**Rechnungen sind Dokumente.** Die Rechnungen der Zentrale an die
+Instanzen kopieren Empfänger und Absender beim Ausstellen, tragen
+`instanz_id` statt `workspace_id` (sie überleben das Löschen einer
+Instanz) und werden danach nicht mehr verändert – die Anwendung bietet
+keinen Weg, und Datenbank-Auslöser weisen jeden ab. Ausgeliefert wird das
+beim Ausstellen abgelegte PDF, geprüft gegen seinen Abdruck, nie ein neu
+gesetztes: Eine spätere Änderung am Layout darf keine alte Rechnung
+verändern.
+
 Ausführlich: [BETREIBER.md](BETREIBER.md).
 
 ## Wo die Grenzen liegen

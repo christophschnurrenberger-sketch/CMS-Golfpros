@@ -123,6 +123,66 @@
     pruefen();
   });
 
+  /* ------------------------------------------------ Rechnungsentwurf --- */
+  /*
+   * Positionen hinzufügen und entfernen, Summen mitrechnen. Die Rechnung
+   * rechnet der Server beim Speichern noch einmal – maßgeblich ist seine
+   * Summe, diese hier ist nur Vorschau.
+   */
+  const rechnung = $('[data-rechnung]');
+  if (rechnung) {
+    const tabelle = $('[data-positionen] tbody', rechnung);
+    const zahl = (s) => {
+      s = String(s || '').trim().replace(/\s/g, '');
+      if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.');
+      const n = parseFloat(s.replace(/[^0-9.\-]/g, ''));
+      return isNaN(n) ? 0 : n;
+    };
+    const euro = (c) => (c / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+    const rechnen = () => {
+      const fall = ($('[data-steuerfall]', rechnung) || {}).value;
+      const jeSatz = {};
+      $$('[data-position]', tabelle).forEach(z => {
+        const menge = Math.round(zahl($('[name="menge[]"]', z).value) * 100);
+        const einzel = Math.round(zahl($('[name="einzel[]"]', z).value) * 100);
+        const satz = fall === 'regel' ? parseInt($('[name="steuersatz[]"]', z).value, 10) : 0;
+        const netto = Math.round(menge * einzel / 100);
+        const text = $('[name="text[]"]', z).value.trim();
+        $('[data-zeilensumme]', z).textContent = text || einzel ? euro(netto) : '—';
+        if (text || einzel) jeSatz[satz] = (jeSatz[satz] || 0) + netto;
+      });
+      let netto = 0, steuer = 0;
+      Object.keys(jeSatz).forEach(s => { netto += jeSatz[s]; steuer += Math.round(jeSatz[s] * s / 100); });
+      $('[data-summe-netto]', rechnung).textContent = euro(netto);
+      $('[data-summe-steuer]', rechnung).textContent = euro(steuer);
+      $('[data-summe-brutto]', rechnung).textContent = euro(netto + steuer);
+      $$('[name="steuersatz[]"]', tabelle).forEach(s => { s.disabled = fall !== 'regel'; });
+    };
+    rechnung.addEventListener('input', rechnen);
+    rechnung.addEventListener('change', rechnen);
+    $('[data-position-neu]', rechnung).addEventListener('click', () => {
+      const vorlage = $$('[data-position]', tabelle).pop();
+      const neu = vorlage.cloneNode(true);
+      $$('input, textarea', neu).forEach(f => { f.value = f.name === 'menge[]' ? '1' : (f.name === 'einheit[]' ? f.value : ''); });
+      $('[name="text[]"]', neu).placeholder = '';
+      tabelle.appendChild(neu);
+      $('[name="text[]"]', neu).focus();
+      rechnen();
+    });
+    tabelle.addEventListener('click', (e) => {
+      const weg = e.target.closest('[data-position-weg]');
+      if (!weg) return;
+      const zeilen = $$('[data-position]', tabelle);
+      const zeile = weg.closest('[data-position]');
+      if (zeilen.length > 1) { zeile.remove(); }
+      else { $$('input, textarea', zeile).forEach(f => { if (f.name !== 'einheit[]') f.value = ''; }); }
+      rechnen();
+    });
+    /* Gesperrte Felder werden nicht mitgeschickt – beim Absenden wieder frei. */
+    rechnung.addEventListener('submit', () => $$('[name="steuersatz[]"]', tabelle).forEach(s => { s.disabled = false; }));
+    rechnen();
+  }
+
   /* -------------------------------- Zwischenablage für die Instanz-ID --- */
   /* app.js kann das schon über [data-kopieren]; hier nichts zu tun. */
 })();

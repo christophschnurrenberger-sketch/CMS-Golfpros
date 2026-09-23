@@ -32,6 +32,7 @@ file_put_contents($ordner . '/config.php', '<?php return ' . var_export([
     'mail' => ['from_name' => 'TeePilot Test', 'from_email' => 'test@example.org', 'transport' => 'keiner'],
     'stripe' => ['public_key' => '', 'secret_key' => 'sk_test_GEHEIMNIS_DARF_NIE_ERSCHEINEN', 'webhook_secret' => ''],
     'debug' => false,
+    'rechnungsablage' => $ordner . '/rechnungen',
 ], true) . ';');
 putenv('GP_CONFIG=' . $ordner . '/config.php');
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
@@ -168,6 +169,71 @@ $doppelt = Instanzen::anlegen(['name' => 'Doppelt', 'inhaber' => 'X', 'email' =>
 pruefe($doppelt['id'] === 0 && isset($doppelt['fehler']['email']), 'zweite Instanz mit derselben Inhaber-Adresse wird abgewiesen');
 pruefe(DB::int("SELECT COUNT(*) FROM workspaces WHERE slug = 'doppelt'") === 0, 'dabei bleibt keine halbe Instanz zurück');
 
+/* ---------------------------------------------------------- Rechnungen --- */
+
+abschnitt('Rechnungen an Instanzen: Rechnen, Ausstellen, Unveränderlichkeit');
+$b = Betreiberrechnungen::berechnen([
+    ['text' => 'A', 'menge_hundertstel' => 300, 'einzel_cent' => 3333, 'steuersatz' => 19],
+], 'regel');
+pruefe($b['netto'] === 9999 && $b['steuer'] === 1900 && $b['brutto'] === 11899, '3 × 33,33 € + 19 % = 118,99 € (Steuer auf die Nettosumme gerundet)');
+$b = Betreiberrechnungen::berechnen([
+    ['text' => 'A', 'menge_hundertstel' => 100, 'einzel_cent' => 2900, 'steuersatz' => 19],
+    ['text' => 'B', 'menge_hundertstel' => 100, 'einzel_cent' => 1000, 'steuersatz' => 7],
+], 'regel');
+pruefe($b['steuer'] === 551 + 70 && count($b['steuern']) === 2, 'zwei Steuersätze werden getrennt ausgewiesen');
+pruefe(Betreiberrechnungen::berechnen([['text' => 'A', 'menge_hundertstel' => 100, 'einzel_cent' => 2900, 'steuersatz' => 19]], 'klein')['steuer'] === 0,
+    'Kleinunternehmer: keine Umsatzsteuer');
+pruefe(Betreiberrechnungen::steuerfallVorschlag(['land' => 'AT', 'ust_id' => 'ATU12345678']) === 'rc'
+    && Betreiberrechnungen::steuerfallVorschlag(['land' => 'CH', 'ust_id' => '']) === 'drittland'
+    && Betreiberrechnungen::steuerfallVorschlag(['land' => 'DE', 'ust_id' => '']) === 'regel', 'Steuerfall-Vorschlag nach Land und USt-IdNr.');
+
+$empfaengerB = ['firma' => 'Golfschule Beta GmbH', 'name' => 'Bert Beta', 'strasse' => 'Fairway 1', 'plz' => '10115',
+                'ort' => 'Berlin', 'land' => 'DE', 'email' => 'bert@beta.example'];
+$pos = [['text' => 'TeePilot Academy – Oktober', 'menge_hundertstel' => 100, 'einheit' => 'Monat', 'einzel_cent' => 19900, 'steuersatz' => 19]];
+[$r1] = Betreiberrechnungen::entwurfSpeichern(0, $Bid, ['empfaenger' => $empfaengerB, 'leistung_von' => '2026-10-01',
+    'leistung_bis' => '2026-10-31'], $pos);
+[$ok] = Betreiberrechnungen::ausstellen($r1);
+pruefe(!$ok, 'ohne vollständigen Rechnungsabsender wird nicht ausgestellt');
+foreach (['rg_firma' => 'TeePilot Betrieb GmbH', 'rg_strasse' => 'Teeweg 1', 'rg_plz' => '76131', 'rg_ort' => 'Karlsruhe',
+          'rg_steuernummer' => '35/123/45678', 'rg_email' => 'rechnung@betrieb.example'] as $k => $v) {
+    Plattform::setzen($k, $v);
+}
+[$ok, $meldung] = Betreiberrechnungen::ausstellen($r1);
+$rechnung1 = Betreiberrechnungen::finden($r1);
+pruefe($ok && preg_match('/^TP-\d{4}-0001$/', (string) $rechnung1['nummer']) === 1, 'ausgestellt mit Nummer ' . $rechnung1['nummer']);
+pruefe((int) $rechnung1['brutto_cent'] === 23681 && (string) $rechnung1['status'] === 'offen', '199,00 € + 19 % = 236,81 €, Status offen');
+pruefe(Betreiberrechnungen::dateiInhalt($rechnung1) !== null && str_starts_with((string) Betreiberrechnungen::dateiInhalt($rechnung1), '%PDF-'),
+    'PDF abgelegt und gegen seinen Abdruck geprüft');
+pruefe(str_contains((string) $rechnung1['absender'], 'TeePilot Betrieb GmbH'), 'Absender ist in der Rechnung eingefroren');
+$abgewiesen = static function (string $sql): bool {
+    try {
+        DB::pdo()->exec($sql);
+        return false;
+    } catch (Throwable $e) {
+        return true;
+    }
+};
+pruefe($abgewiesen('UPDATE betreiber_rechnungen SET brutto_cent = 1 WHERE id = ' . $r1), 'Betrag einer ausgestellten Rechnung: Datenbank weist Änderung ab');
+pruefe($abgewiesen("UPDATE betreiber_rechnungen SET nummer = 'X' WHERE id = " . $r1), 'Nummer: Änderung abgewiesen');
+pruefe($abgewiesen("UPDATE betreiber_rechnungen SET status = 'entwurf' WHERE id = " . $r1), 'zurück zum Entwurf: abgewiesen');
+pruefe($abgewiesen('DELETE FROM betreiber_rechnungen WHERE id = ' . $r1), 'Löschen: abgewiesen');
+pruefe($abgewiesen('INSERT INTO betreiber_rechnungspositionen (rechnung_id, text) VALUES (' . $r1 . ", 'x')"), 'neue Position: abgewiesen');
+pruefe($abgewiesen('DELETE FROM betreiber_rechnungspositionen WHERE rechnung_id = ' . $r1), 'Position löschen: abgewiesen');
+[$bearbeitet, $fehler] = Betreiberrechnungen::entwurfSpeichern($r1, $Bid, ['empfaenger' => $empfaengerB], $pos);
+pruefe($bearbeitet === 0, 'die Anwendung bietet keinen Weg zur Änderung');
+[$ok] = Betreiberrechnungen::bezahltSetzen($r1, true, '2026-10-05');
+pruefe($ok && (string) Betreiberrechnungen::finden($r1)['status'] === 'bezahlt', 'Zahlungseingang vermerkt (erlaubte Änderung)');
+
+[$r2] = Betreiberrechnungen::entwurfSpeichern(0, $Bid, ['empfaenger' => $empfaengerB, 'leistung_von' => '2026-11-01'], $pos);
+Betreiberrechnungen::ausstellen($r2);
+pruefe(str_ends_with((string) Betreiberrechnungen::finden($r2)['nummer'], '-0002'), 'nächste Rechnung: fortlaufend -0002');
+[$ok, , $stornoId] = Betreiberrechnungen::stornieren($r2, 'Test');
+$storno = Betreiberrechnungen::finden($stornoId);
+pruefe($ok && str_ends_with((string) $storno['nummer'], '-0003') && (int) $storno['brutto_cent'] === -23681 && (string) $storno['art'] === 'storno',
+    'Storno: eigene Nummer -0003, negativer Betrag');
+pruefe((string) Betreiberrechnungen::finden($r2)['status'] === 'storniert', 'die stornierte Rechnung ist als storniert markiert');
+[$entwurfB] = Betreiberrechnungen::entwurfSpeichern(0, $Bid, ['empfaenger' => $empfaengerB], $pos);
+
 /* ------------------------------------------------------------- Server --- */
 
 $server = proc_open([PHP_BINARY, '-S', '127.0.0.1:' . $port, '-t', GP_ROOT],
@@ -278,6 +344,23 @@ try {
     pruefe(Tenant::find('customers', $kundeB) === null, 'Tenant::find() liefert fremde Datensätze nicht');
     Tenant::setzen(0);
 
+    abschnitt('Rechnungen in der Instanz');
+    $bert = new Besucher($basis, $ordner);
+    $bert->anmelden('bert@beta.example', $pw);
+    $bert->holen('/app/tarif.php');
+    pruefe(str_contains($bert->inhalt, (string) $rechnung1['nummer']) && str_contains($bert->inhalt, (string) $storno['nummer']),
+        'Golfpro sieht seine ausgestellten Rechnungen');
+    $bert->holen('/app/teepilot-rechnung.php?id=' . $r1);
+    pruefe($bert->status === 200 && str_starts_with($bert->inhalt, '%PDF-'), 'und lädt das PDF');
+    $bert->holen('/app/teepilot-rechnung.php?id=' . $entwurfB);
+    pruefe($bert->status === 404, 'Entwürfe bleiben unsichtbar (404)');
+    $anna->holen('/app/teepilot-rechnung.php?id=' . $r1);
+    pruefe($anna->status === 404 && !str_starts_with($anna->inhalt, '%PDF'), 'fremde Instanz: 404, kein PDF');
+    $anna->holen('/master/rechnung-pdf.php?id=' . $r1);
+    pruefe($anna->status === 403, 'Golfpro: PDF über die Zentrale → 403');
+    $anna->holen('/master/rechnungen.php');
+    pruefe($anna->status === 403, 'Golfpro: Rechnungsliste der Zentrale → 403');
+
     abschnitt('Betreiber');
     $chef = new Besucher($basis, $ordner);
     $chef->anmelden('chef@betrieb.example', $pw);
@@ -384,6 +467,9 @@ try {
     pruefe(str_contains($anna->inhalt, 'TeePilot Support'), 'Inhaber sieht „TeePilot Support" als Person im Protokoll');
 
     abschnitt('Archivieren und löschen');
+    [$rA] = Betreiberrechnungen::entwurfSpeichern(0, $A, ['empfaenger' => ['firma' => 'Alpha', 'strasse' => 'A-Weg 1',
+        'plz' => '12345', 'ort' => 'Alphastadt', 'land' => 'DE']], $pos);
+    Betreiberrechnungen::ausstellen($rA);
     Tenant::setzen($A);
     DB::insert('customers', ['workspace_id' => $A, 'vorname' => 'Weg', 'nachname' => 'Kunde', 'email' => 'weg@alpha.example', 'status' => 'aktiv', 'erstellt' => $jetzt]);
     Tenant::setzen(0);
@@ -405,6 +491,13 @@ try {
     pruefe(DB::int('SELECT COUNT(*) FROM customers WHERE workspace_id = :w', ['w' => $Bid]) === $zeilenB, 'die andere Instanz ist unberührt');
     pruefe(DB::int("SELECT COUNT(*) FROM betreiber_log WHERE aktion = 'TENANT_DELETED' AND instanz_id = :i", ['i' => $A]) === 1,
         'Audit-Log: TENANT_DELETED bleibt stehen');
+    $rechnungA = Betreiberrechnungen::finden($rA);
+    pruefe($rechnungA !== null && Betreiberrechnungen::dateiInhalt($rechnungA) !== null,
+        'Rechnungen an die gelöschte Instanz bleiben samt PDF erhalten (Aufbewahrungspflicht)');
+    $pfad = Betreiberrechnungen::ablage() . '/' . $rechnungA['datei'];
+    file_put_contents($pfad, file_get_contents($pfad) . ' ');
+    $chef->holen('/master/rechnung-pdf.php?id=' . $rA);
+    pruefe($chef->status === 409, 'veränderte Ablagedatei wird erkannt und nicht ausgeliefert');
 
     abschnitt('Export');
     $chef->holen('/master/instanzen.php', ['_csrf' => $t, 'aktion' => 'export', 'status' => 'alle']);
@@ -422,8 +515,14 @@ try {
     }
     proc_terminate($server);
     proc_close($server);
-    @array_map('unlink', glob($ordner . '/*') ?: []);
-    @rmdir($ordner);
+    if (is_dir($ordner)) {
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($ordner, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST);
+        foreach ($it as $f) {
+            $f->isDir() ? @rmdir($f->getPathname()) : @unlink($f->getPathname());
+        }
+        @rmdir($ordner);
+    }
 }
 
 fwrite(STDOUT, PHP_EOL . $ergebnisse['ok'] . ' bestanden, ' . $ergebnisse['fehl'] . ' fehlgeschlagen.' . PHP_EOL);

@@ -57,6 +57,7 @@ if (App::istPost()) {
 $plan     = Tenant::plan();
 $rang     = array_flip(array_keys($plaene));      // Reihenfolge der Pakete = Rangfolge
 $vertrag  = Abos::aktuell(Tenant::id());
+$teepilotRechnungen = Betreiberrechnungen::fuerInstanz(Tenant::id());
 $module   = Module::alle();
 $anzahlAn = 0;
 foreach ($module as $key => $info) {
@@ -173,5 +174,28 @@ require __DIR__ . '/partials/kopf.php';
     </div>
   </div>
 </form>
+
+<?php if ($teepilotRechnungen !== []): ?>
+  <?= karteAuf('Rechnungen von TeePilot', '<span class="klein gedimmt">' . count($teepilotRechnungen) . ' '
+        . (count($teepilotRechnungen) === 1 ? 'Rechnung' : 'Rechnungen') . '</span>', 'mt-5') ?>
+    <div class="tabelle-huelle"><table class="tabelle tabelle--eng">
+      <thead><tr><th>Nummer</th><th>Datum</th><th>Zeitraum</th><th class="zahl">Betrag</th><th>Status</th><th class="aktionen"><span class="nur-lesbar">PDF</span></th></tr></thead>
+      <tbody>
+        <?php foreach ($teepilotRechnungen as $tr): ?>
+          <tr>
+            <td class="mono"><?= Util::h((string) $tr['nummer']) ?></td>
+            <td><?= Util::h(Util::datum((string) $tr['datum'])) ?></td>
+            <td class="klein"><?= Util::h(Betreiberrechnungen::zeitraum($tr)) ?></td>
+            <td class="zahl"><?= Util::h(Util::geld((int) $tr['brutto_cent'])) ?></td>
+            <td><?= Betreiberrechnungen::statusPille((string) $tr['status'], $tr['faellig'] ? (string) $tr['faellig'] : null) ?>
+              <?php if ((string) $tr['status'] === 'offen'): ?><div class="winzig gedimmt">fällig am <?= Util::h(Util::datum((string) $tr['faellig'])) ?></div><?php endif; ?></td>
+            <td class="aktionen"><a class="btn btn--klein" href="<?= Util::attr(App::url('/app/teepilot-rechnung.php?id=' . (int) $tr['id'])) ?>"
+                target="_blank" rel="noopener"><?= Icon::svg('download', 14) ?> PDF</a></td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table></div>
+  </div>
+<?php endif; ?>
 
 <?php require __DIR__ . '/partials/fuss.php'; ?>

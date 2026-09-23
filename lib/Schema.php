@@ -55,8 +55,11 @@ final class Schema
      *      der Navigation ein Menue ueber mehrere Ebenen
      *   8  Betreiberzentrale: betreiber, betreiber_log, pakete, abos,
      *      betreiber_notizen; workspaces.status und audit_log.betreiber_id
+     *   9  Rechnungen der Betreiberzentrale an Instanzen:
+     *      betreiber_rechnungen, betreiber_rechnungspositionen,
+     *      rechnungsdaten – samt Schreibschutz für ausgestellte Rechnungen
      */
-    public const VERSION = 8;
+    public const VERSION = 9;
 
     public static function migrate(): void
     {
@@ -220,6 +223,65 @@ final class Schema
         }
 
         Pakete::grundausstattung();
+        self::rechnungsschutz();
+    }
+
+    /**
+     * Eine ausgestellte Rechnung ändert sich nicht mehr.
+     *
+     * Die Anwendung bietet dafür keine Funktion an; diese Auslöser sind die
+     * zweite Sicherung – gegen ein UPDATE von Hand oder einen künftigen
+     * Fehler. Erlaubt bleiben nach dem Ausstellen nur Status (bezahlt,
+     * storniert), Versand- und Zahlungsdatum und die interne Notiz. Eine
+     * falsche Rechnung wird storniert, nicht korrigiert (GoBD).
+     */
+    private static function rechnungsschutz(): void
+    {
+        $inhalt = ['nummer', 'instanz_id', 'art', 'bezug_id', 'steuerfall', 'datum', 'leistung_von', 'leistung_bis',
+                   'faellig', 'empfaenger', 'absender', 'netto_cent', 'steuer_cent', 'brutto_cent', 'steuern',
+                   'text_oben', 'notiz', 'datei', 'datei_hash', 'ausgestellt'];
+        if (DB::istSqlite()) {
+            $geaendert = implode(' OR ', array_map(static fn ($s) => "NEW.$s IS NOT OLD.$s", $inhalt));
+            $sql = [
+                "CREATE TRIGGER IF NOT EXISTS betreiber_rechnung_fest BEFORE UPDATE ON betreiber_rechnungen
+                 WHEN OLD.status != 'entwurf' AND (NEW.status = 'entwurf' OR $geaendert)
+                 BEGIN SELECT RAISE(ABORT, 'Ausgestellte Rechnungen sind unveraenderlich.'); END",
+                "CREATE TRIGGER IF NOT EXISTS betreiber_rechnung_bleibt BEFORE DELETE ON betreiber_rechnungen
+                 WHEN OLD.status != 'entwurf'
+                 BEGIN SELECT RAISE(ABORT, 'Ausgestellte Rechnungen werden nicht geloescht.'); END",
+                "CREATE TRIGGER IF NOT EXISTS betreiber_position_neu BEFORE INSERT ON betreiber_rechnungspositionen
+                 WHEN (SELECT status FROM betreiber_rechnungen WHERE id = NEW.rechnung_id) != 'entwurf'
+                 BEGIN SELECT RAISE(ABORT, 'Ausgestellte Rechnungen sind unveraenderlich.'); END",
+                "CREATE TRIGGER IF NOT EXISTS betreiber_position_fest BEFORE UPDATE ON betreiber_rechnungspositionen
+                 WHEN (SELECT status FROM betreiber_rechnungen WHERE id = OLD.rechnung_id) != 'entwurf'
+                 BEGIN SELECT RAISE(ABORT, 'Ausgestellte Rechnungen sind unveraenderlich.'); END",
+                "CREATE TRIGGER IF NOT EXISTS betreiber_position_bleibt BEFORE DELETE ON betreiber_rechnungspositionen
+                 WHEN (SELECT status FROM betreiber_rechnungen WHERE id = OLD.rechnung_id) != 'entwurf'
+                 BEGIN SELECT RAISE(ABORT, 'Ausgestellte Rechnungen sind unveraenderlich.'); END",
+            ];
+        } else {
+            $geaendert = implode(' OR ', array_map(static fn ($s) => "NOT (NEW.$s <=> OLD.$s)", $inhalt));
+            $fehler = "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Ausgestellte Rechnungen sind unveraenderlich.'";
+            $sql = [
+                "CREATE TRIGGER betreiber_rechnung_fest BEFORE UPDATE ON betreiber_rechnungen FOR EACH ROW
+                 BEGIN IF OLD.status <> 'entwurf' AND (NEW.status = 'entwurf' OR $geaendert) THEN $fehler; END IF; END",
+                "CREATE TRIGGER betreiber_rechnung_bleibt BEFORE DELETE ON betreiber_rechnungen FOR EACH ROW
+                 BEGIN IF OLD.status <> 'entwurf' THEN $fehler; END IF; END",
+                "CREATE TRIGGER betreiber_position_neu BEFORE INSERT ON betreiber_rechnungspositionen FOR EACH ROW
+                 BEGIN IF (SELECT status FROM betreiber_rechnungen WHERE id = NEW.rechnung_id) <> 'entwurf' THEN $fehler; END IF; END",
+                "CREATE TRIGGER betreiber_position_fest BEFORE UPDATE ON betreiber_rechnungspositionen FOR EACH ROW
+                 BEGIN IF (SELECT status FROM betreiber_rechnungen WHERE id = OLD.rechnung_id) <> 'entwurf' THEN $fehler; END IF; END",
+                "CREATE TRIGGER betreiber_position_bleibt BEFORE DELETE ON betreiber_rechnungspositionen FOR EACH ROW
+                 BEGIN IF (SELECT status FROM betreiber_rechnungen WHERE id = OLD.rechnung_id) <> 'entwurf' THEN $fehler; END IF; END",
+            ];
+        }
+        foreach ($sql as $befehl) {
+            try {
+                DB::pdo()->exec($befehl);
+            } catch (Throwable $e) {
+                // Gibt es schon, oder der Hoster erlaubt keine Auslöser.
+            }
+        }
     }
 
     /**
@@ -580,6 +642,75 @@ final class Schema
                 akteur %STR(190)% NOT NULL DEFAULT "",
                 text %TEXT%,
                 erstellt %DT%
+            )%ENGINE%',
+
+            /*
+             * Rechnungen der Betreiberzentrale an Instanzen.
+             *
+             * Kein workspace_id, sondern instanz_id: Beim Löschen einer
+             * Instanz räumt die Schleife über alle Tabellen mit workspace_id
+             * auf – Rechnungen müssen aber zehn Jahre stehen bleiben. Deshalb
+             * tragen sie Empfänger und Absender als Kopie (JSON), nicht als
+             * Verweis: Eine Rechnung ist ein Dokument, keine Sicht auf
+             * Stammdaten.
+             */
+            'CREATE TABLE IF NOT EXISTS betreiber_rechnungen (
+                id %PK%,
+                nummer %STR(40)% NOT NULL DEFAULT "",          -- leer, solange Entwurf
+                instanz_id %INT% NOT NULL DEFAULT 0,
+                art %STR(12)% NOT NULL DEFAULT "rechnung",     -- rechnung|storno
+                bezug_id %INT% NOT NULL DEFAULT 0,             -- Storno: die stornierte Rechnung
+                status %STR(16)% NOT NULL DEFAULT "entwurf",   -- entwurf|offen|bezahlt|storniert|storno
+                steuerfall %STR(16)% NOT NULL DEFAULT "regel", -- regel|klein|rc|drittland
+                datum %DT%,
+                leistung_von %DT%,
+                leistung_bis %DT%,
+                faellig %DT%,
+                empfaenger %TEXT%,                             -- JSON-Kopie
+                absender %TEXT%,                               -- JSON-Kopie beim Ausstellen
+                netto_cent %INT% NOT NULL DEFAULT 0,
+                steuer_cent %INT% NOT NULL DEFAULT 0,
+                brutto_cent %INT% NOT NULL DEFAULT 0,
+                steuern %TEXT%,                                -- JSON: Satz => Netto, Steuer
+                text_oben %TEXT%,
+                notiz %TEXT%,                                  -- steht auf der Rechnung
+                notiz_intern %TEXT%,                           -- nur Betreiber
+                abo_id %INT% NOT NULL DEFAULT 0,
+                datei %STR(255)% NOT NULL DEFAULT "",          -- abgelegtes PDF
+                datei_hash %STR(64)% NOT NULL DEFAULT "",
+                ausgestellt %DT%,
+                versendet %DT%,
+                bezahlt %DT%,
+                erstellt %DT%,
+                erstellt_von %STR(190)% NOT NULL DEFAULT ""
+            )%ENGINE%',
+
+            'CREATE TABLE IF NOT EXISTS betreiber_rechnungspositionen (
+                id %PK%,
+                rechnung_id %INT% NOT NULL,
+                pos %INT% NOT NULL DEFAULT 1,
+                text %TEXT%,
+                menge_hundertstel %INT% NOT NULL DEFAULT 100,  -- 1,5 Monate = 150
+                einheit %STR(24)% NOT NULL DEFAULT "",
+                einzel_cent %INT% NOT NULL DEFAULT 0,          -- netto
+                steuersatz %INT% NOT NULL DEFAULT 19,          -- Prozent
+                netto_cent %INT% NOT NULL DEFAULT 0
+            )%ENGINE%',
+
+            /* Rechnungsanschrift je Instanz. Mit workspace_id: Beim Löschen
+               einer Instanz geht die Anschrift mit, die Rechnungen nicht. */
+            'CREATE TABLE IF NOT EXISTS rechnungsdaten (
+                id %PK%,
+                workspace_id %INT% NOT NULL,
+                firma %STR(190)% NOT NULL DEFAULT "",
+                name %STR(160)% NOT NULL DEFAULT "",
+                strasse %STR(160)% NOT NULL DEFAULT "",
+                plz %STR(16)% NOT NULL DEFAULT "",
+                ort %STR(120)% NOT NULL DEFAULT "",
+                land %STR(2)% NOT NULL DEFAULT "DE",
+                email %STR(190)% NOT NULL DEFAULT "",
+                ust_id %STR(32)% NOT NULL DEFAULT "",
+                geaendert %DT%
             )%ENGINE%',
 
             'CREATE TABLE IF NOT EXISTS locations (
@@ -1660,6 +1791,9 @@ final class Schema
             'pakete' => ['schluessel'],
             'abos' => ['workspace_id', 'status'],
             'betreiber_notizen' => ['workspace_id'],
+            'betreiber_rechnungen' => ['instanz_id', 'status', 'nummer', 'datum'],
+            'betreiber_rechnungspositionen' => ['rechnung_id'],
+            'rechnungsdaten' => ['workspace_id'],
             'locations' => ['workspace_id'],
             'settings' => ['workspace_id', 'schluessel'],
             'notifications' => ['workspace_id', 'user_id'],

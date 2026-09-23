@@ -31,6 +31,11 @@ Zwei Dinge müssen gesichert werden:
 * **Der Ordner `uploads/`.** Dort liegen Bilder, Videos und Dokumente.
   Diese Dateien stehen in keiner Datenbank und sind nach einem Verlust weg.
 
+Wer über die Betreiberzentrale Rechnungen stellt, sichert zusätzlich
+`data/privat/betreiber/rechnungen/` – zehn Jahre Aufbewahrungspflicht.
+Die Datenbank allein genügt nicht: Maßgeblich ist das beim Ausstellen
+abgelegte PDF.
+
 Die `config.php` gehört ebenfalls dazu – sie enthält das
 Sitzungsgeheimnis. Ohne sie melden sich nach einer Wiederherstellung alle
 Benutzer neu an, was verkraftbar, aber unnötig ist.

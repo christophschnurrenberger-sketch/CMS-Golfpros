@@ -20,6 +20,27 @@ final class Plattform
         'test_tage'       => [14, 1, 90],
         'support_minuten' => [60, 5, 240],
         'standard_paket'  => ['starter', 0, 0],
+
+        /* Rechnungsabsender – wer die Rechnungen an die Instanzen stellt.
+           Pflichtangaben nach § 14 UStG; ohne Firma, Anschrift und
+           Steuernummer oder USt-IdNr. lässt sich keine Rechnung ausstellen. */
+        'rg_firma'            => ['', 0, 0],
+        'rg_inhaber'          => ['', 0, 0],
+        'rg_strasse'          => ['', 0, 0],
+        'rg_plz'              => ['', 0, 0],
+        'rg_ort'              => ['', 0, 0],
+        'rg_land'             => ['DE', 0, 0],
+        'rg_email'            => ['', 0, 0],
+        'rg_telefon'          => ['', 0, 0],
+        'rg_web'              => ['', 0, 0],
+        'rg_ust_id'           => ['', 0, 0],
+        'rg_steuernummer'     => ['', 0, 0],
+        'rg_bank'             => ['', 0, 0],
+        'rg_praefix'          => ['TP', 0, 0],
+        'rg_zahlungsziel'     => [14, 0, 90],
+        'rg_steuersatz'       => [19, 0, 30],
+        'rg_kleinunternehmer' => [0, 0, 1],
+        'rg_text'             => ['', 0, 0],
     ];
 
     private static array $cache = [];

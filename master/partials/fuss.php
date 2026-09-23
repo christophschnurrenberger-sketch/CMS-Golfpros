@@ -8,6 +8,7 @@ foreach ([
     ['Instanzen', '/master/instanzen.php', 'building', 'instanzen liste kunden workspaces'],
     ['Übersicht', '/master/', 'dashboard', 'dashboard übersicht start'],
     ['Pakete', '/master/pakete.php', 'layers', 'pakete tarife preise'],
+    ['Rechnungen', '/master/rechnungen.php', 'invoices', 'rechnungen abrechnung faktura offen bezahlt'],
     ['Benutzer', '/master/benutzer.php', 'customers', 'benutzer personen zugänge'],
     ['Auswertung', '/master/auswertung.php', 'analytics', 'auswertung analytics zahlen'],
     ['Aktivität', '/master/aktivitaet.php', 'activity', 'aktivität verlauf'],

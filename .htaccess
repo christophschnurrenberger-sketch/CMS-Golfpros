@@ -75,6 +75,8 @@ Options -Indexes
   RewriteRule ^master/instances/([0-9]+)/?$ master/instanz.php?id=$1 [QSA,L]
   RewriteRule ^master/instances/([0-9]+)/(activity|users|subscription|usage|settings)/?$ master/instanz.php?id=$1&reiter=$2 [QSA,L]
   RewriteRule ^master/packages/?$ master/pakete.php [QSA,L]
+  RewriteRule ^master/invoices/?$ master/rechnungen.php [QSA,L]
+  RewriteRule ^master/invoices/([0-9]+)/?$ master/rechnung.php?id=$1 [QSA,L]
   RewriteRule ^master/users/?$ master/benutzer.php [QSA,L]
   RewriteRule ^master/analytics/?$ master/auswertung.php [QSA,L]
   RewriteRule ^master/activity/?$ master/aktivitaet.php [QSA,L]

@@ -36,6 +36,27 @@ if (App::istPost()) {
         App::melden('Einstellungen gespeichert.');
     }
 
+    if ($aktion === 'rechnungsabsender') {
+        Betreiber::fordern('rechnungen.write');
+        $vorher = Plattform::alle();
+        foreach (['firma', 'inhaber', 'strasse', 'plz', 'ort', 'email', 'telefon', 'web', 'ust_id', 'steuernummer', 'bank', 'text'] as $k) {
+            Plattform::setzen('rg_' . $k, mb_substr(App::post($k), 0, $k === 'text' ? 1000 : 200));
+        }
+        Plattform::setzen('rg_land', strtoupper(substr(App::post('land', 'DE'), 0, 2)) ?: 'DE');
+        Plattform::setzen('rg_praefix', substr(preg_replace('/[^A-Z0-9]/', '', strtoupper(App::post('praefix'))) ?: 'TP', 0, 8));
+        Plattform::setzen('rg_zahlungsziel', App::postInt('zahlungsziel', 14));
+        Plattform::setzen('rg_steuersatz', App::postInt('steuersatz', 19));
+        Plattform::setzen('rg_kleinunternehmer', App::postBool('kleinunternehmer') ? 1 : 0);
+        $nachher = Plattform::alle();
+        $diffV = array_diff_assoc(array_map('strval', $vorher), array_map('strval', $nachher));
+        if ($diffV !== []) {
+            Betreiberlog::schreiben('SETTINGS_CHANGED', ['objekt' => 'rechnungsabsender',
+                'vorher' => $diffV, 'nachher' => array_intersect_key($nachher, $diffV)]);
+        }
+        App::melden('Rechnungsabsender gespeichert. Er gilt für Rechnungen, die ab jetzt ausgestellt werden.');
+        App::weiter('/master/einstellungen.php#rechnungsabsender');
+    }
+
     if ($aktion === 'betreiber_neu') {
         Betreiber::fordern('betreiber.write');
         [$id, $token, $fehler] = Betreiber::anlegen(App::post('email'), App::post('name'));
@@ -148,6 +169,58 @@ require __DIR__ . '/partials/kopf.php';
       <button class="btn" type="submit" data-bestaetigen="Diese Person bekommt vollen Zugriff auf alle Instanzen. Einladen?">Einladen</button>
     </form>
   </div>
+</div>
+
+<div class="karte mt-5" id="rechnungsabsender">
+  <div class="karte__kopf"><h2>Rechnungsabsender</h2>
+    <?php $fehlt = Betreiberrechnungen::absenderLuecken(); ?>
+    <div class="karte__kopf-aktionen"><?= $fehlt === [] ? pille('vollständig', 'erfolg') : pille('fehlt: ' . implode(', ', $fehlt), 'warnung') ?></div></div>
+  <form class="karte__koerper" method="post" action="<?= Util::attr(App::url('/master/einstellungen.php')) ?>">
+    <?= Auth::csrfFeld() ?><input type="hidden" name="aktion" value="rechnungsabsender">
+    <p class="klein gedimmt">Wer die Rechnungen an die Instanzen stellt. Firma, Anschrift und Steuernummer oder USt-IdNr. sind Pflicht (§ 14 UStG).
+      Beim Ausstellen wird der Stand übernommen – spätere Änderungen verändern keine alte Rechnung.</p>
+    <div class="raster raster--2">
+      <div>
+        <?php foreach (['firma' => 'Firma', 'inhaber' => 'Inhaber / Geschäftsführung', 'strasse' => 'Straße und Hausnummer'] as $k => $l): ?>
+          <div class="feld"><label class="feld__label" for="rg-<?= $k ?>"><?= $l ?></label>
+            <input class="eingabe" id="rg-<?= $k ?>" name="<?= $k ?>" value="<?= Util::attr((string) Plattform::einstellung('rg_' . $k)) ?>"></div>
+        <?php endforeach; ?>
+        <div class="feld-reihe feld-reihe--3">
+          <div class="feld"><label class="feld__label" for="rg-plz">PLZ</label><input class="eingabe" id="rg-plz" name="plz" value="<?= Util::attr((string) Plattform::einstellung('rg_plz')) ?>"></div>
+          <div class="feld"><label class="feld__label" for="rg-ort">Ort</label><input class="eingabe" id="rg-ort" name="ort" value="<?= Util::attr((string) Plattform::einstellung('rg_ort')) ?>"></div>
+          <div class="feld"><label class="feld__label" for="rg-land">Land</label><input class="eingabe" id="rg-land" name="land" maxlength="2" value="<?= Util::attr((string) Plattform::einstellung('rg_land')) ?>"></div>
+        </div>
+        <div class="feld-reihe feld-reihe--3">
+          <div class="feld"><label class="feld__label" for="rg-email">E-Mail</label><input class="eingabe" id="rg-email" type="email" name="email" value="<?= Util::attr((string) Plattform::einstellung('rg_email')) ?>"></div>
+          <div class="feld"><label class="feld__label" for="rg-telefon">Telefon</label><input class="eingabe" id="rg-telefon" name="telefon" value="<?= Util::attr((string) Plattform::einstellung('rg_telefon')) ?>"></div>
+          <div class="feld"><label class="feld__label" for="rg-web">Website</label><input class="eingabe" id="rg-web" name="web" value="<?= Util::attr((string) Plattform::einstellung('rg_web')) ?>"></div>
+        </div>
+      </div>
+      <div>
+        <div class="feld-reihe feld-reihe--2">
+          <div class="feld"><label class="feld__label" for="rg-ust">USt-IdNr.</label><input class="eingabe" id="rg-ust" name="ust_id" value="<?= Util::attr((string) Plattform::einstellung('rg_ust_id')) ?>"></div>
+          <div class="feld"><label class="feld__label" for="rg-stnr">Steuernummer</label><input class="eingabe" id="rg-stnr" name="steuernummer" value="<?= Util::attr((string) Plattform::einstellung('rg_steuernummer')) ?>"></div>
+        </div>
+        <div class="feld"><label class="feld__label" for="rg-bank">Bankverbindung</label>
+          <input class="eingabe" id="rg-bank" name="bank" value="<?= Util::attr((string) Plattform::einstellung('rg_bank')) ?>" placeholder="Bank · IBAN DE… · BIC …"></div>
+        <div class="feld-reihe feld-reihe--3">
+          <div class="feld"><label class="feld__label" for="rg-praefix">Nummernkreis</label>
+            <input class="eingabe mono" id="rg-praefix" name="praefix" maxlength="8" value="<?= Util::attr((string) Plattform::einstellung('rg_praefix')) ?>">
+            <div class="feld__hinweis">Ergibt <?= Util::h((string) Plattform::einstellung('rg_praefix')) ?>-<?= date('Y') ?>-0001</div></div>
+          <div class="feld"><label class="feld__label" for="rg-ziel">Zahlungsziel (Tage)</label>
+            <input class="eingabe" id="rg-ziel" name="zahlungsziel" type="number" min="0" max="90" value="<?= Plattform::zahl('rg_zahlungsziel') ?>"></div>
+          <div class="feld"><label class="feld__label" for="rg-satz">Steuersatz (%)</label>
+            <input class="eingabe" id="rg-satz" name="steuersatz" type="number" min="0" max="30" value="<?= Plattform::zahl('rg_steuersatz') ?>"></div>
+        </div>
+        <label class="haken mb-3"><input type="checkbox" name="kleinunternehmer" value="1"<?= Plattform::zahl('rg_kleinunternehmer') === 1 ? ' checked' : '' ?>>
+          <span class="haken__text">Kleinunternehmer nach § 19 UStG<span class="haken__hinweis">Dann ohne Umsatzsteuer und mit dem Hinweis auf § 19.</span></span></label>
+        <div class="feld"><label class="feld__label" for="rg-text">Standard-Einleitung</label>
+          <textarea class="eingabe" id="rg-text" name="text" rows="2" maxlength="1000" placeholder="z. B. Für die Nutzung von TeePilot berechnen wir:"><?= Util::h((string) Plattform::einstellung('rg_text')) ?></textarea></div>
+      </div>
+    </div>
+    <p class="klein gedimmt">Die Paketpreise gelten auf Rechnungen als Nettopreise; die Umsatzsteuer kommt hinzu.</p>
+    <button class="btn btn--primaer" type="submit">Speichern</button>
+  </form>
 </div>
 
 <?php require __DIR__ . '/partials/fuss.php';

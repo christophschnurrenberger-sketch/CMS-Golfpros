@@ -2,14 +2,16 @@
 /**
  * TeePilot Übersicht – das Dashboard der Betreiberzentrale.
  *
- * Jede Kachel ist eine Abfrage auf echte Daten (Plattformzahlen). Was
- * nicht belegt ist, steht nicht da: Es gibt keinen Umsatz, solange keine
- * Abrechnung angeschlossen ist – nur den Vertragswert zu Listenpreisen,
- * und der sagt ausdrücklich, was er ist.
+ * Jede Kachel ist eine Abfrage auf echte Daten (Plattformzahlen,
+ * Betreiberrechnungen). Umsatz heißt hier: Summe der ausgestellten
+ * Rechnungen, Stornos abgezogen. Der Vertragswert zu Listenpreisen steht
+ * getrennt daneben und sagt, was er ist. Zahlungseingänge werden von Hand
+ * vermerkt – ein Zahlungsanbieter ist nicht angeschlossen.
  */
 require __DIR__ . '/partials/start.php';
 
 $zahlen = Plattformzahlen::uebersicht();
+$rg = Betreiberrechnungen::kennzahlen();
 $wachstum = Plattformzahlen::wachstum(12);
 $verteilung = Plattformzahlen::paketVerteilung();
 $achtung = Plattformzahlen::aufmerksamkeit();
@@ -57,10 +59,18 @@ $summeVerteilung = max(1, array_sum($verteilung));
       <?php if ($zahlen['vertraege'] > 0): ?><small>/ Monat</small><?php endif; ?></div>
     <div class="kennzahl__fuss"><span class="gedimmt">Listenpreise aus <?= $zahlen['vertraege'] ?>
       <?= $zahlen['vertraege'] === 1 ? 'Vertrag' : 'Verträgen' ?> · <?= $zahlen['ohne_vertrag'] ?> ohne Vertragsdaten</span></div>
-    <div class="kennzahl__fuss"><span class="pille pille--offen">Abrechnung noch nicht verbunden</span></div>
+    <div class="kennzahl__fuss"><span class="pille pille--offen">Vertragswert, kein Zahlungseingang</span></div>
   </div>
   <?= kennzahl('Gekündigt', Util::zahl($zahlen['gekuendigt']), ['icon' => 'logout',
        'fuss' => 'laufen noch bis Vertragsende']) ?>
+  <?= kennzahl('Umsatz ' . date('Y') . ' laut Rechnungen', Util::geld($rg['umsatz_jahr']), ['icon' => 'invoices',
+       'url' => '/master/rechnungen.php?jahr=' . date('Y'), 'fuss' => 'netto · diesen Monat ' . Util::geld($rg['umsatz_monat'])]) ?>
+  <?= kennzahl('Offene Rechnungen', Util::geld($rg['offen_summe']), ['icon' => 'clock', 'url' => '/master/rechnungen.php?status=offen',
+       'fuss' => $rg['offen_anzahl'] . ' offen · ' . $rg['ueber_anzahl'] . ' überfällig']) ?>
+  <?= kennzahl('Zahlungseingang diesen Monat', Util::geld($rg['bezahlt_monat']), ['icon' => 'check',
+       'url' => '/master/rechnungen.php?status=bezahlt', 'fuss' => 'von Hand vermerkt']) ?>
+  <?= kennzahl('Rechnungsentwürfe', Util::zahl($rg['entwuerfe']), ['icon' => 'edit', 'url' => '/master/rechnungen.php?status=entwurf',
+       'fuss' => 'warten aufs Ausstellen']) ?>
 </div>
 
 <div class="raster raster--haupt-neben mb-5">
@@ -100,7 +110,8 @@ $summeVerteilung = max(1, array_sum($verteilung));
 <div class="raster raster--haupt-neben mb-5">
   <?= karteAuf('Aufmerksamkeit erforderlich') ?>
     <div class="karte__koerper">
-      <?php $nichts = $achtung['test_endet'] === [] && $achtung['inaktiv'] === [] && $achtung['kuendigung'] === [] && $achtung['neu'] === []; ?>
+      <?php $nichts = $achtung['test_endet'] === [] && $achtung['inaktiv'] === [] && $achtung['kuendigung'] === [] && $achtung['neu'] === []
+                && $rg['ueber_anzahl'] === 0; ?>
       <?php if ($nichts): ?>
         <p class="gedimmt mb-0"><?= Icon::svg('check', 15) ?> Nichts offen: keine auslaufende Testphase, keine inaktive Instanz,
           keine anstehende Kündigung.</p>
@@ -124,6 +135,20 @@ $summeVerteilung = max(1, array_sum($verteilung));
             <li><a href="<?= Util::attr(App::url('/master/instanz.php?id=' . (int) $w['id'])) ?>"><?= Util::h((string) $w['name']) ?></a>
               <span class="klein gedimmt"><?= $w['letzte_aktivitaet'] ? 'zuletzt ' . wann((string) $w['letzte_aktivitaet'])
                 : 'noch nie genutzt · angelegt ' . wann((string) $w['erstellt']) ?></span></li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+
+      <?php $ueber = DB::all("SELECT r.id, r.nummer, r.brutto_cent, r.faellig, w.name FROM betreiber_rechnungen r
+                                LEFT JOIN workspaces w ON w.id = r.instanz_id
+                                WHERE r.status = 'offen' AND r.faellig < :h ORDER BY r.faellig LIMIT 10", ['h' => date('Y-m-d 00:00:00')]);
+      if ($ueber !== []): ?>
+        <h3 class="achtung__titel">Überfällige Rechnungen</h3>
+        <ul class="achtung">
+          <?php foreach ($ueber as $u): ?>
+            <li><a href="<?= Util::attr(App::url('/master/rechnung.php?id=' . (int) $u['id'])) ?>" class="mono"><?= Util::h((string) $u['nummer']) ?></a>
+              <?= Util::h((string) ($u['name'] ?? '')) ?> · <?= Util::h(Util::geld((int) $u['brutto_cent'])) ?>
+              <span class="pille pille--gefahr">fällig seit <?= Util::h(Util::datum((string) $u['faellig'])) ?></span></li>
           <?php endforeach; ?>
         </ul>
       <?php endif; ?>
@@ -174,6 +199,7 @@ $summeVerteilung = max(1, array_sum($verteilung));
       <div class="karte__koerper karte__koerper--eng schnellzugriff">
         <a class="btn btn--primaer" href="<?= Util::attr(App::url('/master/instanz-neu.php')) ?>"><?= Icon::svg('plus', 15) ?> Neue Instanz</a>
         <a class="btn" href="<?= Util::attr(App::url('/master/instanzen.php')) ?>"><?= Icon::svg('building', 15) ?> Instanzen</a>
+        <a class="btn" href="<?= Util::attr(App::url('/master/rechnungen.php')) ?>"><?= Icon::svg('invoices', 15) ?> Rechnungen</a>
         <a class="btn" href="<?= Util::attr(App::url('/master/pakete.php')) ?>"><?= Icon::svg('layers', 15) ?> Pakete</a>
         <a class="btn" href="<?= Util::attr(App::url('/master/protokoll.php')) ?>"><?= Icon::svg('shield', 15) ?> Audit-Log</a>
         <a class="btn" href="<?= Util::attr(App::url('/master/system.php')) ?>"><?= Icon::svg('monitor', 15) ?> System</a>

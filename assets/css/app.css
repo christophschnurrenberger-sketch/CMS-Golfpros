@@ -2826,3 +2826,18 @@ ol.schritte { list-style: none; padding: 0; margin-left: 0; }
    aus einer Tabellenzelle eine Flex-Spalte. */
 .tabelle .tabelle__haupt { color: var(--text); font-weight: 550; }
 .ist-master .filterleiste .such-feld .eingabe { width: 100%; min-width: 0; }
+
+/* Rechnungen der Betreiberzentrale */
+.positionen td { vertical-align: top; }
+.positionen .eingabe { min-width: 0; height: 32px; font-size: 13px; padding: 5px 8px; }
+.positionen textarea.eingabe { min-width: 220px; height: auto; min-height: 32px; resize: vertical; }
+.positionen td:nth-child(2) .eingabe { width: 64px; }
+.positionen td:nth-child(3) .eingabe { width: 86px; }
+.positionen td:nth-child(4) .eingabe { width: 96px; }
+.positionen td:nth-child(5) .eingabe { width: 76px; }
+.eingabe--zahl { text-align: right; font-variant-numeric: tabular-nums; }
+.summenblock { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--text-3); }
+.summenblock b { color: var(--text); font-variant-numeric: tabular-nums; margin-left: 4px; }
+.btn--gefahr-text { color: var(--gefahr); }
+.btn--gefahr-text:hover { color: var(--gefahr); background: var(--gefahr-hell); }
+.angaben--summen .angabe dd { text-align: right; font-variant-numeric: tabular-nums; }

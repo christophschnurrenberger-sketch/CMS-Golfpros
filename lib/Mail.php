@@ -13,7 +13,7 @@ final class Mail
 {
     public static function senden(string $an, string $betreff, string $text, array $o = []): bool
     {
-        $vonName  = (string) (Tenant::einstellung('mail_absender_name', '') ?: Config::get('mail.from_name', 'TeePilot'));
+        $vonName  = (string) (($o['von_name'] ?? '') ?: (Tenant::einstellung('mail_absender_name', '') ?: Config::get('mail.from_name', 'TeePilot')));
         $vonMail  = (string) (Tenant::einstellung('mail_absender', '') ?: Config::get('mail.from_email', ''));
         if ($vonMail === '') {
             $vonMail = 'noreply@' . (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
@@ -35,6 +35,30 @@ final class Mail
                  . "--{$grenze}\r\nContent-Type: text/html; charset=UTF-8\r\n"
                  . "Content-Transfer-Encoding: 8bit\r\n\r\n" . $html . "\r\n\r\n"
                  . "--{$grenze}--";
+
+        /*
+         * Anhänge: Text und HTML bleiben als Alternative beisammen, außen
+         * herum kommt ein multipart/mixed mit den Dateien. Die Dateinamen
+         * werden auf harmlose Zeichen beschränkt – sie stehen in einer
+         * Kopfzeile, und ein Zeilenumbruch darin wäre eine eingeschleuste.
+         *
+         * @var array<int,array{name:string,typ:string,inhalt:string}> $o['anhaenge']
+         */
+        if (!empty($o['anhaenge'])) {
+            $aussen = '=_' . Util::token(12);
+            $kopf[3] = 'Content-Type: multipart/mixed; boundary="' . $aussen . '"';
+            $gemischt = "--{$aussen}\r\nContent-Type: multipart/alternative; boundary=\"{$grenze}\"\r\n\r\n"
+                      . $koerper . "\r\n";
+            foreach ((array) $o['anhaenge'] as $a) {
+                $name = preg_replace('/[^A-Za-z0-9._-]/', '_', (string) ($a['name'] ?? 'anhang')) ?: 'anhang';
+                $typ  = preg_match('#^[a-z]+/[a-z0-9.+-]+$#', (string) ($a['typ'] ?? '')) ? (string) $a['typ'] : 'application/octet-stream';
+                $gemischt .= "--{$aussen}\r\nContent-Type: {$typ}; name=\"{$name}\"\r\n"
+                           . "Content-Transfer-Encoding: base64\r\n"
+                           . "Content-Disposition: attachment; filename=\"{$name}\"\r\n\r\n"
+                           . chunk_split(base64_encode((string) ($a['inhalt'] ?? '')), 76, "\r\n") . "\r\n";
+            }
+            $koerper = $gemischt . "--{$aussen}--";
+        }
 
         $ok = false;
         if (function_exists('mail') && (string) Config::get('mail.transport', 'mail') === 'mail') {

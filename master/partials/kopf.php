@@ -25,6 +25,7 @@ $kNavi = [
     ['uebersicht',    'Übersicht',     '/master/',                'dashboard'],
     ['instanzen',     'Instanzen',     '/master/instanzen.php',   'building'],
     ['pakete',        'Pakete',        '/master/pakete.php',      'layers'],
+    ['rechnungen',    'Rechnungen',    '/master/rechnungen.php',  'invoices'],
     ['benutzer',      'Benutzer',      '/master/benutzer.php',    'customers'],
     ['auswertung',    'Auswertung',    '/master/auswertung.php',  'analytics'],
     ['aktivitaet',    'Aktivität',     '/master/aktivitaet.php',  'activity'],

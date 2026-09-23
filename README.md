@@ -52,7 +52,7 @@ regelbasierten Generator weiter, ohne Cronjob läuft die Wartung beim
 ```
 lib/          61 Klassen – je Datei eine, Autoloader ohne Composer
 app/          Die Anwendung: 54 Seiten, eine je Bereich
-master/       Betreiberzentrale: alle Instanzen, Pakete, Support Mode
+master/       Betreiberzentrale: alle Instanzen, Pakete, Rechnungen, Support Mode
 portal/       Kundenportal und Registrierung, mobil zuerst gedacht
 site.php      Die öffentliche Website aller Mandanten
 buchen.php    Online-Buchung – angemeldet oder als Gast, nie mit Zwang
@@ -136,7 +136,7 @@ eigenen Daten anzufassen.
 * [docs/API.md](docs/API.md) – die Schnittstelle, über die ein
   Newslettersystem die Empfänger abholt. Zum Weitergeben gedacht
 * [docs/BETREIBER.md](docs/BETREIBER.md) – die Betreiberzentrale: ersten
-  Master Admin anlegen, Instanzen, Pakete, Support Mode, Audit-Log
+  Master Admin anlegen, Instanzen, Pakete, Rechnungen, Support Mode, Audit-Log
 
 ## Lizenz
 

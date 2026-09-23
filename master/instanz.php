@@ -25,10 +25,10 @@ if ($ws === null) {
 }
 
 $reiterAlias = ['activity' => 'aktivitaet', 'users' => 'benutzer', 'subscription' => 'paket', 'usage' => 'nutzung',
-                'settings' => 'einstellungen', 'overview' => 'uebersicht'];
+                'settings' => 'einstellungen', 'overview' => 'uebersicht', 'invoices' => 'rechnungen'];
 $reiter = App::get('reiter', 'uebersicht');
 $reiter = $reiterAlias[$reiter] ?? $reiter;
-$reiterListe = ['uebersicht' => 'Übersicht', 'benutzer' => 'Benutzer', 'paket' => 'Paket', 'nutzung' => 'Nutzung',
+$reiterListe = ['uebersicht' => 'Übersicht', 'benutzer' => 'Benutzer', 'paket' => 'Paket', 'rechnungen' => 'Rechnungen', 'nutzung' => 'Nutzung',
                 'aktivitaet' => 'Aktivität', 'einstellungen' => 'Einstellungen', 'audit' => 'Audit'];
 if (!isset($reiterListe[$reiter])) {
     $reiter = 'uebersicht';
@@ -99,6 +99,12 @@ if (App::istPost()) {
             Betreiber::fordern('benutzer.write');
             [$ok, $text] = Instanzen::benutzerAktiv($id, App::postInt('user_id'), App::postBool('aktiv'));
             App::melden($text, $ok ? 'erfolg' : 'fehler');
+            break;
+
+        case 'rechnungsdaten':
+            Betreiber::fordern('rechnungen.write');
+            $fehler = Betreiberrechnungen::rechnungsdatenSpeichern($id, $_POST);
+            App::melden($fehler === [] ? 'Rechnungsanschrift gespeichert.' : implode(' ', $fehler), $fehler === [] ? 'erfolg' : 'fehler');
             break;
 
         case 'notiz':
@@ -429,6 +435,60 @@ require __DIR__ . '/partials/kopf.php';
           </div>
         <?php endif; ?>
       </div>
+    </div>
+  </div>
+
+<?php elseif ($reiter === 'rechnungen'):
+  $rd = Betreiberrechnungen::rechnungsdaten($id);
+  [$rechnungen] = Betreiberrechnungen::liste(['instanz' => $id], 1, 100);
+  $luecken = Betreiberrechnungen::empfaengerLuecken($rd); ?>
+  <div class="raster raster--haupt-neben">
+    <?= karteAuf('Rechnungen', '<a class="btn btn--klein" href="' . Util::attr(App::url('/master/rechnung.php?instanz=' . $id)) . '">'
+        . Icon::svg('plus', 14) . ' Leer</a><a class="btn btn--klein btn--primaer" href="' . Util::attr(App::url('/master/rechnung.php?instanz=' . $id . '&vertrag=1')) . '">'
+        . Icon::svg('plus', 14) . ' Aus Vertrag</a>') ?>
+      <?php if ($rechnungen === []): ?>
+        <div class="karte__koerper"><p class="gedimmt mb-0">Noch keine Rechnungen an diese Instanz.</p></div>
+      <?php else: ?>
+        <div class="tabelle-huelle"><table class="tabelle tabelle--eng">
+          <thead><tr><th>Nummer</th><th>Datum</th><th>Zeitraum</th><th class="zahl">Betrag</th><th>Status</th></tr></thead>
+          <tbody>
+            <?php foreach ($rechnungen as $rg): ?>
+              <tr><td><a href="<?= Util::attr(App::url('/master/rechnung.php?id=' . (int) $rg['id'])) ?>"><?= (string) $rg['nummer'] !== ''
+                  ? '<span class="mono">' . Util::h((string) $rg['nummer']) . '</span>' : 'Entwurf #' . (int) $rg['id'] ?></a></td>
+                <td><?= $rg['datum'] ? Util::h(Util::datum((string) $rg['datum'])) : '—' ?></td>
+                <td class="klein"><?= Util::h(Betreiberrechnungen::zeitraum($rg)) ?></td>
+                <td class="zahl"><?= Util::h(Util::geld((int) $rg['brutto_cent'])) ?></td>
+                <td><?= Betreiberrechnungen::statusPille((string) $rg['status'], $rg['faellig'] ? (string) $rg['faellig'] : null) ?></td></tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table></div>
+      <?php endif; ?>
+    </div>
+    <?= karteAuf('Rechnungsanschrift', $rd['gespeichert'] === '' ? '<span class="pille pille--offen">Vorschlag</span>' : '') ?>
+      <form class="karte__koerper" method="post" action="<?= Util::attr(App::url('/master/instanz.php')) ?>">
+        <?= Auth::csrfFeld() ?>
+        <input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="reiter" value="rechnungen">
+        <input type="hidden" name="aktion" value="rechnungsdaten">
+        <?php if ($rd['gespeichert'] === ''): ?>
+          <p class="klein gedimmt">Vorbelegt aus Instanz, Inhaber und Standort. Speichern macht daraus die Anschrift für alle Rechnungen.</p>
+        <?php endif; ?>
+        <?php foreach (['firma' => 'Firma', 'name' => 'Ansprechpartner', 'strasse' => 'Straße und Hausnummer'] as $k => $l): ?>
+          <div class="feld"><label class="feld__label" for="rd-<?= $k ?>"><?= $l ?></label>
+            <input class="eingabe" id="rd-<?= $k ?>" name="<?= $k ?>" value="<?= Util::attr($rd[$k]) ?>"></div>
+        <?php endforeach; ?>
+        <div class="feld-reihe feld-reihe--3">
+          <div class="feld"><label class="feld__label" for="rd-plz">PLZ</label><input class="eingabe" id="rd-plz" name="plz" value="<?= Util::attr($rd['plz']) ?>"></div>
+          <div class="feld" style="grid-column: span 2"><label class="feld__label" for="rd-ort">Ort</label><input class="eingabe" id="rd-ort" name="ort" value="<?= Util::attr($rd['ort']) ?>"></div>
+        </div>
+        <div class="feld-reihe feld-reihe--2">
+          <div class="feld"><label class="feld__label" for="rd-land">Land</label><input class="eingabe" id="rd-land" name="land" maxlength="2" value="<?= Util::attr($rd['land']) ?>"></div>
+          <div class="feld"><label class="feld__label" for="rd-ust">USt-IdNr.</label><input class="eingabe" id="rd-ust" name="ust_id" value="<?= Util::attr($rd['ust_id']) ?>"></div>
+        </div>
+        <div class="feld"><label class="feld__label" for="rd-email">E-Mail für Rechnungen</label>
+          <input class="eingabe" id="rd-email" type="email" name="email" value="<?= Util::attr($rd['email']) ?>"></div>
+        <?php if ($luecken !== []): ?><p class="klein" style="color:var(--warnung)">Für eine gültige Rechnung fehlt noch: <?= Util::h(implode(', ', $luecken)) ?>.</p><?php endif; ?>
+        <button class="btn btn--primaer" type="submit">Speichern</button>
+      </form>
     </div>
   </div>
 
