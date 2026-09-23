@@ -108,6 +108,8 @@ $kAkzent = Util::attr((string) $branding['akzent']);
     $kZaehler = [
         'leads'    => Tenant::count('leads', "stufe NOT IN ('kunde','verloren')"),
         'invoices' => Tenant::count('invoices', "status IN ('offen','ueberfaellig')"),
+        /* Offene Rechnungen von TeePilot – nur, wer sie auch sehen darf. */
+        'account'  => Auth::darf('settings.allgemein') ? Betreiberrechnungen::anzahlOffenFuerInstanz(Tenant::id()) : 0,
     ];
     foreach (Module::menue() as $kGruppe => $kEintraege):
         $kGruppenName = Module::gruppenname((string) $kGruppe);
@@ -129,7 +131,7 @@ $kAkzent = Util::attr((string) $branding['akzent']);
                 'marketing' => '/app/marketing.php', 'newsletter' => '/app/newsletter.php',
                 'automations' => '/app/automationen.php', 'community' => '/app/community.php',
                 'analytics' => '/app/auswertung.php', 'ai' => '/app/ki.php',
-                'settings' => '/app/einstellungen.php',
+                'settings' => '/app/einstellungen.php', 'account' => '/app/konto.php',
             ][$kE['key']] ?? '/app/';
             $kZahl = $kZaehler[$kE['key']] ?? 0;
         ?>
@@ -168,6 +170,8 @@ $kAkzent = Util::attr((string) $branding['akzent']);
         <?php if (Auth::darf('settings.allgemein')): ?>
         <a class="aufklapp__eintrag" href="<?= Util::attr(App::url('/app/einstellungen.php')) ?>">
           <?= Icon::svg('settings', 16) ?> Einstellungen</a>
+        <a class="aufklapp__eintrag" href="<?= Util::attr(App::url('/app/konto.php')) ?>">
+          <?= Icon::svg('euro', 16) ?> Konto &amp; Abrechnung</a>
         <a class="aufklapp__eintrag" href="<?= Util::attr(App::url('/app/tarif.php')) ?>">
           <?= Icon::svg('layers', 16) ?> Tarif &amp; Module</a>
         <?php endif; ?>
@@ -275,7 +279,7 @@ $kAkzent = Util::attr((string) $branding['akzent']);
             </div>
           <?php else:
             foreach ($kListe as $kM): ?>
-            <a class="aufklapp__eintrag" href="<?= Util::attr(App::url(($kM['link'] ?: '/app/benachrichtigungen.php'))) ?>"
+            <a class="aufklapp__eintrag" href="<?= Util::attr(App::url('/app/benachrichtigungen.php?oeffnen=' . (int) $kM['id'])) ?>"
                style="align-items:flex-start<?= $kM['gelesen'] ? '' : ';background:var(--marke-hell)' ?>">
               <?= Icon::svg(Notify::kategorieIcon((string) $kM['kategorie']), 16) ?>
               <span style="flex:1;min-width:0">

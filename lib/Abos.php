@@ -164,6 +164,36 @@ final class Abos
         };
     }
 
+    /**
+     * Der Vertrag in einer Zeile: „Monatlich · 29,00 € / Monat".
+     *
+     * Steht hier und nicht in einer Vorlage, weil ihn zwei Seiten zeigen,
+     * die sich keine Helfer teilen – die Betreiberzentrale und die Seite
+     * „Konto & Abrechnung" in der Instanz. Zwei Fassungen liefen
+     * auseinander, und dann stünde beim Kunden etwas anderes als beim
+     * Betreiber.
+     */
+    public static function beschreibung(?array $abo, string $leer = 'Keine Vertragsdaten erfasst'): string
+    {
+        if ($abo === null) {
+            return $leer;
+        }
+        $teile = [self::LAUFZEIT[$abo['laufzeit']] ?? (string) $abo['laufzeit']];
+        if ((string) $abo['laufzeit'] === 'test' && $abo['test_bis']) {
+            $tage = Util::tageBis((string) $abo['test_bis']);
+            $teile[] = $tage >= 0 ? 'endet am ' . Util::datum((string) $abo['test_bis']) . ' (in ' . $tage . ' ' . ($tage === 1 ? 'Tag' : 'Tagen') . ')'
+                                  : 'seit ' . Util::datum((string) $abo['test_bis']) . ' abgelaufen';
+        } elseif ((int) $abo['preis_cent'] > 0) {
+            $teile[] = Util::geld((int) $abo['preis_cent']) . ((string) $abo['laufzeit'] === 'jahr' ? ' / Jahr' : ' / Monat');
+        } elseif ((string) $abo['laufzeit'] !== 'test') {
+            $teile[] = 'ohne Berechnung';
+        }
+        if ((string) $abo['status'] === 'gekuendigt') {
+            $teile[] = 'gekündigt zum ' . Util::datum((string) $abo['ende']);
+        }
+        return implode(' · ', $teile);
+    }
+
     private static function istDatum(string $d): bool
     {
         return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && strtotime($d) !== false;

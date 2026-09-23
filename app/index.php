@@ -62,6 +62,18 @@ $aufgaben    = Tenant::all('tasks', 'erledigt IS NULL AND (user_id = 0 OR user_i
                            ['u' => Auth::id()], 'faellig', 6);
 
 $empfehlungen = Empfehlungen::fuerDashboard(5);
+
+/*
+ * Rechnungen von TeePilot an diese Instanz, solange sie offen sind.
+ *
+ * Oben über allem und nicht als eine Empfehlung unter vielen: Es ist das
+ * Einzige hier, das nicht das Geschäft des Pros betrifft, sondern sein
+ * Konto bei uns. Nur für die, die das Konto auch öffnen dürfen – der
+ * Trainer sieht davon nichts. Der Hinweis geht, sobald die Zahlung
+ * verbucht ist; wegklicken lässt er sich nicht, eine offene Rechnung ist
+ * ja auch nicht weggeklickt.
+ */
+$teepilotOffen = Auth::darf('settings.allgemein') ? Betreiberrechnungen::offenFuerInstanz(Tenant::id()) : [];
 $verlauf = Analytics::umsatzVerlauf(date('Y-m-d', strtotime('-29 days')), $heute);
 
 $besucher30 = Analytics::besucher(date('Y-m-d', strtotime('-29 days')), $heute);
@@ -94,6 +106,36 @@ $aktionen = '<a class="btn" href="' . App::url('/app/kalender.php') . '">' . Ico
 
 require __DIR__ . '/partials/kopf.php';
 ?>
+
+<?php if ($teepilotOffen !== []):
+  $tpUeber = array_values(array_filter($teepilotOffen, static fn (array $r) => substr((string) $r['faellig'], 0, 10) < $heute));
+  $tpSumme = array_sum(array_map(static fn (array $r) => (int) $r['brutto_cent'], $teepilotOffen));
+  $tpErste = $teepilotOffen[0]; ?>
+  <div class="hinweis hinweis--aktionen<?= $tpUeber !== [] ? ' hinweis--gefahr' : '' ?> mb-5" role="status" data-teepilot-rechnung>
+    <?= Icon::svg($tpUeber !== [] ? 'alert' : 'invoices', 17) ?>
+    <div class="hinweis__text">
+      <?php if (count($teepilotOffen) === 1): ?>
+        <span class="hinweis__titel">Rechnung von <?= Marke::NAME ?><?= $tpUeber !== [] ? ' – überfällig' : '' ?></span>
+        <?= Util::h((string) $tpErste['nummer']) ?> über <?= Util::h(Util::geld((int) $tpErste['brutto_cent'])) ?>
+        · <?= $tpUeber !== [] ? 'war fällig am' : 'fällig am' ?> <?= Util::h(Util::datum((string) $tpErste['faellig'])) ?>
+      <?php else: ?>
+        <span class="hinweis__titel"><?= count($teepilotOffen) ?> offene Rechnungen von <?= Marke::NAME ?></span>
+        zusammen <?= Util::h(Util::geld($tpSumme)) ?> ·
+        <?= $tpUeber !== []
+            ? count($tpUeber) . ' davon überfällig'
+            : 'die nächste ist am ' . Util::h(Util::datum((string) $tpErste['faellig'])) . ' fällig' ?>
+      <?php endif; ?>
+    </div>
+    <div class="hinweis__aktionen">
+      <?php if (count($teepilotOffen) === 1): ?>
+        <a class="btn btn--klein" href="<?= Util::attr(App::url('/app/teepilot-rechnung.php?id=' . (int) $tpErste['id'])) ?>"
+           target="_blank" rel="noopener"><?= Icon::svg('download', 14) ?> PDF</a>
+      <?php endif; ?>
+      <a class="btn btn--klein btn--primaer" href="<?= Util::attr(App::url('/app/konto.php' . (count($teepilotOffen) === 1 ? '#r' . (int) $tpErste['id'] : ''))) ?>">
+        Konto &amp; Abrechnung <?= Icon::svg('chevron-right', 13) ?></a>
+    </div>
+  </div>
+<?php endif; ?>
 
 <div class="raster raster--4 mb-5">
   <?= kennzahl('Umsatz heute', Util::geld($umsatzHeute), [

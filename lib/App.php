@@ -339,6 +339,7 @@ final class App
             'community' => 'community', 'auswertung' => 'analytics', 'ki' => 'ai',
             'einstellungen' => 'settings', 'team' => 'settings', 'standorte' => 'settings',
             'protokoll' => 'settings', 'tarif' => 'settings', 'datenschutz' => 'settings',
+            'konto' => 'account',
             'profil' => 'settings', 'onboarding' => 'dashboard',
             'segmente' => 'customers', 'aufgaben' => 'dashboard',
             'benachrichtigungen' => 'dashboard', 'suche' => 'dashboard',

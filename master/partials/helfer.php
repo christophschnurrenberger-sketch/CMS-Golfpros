@@ -53,23 +53,7 @@ function demoPille(array $ws): string
 /** Vertragsdaten in einem Satz. */
 function aboText(?array $abo): string
 {
-    if ($abo === null) {
-        return 'Keine Vertragsdaten erfasst';
-    }
-    $teile = [Abos::LAUFZEIT[$abo['laufzeit']] ?? $abo['laufzeit']];
-    if ((string) $abo['laufzeit'] === 'test' && $abo['test_bis']) {
-        $tage = Util::tageBis((string) $abo['test_bis']);
-        $teile[] = $tage >= 0 ? 'endet am ' . Util::datum((string) $abo['test_bis']) . ' (in ' . $tage . ' ' . ($tage === 1 ? 'Tag' : 'Tagen') . ')'
-                              : 'seit ' . Util::datum((string) $abo['test_bis']) . ' abgelaufen';
-    } elseif ((int) $abo['preis_cent'] > 0) {
-        $teile[] = Util::geld((int) $abo['preis_cent']) . ((string) $abo['laufzeit'] === 'jahr' ? ' / Jahr' : ' / Monat');
-    } elseif ((string) $abo['laufzeit'] !== 'test') {
-        $teile[] = 'ohne Berechnung';
-    }
-    if ((string) $abo['status'] === 'gekuendigt') {
-        $teile[] = 'gekündigt zum ' . Util::datum((string) $abo['ende']);
-    }
-    return implode(' · ', $teile);
+    return Abos::beschreibung($abo);
 }
 
 /** Beschriftete Zeile in einer Definitionsliste. */

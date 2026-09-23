@@ -1047,6 +1047,16 @@ beim Ausstellen abgelegte PDF, geprüft gegen seinen Abdruck, nie ein neu
 gesetztes: Eine spätere Änderung am Layout darf keine alte Rechnung
 verändern.
 
+**Meldungen werden beim Lesen gefiltert, nicht beim Schreiben
+adressiert.** Die Zentrale schreibt eine Meldung an die ganze Instanz
+(`Notify::anInstanz`, `user_id = 0`); wer sie sieht, entscheidet
+`Notify::NUR_MIT_RECHT` bei jeder Abfrage anhand der Rechte des
+Angemeldeten. So sieht eine Administratorin, die nächste Woche dazukommt,
+die offene Rechnung auch – und ein Trainer, dem das Recht entzogen wird,
+sofort nicht mehr. Geöffnet wird eine Meldung über
+`benachrichtigungen.php?oeffnen=<ID>`: als gelesen markieren, dann
+weiter – nur innerhalb von `/app/`.
+
 Ausführlich: [BETREIBER.md](BETREIBER.md).
 
 ## Wo die Grenzen liegen

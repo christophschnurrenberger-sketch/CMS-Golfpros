@@ -515,8 +515,11 @@ kbd {
   transition: background var(--tempo), color var(--tempo);
 }
 .rundknopf:hover { background: var(--flaeche-3); color: var(--text); }
+/* An die Ecke, nicht in die Mitte: Bei 6px Abstand deckte die Zahl die
+   18px große Glocke vollständig zu – man sah einen roten Punkt, aber
+   nicht, wofür er steht. */
 .rundknopf__punkt {
-  position: absolute; top: 6px; right: 6px;
+  position: absolute; top: -5px; right: -8px;
   min-width: 15px; height: 15px; padding: 0 3px;
   background: var(--gefahr); color: var(--auf-zustand);
   border-radius: 20px;
@@ -2841,3 +2844,25 @@ ol.schritte { list-style: none; padding: 0; margin-left: 0; }
 .btn--gefahr-text { color: var(--gefahr); }
 .btn--gefahr-text:hover { color: var(--gefahr); background: var(--gefahr-hell); }
 .angaben--summen .angabe dd { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ================================================ Konto & Abrechnung = */
+
+.anschrift { font-style: normal; display: flex; flex-direction: column; gap: 1px; font-size: 13.5px; line-height: 1.5; }
+.anschrift span:first-child { font-weight: 600; }
+/* Aus der Meldung an der Glocke kommt man mit #r<ID> – die Zeile soll
+   dann nicht unter dem Kopf verschwinden, und man soll sie finden. */
+.tabelle--sprung tbody tr { scroll-margin-top: 96px; }
+.tabelle--sprung tbody tr:target td { background: var(--marke-hell); }
+
+/* Hinweis mit Knöpfen: rechts daneben, auf dem Telefon darunter. */
+.hinweis--aktionen { flex-wrap: wrap; align-items: center; }
+.hinweis--aktionen .hinweis__text { min-width: min(260px, 100%); }
+.hinweis__aktionen { display: flex; flex-wrap: wrap; gap: 6px; }
+/* `.hinweis .ico` färbt jedes Symbol im Hinweis – in den Knöpfen soll es
+   die Schriftfarbe des Knopfs tragen, sonst steht ein blauer Pfeil auf Pine. */
+.hinweis__aktionen .ico { color: inherit; }
+@media (max-width: 640px) {
+  .hinweis__aktionen { flex-basis: 100%; padding-left: 28px; }
+}
+/* Schmale Seitenkarte: Bezeichnung über dem Wert statt daneben. */
+.angaben--gestapelt .angabe { grid-template-columns: minmax(0, 1fr); gap: 1px; }

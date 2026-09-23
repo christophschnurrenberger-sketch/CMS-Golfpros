@@ -86,6 +86,7 @@ if (App::istPost()) {
 }
 
 $w = Tenant::workspace();
+$teepilotOffen = Auth::darf('settings.allgemein') ? Betreiberrechnungen::anzahlOffenFuerInstanz(Tenant::id()) : 0;
 $titel = 'Einstellungen';
 $unter = 'Workspace, Rechnungsangaben, Buchung, Erinnerungen und Zahlungen.';
 require __DIR__ . '/partials/kopf.php';
@@ -95,7 +96,9 @@ require __DIR__ . '/partials/kopf.php';
   <?php foreach ([
     ['Team', count(Auth::trainer()) . ' Personen', 'customers', '/app/team.php', 'settings.team'],
     ['Standorte', Tenant::count('locations') . ' Orte', 'pin', '/app/standorte.php', 'settings.allgemein'],
-    ['Tarif', Module::planName(Tenant::plan()), 'layers', '/app/tarif.php', 'settings.allgemein'],
+    ['Konto & Abrechnung', Module::planName(Tenant::plan()) . ($teepilotOffen > 0
+        ? ' · ' . $teepilotOffen . ' ' . ($teepilotOffen === 1 ? 'Rechnung' : 'Rechnungen') . ' offen' : ''),
+        'euro', '/app/konto.php', 'settings.allgemein'],
     ['Datenschutz', 'DSGVO-Werkzeuge', 'lock', '/app/datenschutz.php', 'settings.recht'],
   ] as [$name, $text, $icon, $url, $recht]):
     if (!Auth::darf($recht)) { continue; } ?>

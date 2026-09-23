@@ -79,6 +79,7 @@ final class Befehle
             ['Standorte', '/app/standorte.php', 'pin', 'settings.allgemein', 'standort club range indoor platz'],
             ['Protokoll', '/app/protokoll.php', 'shield', 'audit.view', 'protokoll audit log sicherheit'],
             ['Tarif und Module', '/app/tarif.php', 'layers', 'settings.allgemein', 'tarif plan module abo upgrade'],
+            ['Konto & Abrechnung', '/app/konto.php', 'euro', 'settings.allgemein', 'konto abrechnung rechnung teepilot vertrag zahlung admin'],
             ['Datenschutz und Export', '/app/datenschutz.php', 'lock', 'settings.recht', 'dsgvo datenschutz export loeschung einwilligung'],
         ];
         foreach ($werkzeuge as [$titel, $url, $icon, $recht, $worte]) {

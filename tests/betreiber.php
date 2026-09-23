@@ -234,6 +234,15 @@ pruefe($ok && str_ends_with((string) $storno['nummer'], '-0003') && (int) $storn
 pruefe((string) Betreiberrechnungen::finden($r2)['status'] === 'storniert', 'die stornierte Rechnung ist als storniert markiert');
 [$entwurfB] = Betreiberrechnungen::entwurfSpeichern(0, $Bid, ['empfaenger' => $empfaengerB], $pos);
 
+$meldungenB = DB::all("SELECT * FROM notifications WHERE workspace_id = :w AND kategorie = 'teepilot' ORDER BY id", ['w' => $Bid]);
+pruefe(count($meldungenB) === 3, 'Instanz bekommt je ausgestellter Rechnung eine Meldung (2 Rechnungen, 1 Storno; der abgewiesene Versuch keine)');
+pruefe(str_contains((string) $meldungenB[0]['text'], (string) $rechnung1['nummer']) && (string) $meldungenB[0]['link'] === '/app/konto.php#r' . $r1,
+    'Meldung nennt die Nummer und führt zur Rechnung');
+pruefe(str_contains((string) $meldungenB[2]['titel'], 'storniert') && str_contains((string) $meldungenB[2]['text'], (string) Betreiberrechnungen::finden($r2)['nummer'])
+    && str_contains((string) $meldungenB[2]['text'], (string) $storno['nummer']), 'Storno-Meldung nennt beide Nummern');
+pruefe((int) $meldungenB[0]['user_id'] === 0 && DB::int("SELECT COUNT(*) FROM notifications WHERE kategorie = 'teepilot' AND workspace_id != :w", ['w' => $Bid]) === 0,
+    'Meldung nur in der Instanz, an die die Rechnung geht');
+
 /* ------------------------------------------------------------- Server --- */
 
 $server = proc_open([PHP_BINARY, '-S', '127.0.0.1:' . $port, '-t', GP_ROOT],
@@ -347,9 +356,15 @@ try {
     abschnitt('Rechnungen in der Instanz');
     $bert = new Besucher($basis, $ordner);
     $bert->anmelden('bert@beta.example', $pw);
-    $bert->holen('/app/tarif.php');
-    pruefe(str_contains($bert->inhalt, (string) $rechnung1['nummer']) && str_contains($bert->inhalt, (string) $storno['nummer']),
-        'Golfpro sieht seine ausgestellten Rechnungen');
+    $bert->holen('/app/benachrichtigungen.php');
+    pruefe($bert->status === 200 && str_contains($bert->inhalt, 'Neue Rechnung von TeePilot') && str_contains($bert->inhalt, 'Rechnung storniert'),
+        'Glocke: Meldungen zu Rechnung und Storno');
+    $bert->holen('/app/konto.php');
+    pruefe($bert->status === 200 && str_contains($bert->inhalt, (string) $rechnung1['nummer']) && str_contains($bert->inhalt, (string) $storno['nummer']),
+        'Konto & Abrechnung zeigt die ausgestellten Rechnungen');
+    pruefe(str_contains($bert->inhalt, 'Fairway 1'), 'und die Rechnungsanschrift');
+    pruefe(DB::int("SELECT COUNT(*) FROM notifications WHERE workspace_id = :w AND kategorie = 'teepilot' AND gelesen IS NULL", ['w' => $Bid]) === 0,
+        'Öffnen der Seite hakt die Meldungen dazu ab');
     $bert->holen('/app/teepilot-rechnung.php?id=' . $r1);
     pruefe($bert->status === 200 && str_starts_with($bert->inhalt, '%PDF-'), 'und lädt das PDF');
     $bert->holen('/app/teepilot-rechnung.php?id=' . $entwurfB);
@@ -360,6 +375,57 @@ try {
     pruefe($anna->status === 403, 'Golfpro: PDF über die Zentrale → 403');
     $anna->holen('/master/rechnungen.php');
     pruefe($anna->status === 403, 'Golfpro: Rechnungsliste der Zentrale → 403');
+
+    abschnitt('Neue Rechnung: Glocke und Dashboard');
+    $bert->holen('/app/');
+    pruefe($bert->status === 200 && !str_contains($bert->inhalt, 'data-teepilot-rechnung'), 'ohne offene Rechnung kein Hinweis auf dem Dashboard');
+    [$r4] = Betreiberrechnungen::entwurfSpeichern(0, $Bid, ['empfaenger' => $empfaengerB, 'leistung_von' => '2026-12-01',
+        'leistung_bis' => '2026-12-31'], $pos);
+    Betreiberrechnungen::ausstellen($r4);
+    $nummer4 = (string) Betreiberrechnungen::finden($r4)['nummer'];
+    $bert->holen('/app/');
+    pruefe(str_contains($bert->inhalt, 'data-teepilot-rechnung') && str_contains($bert->inhalt, $nummer4)
+        && str_contains($bert->inhalt, '236,81'), 'Dashboard: Hinweis auf die offene Rechnung mit Nummer und Betrag');
+    pruefe(preg_match('/rundknopf__punkt">1</', $bert->inhalt) === 1, 'Glocke zeigt eine ungelesene Meldung');
+    pruefe(preg_match('#/app/konto\.php"[^>]*>\s*<svg[^>]*>.*?</svg>\s*<span>Konto &amp; Abrechnung</span>\s*<span class="navi__zahl">1</span>#s', $bert->inhalt) === 1,
+        'Menü: „Konto & Abrechnung" mit der Zahl offener Rechnungen');
+    $m4 = (int) DB::value("SELECT id FROM notifications WHERE workspace_id = :w AND kategorie = 'teepilot' AND gelesen IS NULL ORDER BY id DESC", ['w' => $Bid]);
+
+    DB::insert('users', ['workspace_id' => $Bid, 'email' => 'tom@beta.example', 'name' => 'Tom Trainer', 'rolle' => 'trainer',
+        'passwort' => password_hash($pw, PASSWORD_DEFAULT), 'aktiv' => 1, 'erstellt' => date('Y-m-d H:i:s')]);
+    $tom = new Besucher($basis, $ordner);
+    $tom->anmelden('tom@beta.example', $pw);
+    $tom->holen('/app/');
+    pruefe($tom->status === 200 && !str_contains($tom->inhalt, 'data-teepilot-rechnung') && !str_contains($tom->inhalt, $nummer4)
+        && !str_contains($tom->inhalt, 'Konto &amp; Abrechnung'), 'Trainer: kein Hinweis, kein Menüpunkt, keine Meldung an der Glocke');
+    $tom->holen('/app/benachrichtigungen.php');
+    pruefe(!str_contains($tom->inhalt, $nummer4) && !str_contains($tom->inhalt, 'Von TeePilot'), 'Trainer: auch in der Liste der Benachrichtigungen nicht');
+    $tom->holen('/app/benachrichtigungen.php?oeffnen=' . $m4);
+    pruefe($tom->status === 302 && !str_contains($tom->ort, 'konto.php')
+        && DB::value('SELECT gelesen FROM notifications WHERE id = :i', ['i' => $m4]) === null, 'Trainer: Meldung über die ID öffnen – abgewiesen, bleibt ungelesen');
+    $tom->holen('/app/konto.php');
+    pruefe($tom->status === 403, 'Trainer: Konto & Abrechnung → 403');
+    $tom->holen('/app/teepilot-rechnung.php?id=' . $r4);
+    pruefe($tom->status === 403, 'Trainer: PDF der Rechnung → 403');
+    $anna->holen('/app/benachrichtigungen.php?oeffnen=' . $m4);
+    pruefe($anna->status === 302 && !str_contains($anna->ort, 'konto.php')
+        && DB::value('SELECT gelesen FROM notifications WHERE id = :i', ['i' => $m4]) === null, 'fremde Instanz: Meldung über die ID öffnen – abgewiesen');
+
+    $bert->holen('/app/benachrichtigungen.php?oeffnen=' . $m4);
+    pruefe($bert->status === 302 && str_ends_with($bert->ort, '/app/konto.php#r' . $r4), 'Klick auf die Meldung führt zur Rechnung');
+    pruefe(DB::value('SELECT gelesen FROM notifications WHERE id = :i', ['i' => $m4]) !== null, 'und hakt sie ab');
+    Tenant::setzen($Bid);
+    $boese = Notify::senden('system', 'Umleitung', '', 'https://boese.example/falle');
+    $boese2 = Notify::senden('system', 'Umleitung', '', '/app//boese.example');
+    Tenant::setzen(0);
+    $bert->holen('/app/benachrichtigungen.php?oeffnen=' . $boese);
+    pruefe($bert->status === 302 && !str_contains($bert->ort, 'boese.example'), 'Meldung mit fremdem Ziel: keine Weiterleitung nach außen');
+    $bert->holen('/app/benachrichtigungen.php?oeffnen=' . $boese2);
+    pruefe($bert->status === 302 && !str_contains($bert->ort, 'boese.example'), 'auch nicht über „//"');
+
+    Betreiberrechnungen::bezahltSetzen($r4, true, date('Y-m-d'));
+    $bert->holen('/app/');
+    pruefe(!str_contains($bert->inhalt, 'data-teepilot-rechnung'), 'nach dem Zahlungseingang verschwindet der Hinweis');
 
     abschnitt('Betreiber');
     $chef = new Besucher($basis, $ordner);
@@ -438,6 +504,7 @@ try {
 
     abschnitt('Support Mode');
     $letzterLogin = (string) DB::value('SELECT letzter_login FROM users WHERE id = :i', ['i' => $annaId]);
+    $mA = Notify::anInstanz($A, 'teepilot', 'Neue Rechnung von TeePilot', 'Test', '/app/konto.php');
     $chef->holen('/master/support.php', ['_csrf' => $t, 'aktion' => 'start', 'id' => $A, 'grund' => 'Ticket 7']);
     pruefe($chef->status === 302 && str_contains($chef->ort, '/app/'), 'Support Mode startet in der Instanz');
     $chef->holen('/app/kunden.php');
@@ -453,6 +520,11 @@ try {
     pruefe(DB::value('SELECT email FROM users WHERE id = :i', ['i' => $annaId]) === 'anna@alpha.example', 'E-Mail des Inhabers lässt sich im Support Mode nicht ändern');
     $chef->holen('/app/team.php', ['_csrf' => $ts, 'aktion' => 'speichern', 'id' => 0, 'name' => 'Hintertür', 'email' => 'hinter@tuer.example', 'rolle' => 'owner', 'aktiv' => '1']);
     pruefe(DB::int("SELECT COUNT(*) FROM users WHERE email = 'hinter@tuer.example'") === 0, 'im Support Mode entstehen keine neuen Zugänge');
+    $chef->holen('/app/konto.php');
+    $chef->holen('/app/benachrichtigungen.php?oeffnen=' . $mA);
+    $chef->holen('/app/benachrichtigungen.php?aktion=alle_gelesen');
+    pruefe(DB::value('SELECT gelesen FROM notifications WHERE id = :i', ['i' => $mA]) === null,
+        'im Support Mode bleiben die Meldungen des Inhabers ungelesen');
     $chef->holen('/master/instanzen.php');
     pruefe($chef->status === 200 && str_contains($chef->inhalt, 'Support-Sitzung'), 'Zentrale bleibt erreichbar und zeigt die laufende Sitzung');
     $chef->holen('/master/support.php', ['_csrf' => $ts, 'aktion' => 'ende']);

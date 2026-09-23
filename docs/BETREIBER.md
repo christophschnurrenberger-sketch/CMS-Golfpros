@@ -244,9 +244,34 @@ Nettopreise.
 (vorbelegt aus Instanz, Inhaber und Standort). Jede Rechnung kopiert sie
 beim Speichern und kann für sich abweichen.
 
-**Die Instanz sieht ihre Rechnungen** unter Einstellungen → Tarif &
-Module, mit PDF zum Herunterladen – nur ausgestellte, nur die eigenen,
-nie Entwürfe oder interne Notizen.
+**Die Instanz sieht ihre Rechnungen** unter **Konto & Abrechnung**
+(`app/konto.php`) – im Menü direkt unter „Einstellungen", mit der Zahl
+offener Rechnungen daneben, außerdem im Profilmenü, als Kachel in den
+Einstellungen und in der Befehlssuche. Dort stehen Paket und Vertrag,
+offener Betrag und nächste Fälligkeit, alle ausgestellten Rechnungen mit
+PDF und die Rechnungsanschrift (nur zum Lesen – sie pflegt der Betreiber).
+Nur ausgestellte, nur die eigenen, nie Entwürfe oder interne Notizen.
+
+**Benachrichtigung der Instanz.** Beim Ausstellen – nicht erst beim
+Versand – bekommt die Instanz eine Meldung an der Glocke: „Neue Rechnung
+von TeePilot" mit Nummer, Betrag und Fälligkeit, bei einem Storno
+„Rechnung storniert" mit beiden Nummern. Der Klick führt zur Rechnung und
+hakt die Meldung ab; das Öffnen von Konto & Abrechnung hakt alle dazu ab.
+
+Solange eine Rechnung offen ist, steht oben auf dem **Dashboard** ein
+Hinweis mit PDF und Weg zu Konto & Abrechnung, rot, sobald sie überfällig
+ist. Er verschwindet, wenn der Zahlungseingang vermerkt ist, und lässt
+sich nicht wegklicken.
+
+Wer das sieht: wer in der Instanz die allgemeinen Einstellungen sehen darf
+(Inhaber, Administration, Head Pro). Trainer, Assistenz, Buchhaltung und
+Marketing sehen weder Meldung noch Hinweis noch Menüpunkt. Die Meldung wird
+dafür nicht an einzelne Personen adressiert, sondern beim Lesen nach Recht
+gefiltert (`Notify::NUR_MIT_RECHT`) – wer das Recht später bekommt, sieht
+sie. Im Support Mode bleiben Meldungen ungelesen; sie gehören dem Inhaber.
+
+Geht das Schreiben der Meldung schief, bleibt die Rechnung trotzdem
+ausgestellt – der Fehler steht im Fehlerprotokoll des Servers.
 
 **Löschen einer Instanz** lässt ihre Rechnungen samt PDF stehen: Sie
 tragen `instanz_id`, nicht `workspace_id`, und haben Empfänger und

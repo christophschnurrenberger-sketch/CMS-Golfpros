@@ -94,6 +94,34 @@ final class Betreiberrechnungen
     }
 
     /**
+     * Die Anschrift, die die Instanz unter „Konto & Abrechnung" sieht –
+     * und woher sie stammt.
+     *
+     * Gespeichert gilt vor allem anderen: Auf sie lauten die nächsten
+     * Rechnungen. Fehlt sie, aber es gibt schon eine Rechnung, dann steht
+     * dort, was auf der letzten stand – der Betreiber kann den Empfänger
+     * im Entwurf auch direkt eintragen, und die Instanz soll nicht einen
+     * Vorschlag sehen, der mit ihren Rechnungen nichts zu tun hat. Erst
+     * ganz ohne beides der Vorschlag aus den Angaben der Instanz.
+     *
+     * @return array{0:array<string,string>,1:string,2:string} Anschrift, Quelle (gespeichert|rechnung|vorschlag), Rechnungsnummer
+     */
+    public static function anschriftFuerInstanz(int $workspaceId): array
+    {
+        $d = self::rechnungsdaten($workspaceId);
+        if ($d['gespeichert'] === '1') {
+            return [$d, 'gespeichert', ''];
+        }
+        $letzte = DB::one("SELECT nummer, empfaenger FROM betreiber_rechnungen
+                           WHERE instanz_id = :w AND status != 'entwurf' ORDER BY datum DESC, id DESC LIMIT 1", ['w' => $workspaceId]);
+        if ($letzte !== null) {
+            [$aus] = self::empfaengerAus(Util::ausJson((string) $letzte['empfaenger'], []));
+            return [$aus, 'rechnung', (string) $letzte['nummer']];
+        }
+        return [$d, 'vorschlag', ''];
+    }
+
+    /**
      * @param array<string,mixed> $e
      * @return array{0:array<string,string>,1:string[]}
      */
@@ -303,9 +331,28 @@ final class Betreiberrechnungen
      */
     public static function fuerInstanz(int $workspaceId): array
     {
-        return DB::all("SELECT id, nummer, art, status, datum, leistung_von, leistung_bis, faellig, brutto_cent, bezahlt
+        return DB::all("SELECT id, nummer, art, bezug_id, status, datum, leistung_von, leistung_bis, faellig, brutto_cent, bezahlt, versendet
                         FROM betreiber_rechnungen WHERE instanz_id = :w AND status != 'entwurf'
                         ORDER BY datum DESC, id DESC", ['w' => $workspaceId]);
+    }
+
+    /**
+     * Was die Instanz TeePilot noch schuldet: offene Rechnungen, die
+     * älteste Fälligkeit zuerst. Für den Hinweis auf dem Dashboard.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public static function offenFuerInstanz(int $workspaceId): array
+    {
+        return DB::all("SELECT id, nummer, datum, faellig, brutto_cent FROM betreiber_rechnungen
+                        WHERE instanz_id = :w AND status = 'offen' ORDER BY faellig, id", ['w' => $workspaceId]);
+    }
+
+    /** Anzahl offener Rechnungen – für die Zahl im Menü, auf jeder Seite. */
+    public static function anzahlOffenFuerInstanz(int $workspaceId): int
+    {
+        return DB::int("SELECT COUNT(*) FROM betreiber_rechnungen WHERE instanz_id = :w AND status = 'offen'",
+            ['w' => $workspaceId]);
     }
 
     /* ====================================================== Entwurf === */
@@ -661,7 +708,44 @@ final class Betreiberrechnungen
         }
         Betreiberlog::schreiben('INVOICE_ISSUED', ['objekt' => 'rechnung', 'objekt_id' => $id, 'instanz_id' => (int) $r['instanz_id'],
             'nachher' => ['nummer' => $fertig['nummer'], 'brutto_cent' => (int) $r['brutto_cent'], 'art' => $r['art']]]);
-        return [true, ((string) $r['art'] === 'storno' ? 'Stornorechnung ' : 'Rechnung ') . $fertig['nummer'] . ' ist ausgestellt.'];
+        self::instanzBenachrichtigen($fertig);
+        return [true, ((string) $r['art'] === 'storno' ? 'Stornorechnung ' : 'Rechnung ') . $fertig['nummer']
+            . ' ist ausgestellt. Die Instanz sieht sie ab jetzt unter „Konto & Abrechnung".'];
+    }
+
+    /**
+     * Sagt der Instanz Bescheid, dass eine Rechnung für sie da ist.
+     *
+     * Eine Meldung an der Glocke, sichtbar für alle dort, die die
+     * Abrechnung sehen dürfen (`Notify` filtert beim Lesen). Die E-Mail
+     * bleibt ein eigener Schritt – ausgestellt ist nicht versendet, aber
+     * sehen kann die Instanz die Rechnung ab jetzt, also soll sie es auch
+     * erfahren.
+     *
+     * Nie auf Kosten der Rechnung: Sie ist in diesem Moment schon
+     * ausgestellt und unveränderlich. Geht die Meldung schief, steht das
+     * im Fehlerprotokoll des Servers, und die Rechnung bleibt, wie sie ist.
+     *
+     * @param array<string,mixed> $r die ausgestellte Rechnung
+     */
+    private static function instanzBenachrichtigen(array $r): void
+    {
+        try {
+            $ws   = (int) $r['instanz_id'];
+            $link = '/app/konto.php#r' . (int) $r['id'];
+            if ((string) $r['art'] === 'storno') {
+                $original = (int) $r['bezug_id'] > 0 ? self::finden((int) $r['bezug_id']) : null;
+                Notify::anInstanz($ws, 'teepilot', 'Rechnung storniert',
+                    'Die Rechnung ' . (string) ($original['nummer'] ?? '') . ' ist storniert. Dazu liegt die Stornorechnung '
+                    . $r['nummer'] . ' über ' . Util::geld((int) $r['brutto_cent']) . ' für dich bereit.', $link);
+                return;
+            }
+            Notify::anInstanz($ws, 'teepilot', 'Neue Rechnung von ' . Marke::NAME,
+                $r['nummer'] . ' über ' . Util::geld((int) $r['brutto_cent']) . ' · fällig am '
+                . Util::datum((string) $r['faellig']) . '.', $link);
+        } catch (Throwable $e) {
+            error_log('TeePilot: Meldung zur Rechnung ' . (string) ($r['nummer'] ?? '') . ' nicht geschrieben – ' . $e->getMessage());
+        }
     }
 
     /**
@@ -754,7 +838,7 @@ final class Betreiberrechnungen
                          . ($r['leistung_von'] ? ' für ' . self::zeitraum($r) : '') . '.'
                          . ((string) $r['status'] === 'offen' ? "\nBitte überweise den Betrag bis zum " . Util::datum((string) $r['faellig'])
                             . ' unter Angabe der Rechnungsnummer.' : ''))
-            . "\n\nDeine Rechnungen findest du jederzeit auch in TeePilot unter Einstellungen → Tarif & Module.\n\n"
+            . "\n\nDeine Rechnungen findest du jederzeit auch in TeePilot unter Einstellungen → Konto & Abrechnung.\n\n"
             . "Viele Grüße\n" . ((string) ($absender['firma'] ?? '') ?: Marke::NAME);
         $vorher = Tenant::id();
         Tenant::setzen(0);

@@ -145,13 +145,21 @@ final class Module
      * – und findet es dort nicht, weil es dort keins gibt.
      *
      * `nach` nennt den Hauptpunkt: hinter ihm steht der Eintrag im Menü,
-     * von ihm erbt er Modul und Recht.
+     * von ihm erbt er Modul und Recht. `recht` verlangt zusätzlich eines –
+     * „Konto & Abrechnung" hängt an den Einstellungen, der Head Pro sieht
+     * die Einstellungen, aber nicht jede Rolle, die sie sieht, soll die
+     * Rechnungen von TeePilot sehen.
      */
     private const UNTERPUNKTE = [
         'packages' => [
             'name' => 'Pakete', 'en' => 'Packages', 'icon' => 'ticket',
             'gruppe' => 'kunden', 'plan' => 'starter', 'nach' => 'bookings',
             'beschreibung' => 'Zehnerkarten und Guthaben: anlegen, verkaufen, verbrauchen.',
+        ],
+        'account' => [
+            'name' => 'Konto & Abrechnung', 'en' => 'Billing', 'icon' => 'euro',
+            'gruppe' => 'system', 'plan' => 'starter', 'nach' => 'settings', 'recht' => 'settings.allgemein',
+            'beschreibung' => 'Vertrag mit TeePilot, Rechnungen von TeePilot, Rechnungsanschrift.',
         ],
     ];
 
@@ -258,7 +266,7 @@ final class Module
                genau dann da, wenn er da ist – geprüft wurde das eine Zeile
                weiter oben, für beide zusammen. */
             foreach (self::UNTERPUNKTE as $unterKey => $unter) {
-                if ($unter['nach'] === $key) {
+                if ($unter['nach'] === $key && (!isset($unter['recht']) || Auth::darf($unter['recht']))) {
                     $menue[$unter['gruppe']][] = ['key' => $unterKey] + $unter;
                 }
             }
