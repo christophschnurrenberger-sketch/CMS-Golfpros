@@ -58,8 +58,11 @@ final class Schema
      *   9  Rechnungen der Betreiberzentrale an Instanzen:
      *      betreiber_rechnungen, betreiber_rechnungspositionen,
      *      rechnungsdaten – samt Schreibschutz für ausgestellte Rechnungen
+     *  10  Reisen wie im Reisebüro: Galerie, Hotel, Golfplätze, Highlights,
+     *      Frühbucher, Nichtgolfer, Zusatzleistungen; Buchungen für mehrere
+     *      Reisende mit Anzahlung und Restzahlung
      */
-    public const VERSION = 9;
+    public const VERSION = 10;
 
     public static function migrate(): void
     {
@@ -146,6 +149,56 @@ final class Schema
         }
 
         self::betreiberzentraleNachruesten();
+        self::reisenNachruesten();
+    }
+
+    /**
+     * Seit Schema 10: Reisen wie im Reisebüro.
+     *
+     * Bestehende Anmeldungen waren immer genau eine Person – `personen`
+     * steht deshalb auf 1, und die belegten Plätze bleiben dieselben. Aus
+     * dem, was schon da war, wird nichts umgedeutet: Der Preis einer alten
+     * Anmeldung bleibt der Preis, den sie damals bekommen hat.
+     */
+    private static function reisenNachruesten(): void
+    {
+        foreach ([
+            'highlights' => '%TEXT%', 'hotel_sterne' => '%INT% NOT NULL DEFAULT 0', 'hotel_text' => '%TEXT%',
+            'hotel_bild' => '%STR(255)% NOT NULL DEFAULT ""', 'hotel_url' => '%STR(255)% NOT NULL DEFAULT ""',
+            'golfplaetze' => '%TEXT%', 'preis_nichtgolfer_cent' => '%INT% NOT NULL DEFAULT 0',
+            'fruehbucher_bis' => '%DT%', 'fruehbucher_rabatt_cent' => '%INT% NOT NULL DEFAULT 0',
+            'extras' => '%TEXT%', 'restzahlung_tage' => '%INT% NOT NULL DEFAULT 30', 'hinweise' => '%TEXT%',
+        ] as $spalte => $def) {
+            self::spalteSicherstellen('trips', $spalte, $def);
+        }
+        $neu = false;
+        foreach ([
+            'personen' => '%INT% NOT NULL DEFAULT 1', 'reisende' => '%TEXT%', 'extras' => '%TEXT%',
+            'rabatt_cent' => '%INT% NOT NULL DEFAULT 0', 'anzahlung_cent' => '%INT% NOT NULL DEFAULT 0',
+            'rest_faellig' => '%DT%',
+        ] as $spalte => $def) {
+            $neu = self::spalteSicherstellen('trip_signups', $spalte, $def) || $neu;
+        }
+
+        /*
+         * Bestehende Buchungen bekommen Anzahlung und Fälligkeit aus ihrer
+         * Reise – so, wie sie damals ausgeschrieben war: Anzahlung je Person,
+         * Rest 30 Tage vor Anreise. Nur in dem Moment, in dem die Spalten
+         * entstehen; danach gehören die Werte der Buchung.
+         */
+        if ($neu) {
+            try {
+                foreach (DB::all('SELECT s.id, s.personen, s.preis_cent, t.anzahlung_cent, t.start FROM trip_signups s
+                                  JOIN trips t ON t.id = s.trip_id AND t.workspace_id = s.workspace_id') as $z) {
+                    DB::update('trip_signups', [
+                        'anzahlung_cent' => min((int) $z['preis_cent'], (int) $z['anzahlung_cent'] * max(1, (int) $z['personen'])),
+                        'rest_faellig'   => date('Y-m-d 00:00:00', strtotime(substr((string) $z['start'], 0, 10) . ' -30 days')),
+                    ], 'id = :i', ['i' => (int) $z['id']]);
+                }
+            } catch (Throwable $e) {
+                Audit::schreiben('wartung_fehler', 'system', 0, 'Reisebuchungen nachtragen: ' . $e->getMessage());
+            }
+        }
     }
 
     /**
@@ -1597,9 +1650,21 @@ final class Schema
                 beschreibung %TEXT%,
                 leistungen %TEXT%,                            -- JSON: was enthalten ist
                 nicht_enthalten %TEXT%,                       -- JSON: was nicht
-                programm %TEXT%,                              -- JSON: [{titel, text}] je Tag
+                programm %TEXT%,                              -- JSON: [{titel, text, bild}] je Tag
                 bild %STR(255)% NOT NULL DEFAULT "",
-                bilder %TEXT%,                                -- JSON: weitere Bilder
+                bilder %TEXT%,                                -- JSON: Galerie, Liste von Pfaden
+                highlights %TEXT%,                            -- JSON: kurze Punkte ganz oben
+                hotel_sterne %INT% NOT NULL DEFAULT 0,
+                hotel_text %TEXT%,
+                hotel_bild %STR(255)% NOT NULL DEFAULT "",
+                hotel_url %STR(255)% NOT NULL DEFAULT "",
+                golfplaetze %TEXT%,                           -- JSON: [{name, loecher, par, text, bild}]
+                preis_nichtgolfer_cent %INT% NOT NULL DEFAULT 0,  -- 0: kein eigener Preis
+                fruehbucher_bis %DT%,
+                fruehbucher_rabatt_cent %INT% NOT NULL DEFAULT 0, -- je Person
+                extras %TEXT%,                                -- JSON: [{name, preis_cent, je}] je = person|buchung
+                restzahlung_tage %INT% NOT NULL DEFAULT 30,   -- Restzahlung so viele Tage vor Anreise
+                hinweise %TEXT%,                              -- Hinweise zur Buchung, Storno, Pauschalreise
                 start %DT%,
                 ende %DT%,
                 naechte %INT% NOT NULL DEFAULT 7,
@@ -1634,7 +1699,13 @@ final class Schema
                 mitreisender %STR(160)% NOT NULL DEFAULT "",
                 hcp %STR(16)% NOT NULL DEFAULT "",
                 notiz %TEXT%,
-                preis_cent %INT% NOT NULL DEFAULT 0,
+                preis_cent %INT% NOT NULL DEFAULT 0,          -- Summe der Buchung
+                personen %INT% NOT NULL DEFAULT 1,
+                reisende %TEXT%,                              -- JSON: [{name, golfer, hcp}]
+                extras %TEXT%,                                -- JSON: [{name, preis_cent, anzahl}] wie gebucht
+                rabatt_cent %INT% NOT NULL DEFAULT 0,         -- Frühbucher, als Summe
+                anzahlung_cent %INT% NOT NULL DEFAULT 0,
+                rest_faellig %DT%,
                 anzahlung_bezahlt %INT% NOT NULL DEFAULT 0,
                 bezahlt %INT% NOT NULL DEFAULT 0,
                 status %STR(24)% NOT NULL DEFAULT "angemeldet",-- angemeldet|bestaetigt|warteliste|storniert

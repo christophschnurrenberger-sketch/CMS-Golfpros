@@ -743,6 +743,546 @@
 }
 .seite .reise__tag p { margin: 4px 0 0; color: var(--text-2); font-size: 16px; }
 
+/* ------------------------------------------------ Reisen: gemeinsame -- */
+
+/* Für Vorleseprogramme da, für das Auge nicht. */
+.seite .nur-vorlesen {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Hotelsterne: ein dunkles Gold, das auf dem Papier noch lesbar ist –
+   das helle Gold der Akzentfarbe verschwände daneben. */
+.seite .sterne { color: #8a6208; letter-spacing: .08em; font-size: .9em; white-space: nowrap; }
+
+.seite .preis-alt { font-size: .78em; font-weight: 400; color: var(--text-3); margin-left: 2px; letter-spacing: 0; }
+
+/*
+ * Marken auf dem Bild – Frühbucher, knappe Plätze, ausgebucht. Kleine
+ * Pillen mit eigenem Grund, damit sie auf jedem Foto lesbar bleiben.
+ */
+.seite .reisemarken {
+  position: absolute; left: 14px; top: 14px; right: 14px;
+  display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none;
+}
+.seite .reisemarke {
+  font-size: 13px; font-weight: 600; line-height: 1; letter-spacing: .01em;
+  padding: 7px 11px; border-radius: var(--ecke-knopf);
+  background: var(--grund); color: var(--text);
+  box-shadow: 0 2px 10px rgba(23, 39, 28, .14);
+}
+.seite .reisemarke--akzent { background: var(--akzent); color: #17271c; }
+.seite .reisemarke--dunkel { background: var(--text); color: var(--grund); }
+
+/* Die Kachel aus Reiseseite::kachel() – im Baustein und im Katalog. */
+.seite .reisekachel__bild { position: relative; }
+.seite .reisekachel__ohne { position: absolute; inset: 0; }
+.seite .reisekachel__fakten { font-size: 14.5px; color: var(--text-3); }
+.seite .reisekachel__ab, .seite .reisekachel__pp { font-size: 14px; font-weight: 400; color: var(--text-3); }
+.seite .reisekacheln__alle { margin: clamp(22px, calc(3 * var(--vw, 1vw)), 34px) 0 0; }
+
+/* ------------------------------------------------------ Reisekatalog -- */
+
+.seite .reisekatalog__kopf { margin-bottom: clamp(26px, calc(4 * var(--vw, 1vw)), 44px); }
+.seite .reisekatalog__kopf .hand { margin: 0 0 8px; }
+.seite .reisekatalog__einleitung {
+  color: var(--text-2); max-width: 54ch; margin: 20px 0 0;
+  font-size: clamp(17px, calc(1.4 * var(--vw, 1vw)), 19px);
+}
+.seite .reisekatalog__filter { margin: 0 0 clamp(24px, calc(3 * var(--vw, 1vw)), 36px); }
+.seite a.pille { display: inline-flex; align-items: center; }
+.seite .pille__zahl { opacity: .65; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.seite .reisekacheln--katalog { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.seite .reisekatalog__leer { max-width: 760px; }
+.seite .reisekatalog__leer-titel { font-size: clamp(24px, calc(2.6 * var(--vw, 1vw)), 32px); margin-bottom: 10px; }
+.seite .reisekatalog__melden { margin-top: 22px; }
+
+/* --------------------------------------------------- Eine Reise -------- */
+
+.seite .reise-vorschau {
+  margin: 18px 0 0; padding: 12px 18px;
+  border-radius: var(--ecke-knopf);
+  background: #fdf4e0; color: #7a5c12; font-size: 15px; font-weight: 500;
+}
+
+/*
+ * Der Kopf: das Titelbild über die ganze Breite, der Titel unten links
+ * darauf. Ein Verlauf von unten macht den Text auf jedem Foto lesbar,
+ * ohne das Bild oben abzudunkeln.
+ */
+.seite .reisekopf {
+  position: relative; isolation: isolate;
+  display: flex; align-items: flex-end;
+  min-height: clamp(380px, calc(46 * var(--vw, 1vw)), 620px);
+  margin-top: clamp(14px, calc(2 * var(--vw, 1vw)), 26px);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+  overflow: hidden;
+  background: var(--text); color: #fff;
+}
+.seite .reisekopf__bild {
+  position: absolute; inset: 0; z-index: -2;
+  width: 100%; height: 100%; object-fit: cover;
+}
+.seite .reisekopf::after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(to top, rgba(12, 22, 15, .84) 0%, rgba(12, 22, 15, .5) 42%,
+                                      rgba(12, 22, 15, .1) 72%, rgba(12, 22, 15, 0) 100%);
+}
+.seite .reisekopf__innen { position: relative; max-width: 980px; padding: clamp(24px, calc(4 * var(--vw, 1vw)), 56px); }
+.seite .reisekopf__pfad { display: flex; flex-wrap: wrap; gap: 8px; font-size: 14.5px; margin-bottom: 16px; }
+.seite .reisekopf__pfad a { color: inherit; border-bottom: 1px solid rgba(255, 255, 255, .5); }
+.seite .reisekopf__pfad a:hover { border-bottom-color: currentColor; }
+.seite .reisekopf__marken { position: static; margin-bottom: 16px; }
+.seite .reisekopf__titel {
+  font-size: clamp(38px, calc(6.4 * var(--vw, 1vw)), 96px);
+  line-height: .98; letter-spacing: -0.035em; color: inherit;
+}
+.seite .reisekopf__unter { margin: 16px 0 0; font-size: clamp(17px, calc(1.6 * var(--vw, 1vw)), 21px); }
+.seite .reisekopf__bilder {
+  position: absolute; top: clamp(14px, calc(2 * var(--vw, 1vw)), 22px); right: clamp(14px, calc(2 * var(--vw, 1vw)), 22px);
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: var(--ecke-knopf);
+  background: rgba(251, 248, 240, .95); color: var(--text);
+  font-size: 14.5px; font-weight: 600;
+  box-shadow: 0 4px 16px rgba(12, 22, 15, .2);
+}
+.seite .reisekopf__bilder:hover { background: var(--grund); }
+.seite .reisekopf--ohne-bild { background: var(--flaeche); color: var(--text); min-height: 0; }
+.seite .reisekopf--ohne-bild::after { display: none; }
+.seite .reisekopf--ohne-bild .reisekopf__pfad a { border-bottom-color: var(--rand-stark); }
+
+/* Die Eckdaten unter dem Bild – das, was man zuerst vergleicht. */
+.seite .reisefakten {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 0 clamp(16px, calc(2.4 * var(--vw, 1vw)), 32px);
+  margin: clamp(22px, calc(3 * var(--vw, 1vw)), 34px) 0 clamp(30px, calc(5 * var(--vw, 1vw)), 60px);
+  border-bottom: 1px solid var(--rand);
+}
+.seite .reisefakten__teil { padding: 14px 0 16px; border-top: 1px solid var(--rand); }
+.seite .reisefakten dt {
+  font-size: 12.5px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: 4px;
+}
+.seite .reisefakten dd { margin: 0; font-size: 16.5px; font-weight: 500; line-height: 1.35; }
+.seite .reisefakten__unter { display: block; font-size: 14.5px; font-weight: 400; color: var(--text-2); margin-top: 2px; }
+
+/*
+ * Zwei Spalten: links die Reise, rechts ein Kasten mit Preis und Knopf,
+ * der beim Lesen mitläuft. Auf schmalen Bildschirmen übernimmt die
+ * Leiste am unteren Rand seine Aufgabe.
+ */
+.seite .reiselayout {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(270px, 340px);
+  gap: clamp(30px, calc(5 * var(--vw, 1vw)), 80px); align-items: start;
+}
+.seite .reiselayout__haupt { container: reise / inline-size; }
+.seite .reiselayout__seite { position: sticky; top: 112px; }
+@media (max-width: 960px) {
+  .seite .reiselayout { grid-template-columns: minmax(0, 1fr); }
+  .seite .reiselayout__seite { display: none; }
+}
+
+.seite .reiseteil { margin: 0 0 clamp(40px, calc(6 * var(--vw, 1vw)), 76px); scroll-margin-top: 110px; }
+.seite .reiseteil__titel {
+  font-size: clamp(26px, calc(3 * var(--vw, 1vw)), 40px); line-height: 1.06; letter-spacing: -0.028em;
+  margin: 0 0 clamp(16px, calc(2 * var(--vw, 1vw)), 24px);
+}
+.seite .reiseteil__titel--klein { font-size: clamp(22px, calc(2.4 * var(--vw, 1vw)), 28px); margin-top: 30px; }
+.seite .reiseteil__marke { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--marke); margin: 0 0 8px; }
+.seite .reiseteil .reise__untertitel { margin: 0 0 14px; font-size: 19px; }
+.seite .reiseseite .reise__kurz {
+  font-size: clamp(20px, calc(2.2 * var(--vw, 1vw)), 26px); line-height: 1.4; letter-spacing: -0.01em;
+  margin: 0 0 clamp(30px, calc(4 * var(--vw, 1vw)), 48px); max-width: 44ch;
+}
+.seite .reise__text--klein { font-size: 15.5px; color: var(--text-2); }
+
+/* Höhepunkte als kleine Karten mit gezeichnetem Haken. */
+.seite .reisehighlights {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px;
+}
+.seite .reisehighlights li {
+  position: relative; padding: 16px 18px 16px 54px;
+  background: var(--flaeche);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+  font-size: 16.5px; line-height: 1.45;
+}
+.seite .reisehighlights li::before {
+  content: ""; position: absolute; left: 18px; top: 16px;
+  width: 24px; height: 24px; border-radius: 50%; background: var(--marke);
+}
+.seite .reisehighlights li::after {
+  content: ""; position: absolute; left: 25px; top: 23px;
+  width: 10px; height: 5px;
+  border-left: 2px solid var(--grund); border-bottom: 2px solid var(--grund);
+  transform: rotate(-45deg);
+}
+
+/*
+ * Die Galerie als Mosaik: ein großes Bild, daneben die nächsten vier.
+ * Mit reise.js stehen bei mehr als fünf Bildern nur fünf da, auf dem
+ * letzten die Zahl der übrigen – ohne Skript alle untereinander.
+ */
+.seite .reisegalerie {
+  display: grid; gap: 10px;
+  grid-template-columns: 2fr 1fr 1fr;
+  grid-auto-rows: clamp(100px, calc(12 * var(--vw, 1vw)), 190px);
+}
+.seite .reisegalerie__bild {
+  position: relative; display: block; overflow: hidden;
+  border-radius: calc(var(--radius) * .8); background: var(--flaeche);
+}
+.seite .reisegalerie__bild img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .35s; }
+.seite .reisegalerie__bild:hover img { transform: scale(1.04); }
+.seite .reisegalerie__bild:first-child { grid-row: span 2; }
+.seite .reisegalerie--1 { grid-template-columns: 1fr; grid-auto-rows: auto; }
+.seite .reisegalerie--2 { grid-template-columns: 1fr 1fr; grid-auto-rows: auto; }
+.seite .reisegalerie--1 .reisegalerie__bild { aspect-ratio: 16 / 9; grid-row: auto; }
+.seite .reisegalerie--2 .reisegalerie__bild { aspect-ratio: 4 / 3; grid-row: auto; }
+.seite .reisegalerie--3 { grid-template-columns: 2fr 1fr; }
+.seite .reisegalerie--4 { grid-template-columns: 2fr 1fr; grid-auto-rows: clamp(70px, calc(8 * var(--vw, 1vw)), 126px); }
+.seite .reisegalerie--4 .reisegalerie__bild:first-child { grid-row: span 3; }
+.seite .reisegalerie__mehr { display: none; }
+.seite .reisegalerie.ist-kompakt .reisegalerie__bild:nth-child(n+6) { display: none; }
+.seite .reisegalerie.ist-kompakt .reisegalerie__mehr {
+  display: flex; position: absolute; inset: 0; align-items: center; justify-content: center;
+  background: rgba(12, 22, 15, .55); color: #fff;
+  font-size: clamp(22px, calc(2.4 * var(--vw, 1vw)), 30px); font-weight: 600;
+}
+@container reise (max-width: 560px) {
+  .seite .reisegalerie:not(.reisegalerie--1):not(.reisegalerie--2) { grid-template-columns: 1fr 1fr; grid-auto-rows: 110px; }
+  .seite .reisegalerie:not(.reisegalerie--1):not(.reisegalerie--2) .reisegalerie__bild:first-child { grid-column: span 2; grid-row: span 2; }
+}
+
+/* Das Bilderfenster aus reise.js. Ohne Skript öffnen die Links das Bild selbst. */
+.seite .bildfenster {
+  width: 100%; height: 100%; max-width: none; max-height: none;
+  margin: 0; padding: 0; border: 0;
+  background: rgba(10, 16, 12, .95); color: #fff;
+}
+.seite .bildfenster::backdrop { background: rgba(10, 16, 12, .6); }
+.seite .bildfenster__bild {
+  position: absolute; inset: 64px 84px;
+  margin: 0; display: flex; align-items: center; justify-content: center;
+}
+.seite .bildfenster__bild img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.seite .bildfenster__zahl {
+  position: absolute; top: 24px; left: 0; right: 0; margin: 0;
+  text-align: center; font-size: 15px; color: rgba(255, 255, 255, .85);
+  font-variant-numeric: tabular-nums; pointer-events: none;
+}
+.seite .bildfenster__knopf {
+  position: absolute; width: 48px; height: 48px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 50%; cursor: pointer;
+  background: rgba(255, 255, 255, .12); color: #fff;
+}
+.seite .bildfenster__knopf:hover, .seite .bildfenster__knopf:focus-visible { background: rgba(255, 255, 255, .26); outline: none; }
+.seite .bildfenster__zu { top: 14px; right: 14px; }
+.seite .bildfenster__zurueck { left: 18px; top: 50%; transform: translateY(-50%); }
+.seite .bildfenster__weiter { right: 18px; top: 50%; transform: translateY(-50%); }
+.seite .bildfenster.ist-einzeln :is(.bildfenster__zurueck, .bildfenster__weiter, .bildfenster__zahl) { display: none; }
+html.ist-bildfenster { overflow: hidden; }
+@media (max-width: 640px) {
+  .seite .bildfenster__bild { inset: 64px 8px 90px; }
+  .seite .bildfenster__zurueck, .seite .bildfenster__weiter { top: auto; bottom: 22px; transform: none; }
+  .seite .bildfenster__zurueck { left: calc(50% - 64px); }
+  .seite .bildfenster__weiter { right: calc(50% - 64px); }
+}
+
+/* Das Hotel: Bild und Text nebeneinander, auf schmaler Spalte untereinander. */
+.seite .reisehotel {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: clamp(22px, calc(3.4 * var(--vw, 1vw)), 44px); align-items: center;
+}
+.seite .reisehotel--ohne-bild { grid-template-columns: minmax(0, 1fr); }
+.seite .reisehotel__bild {
+  aspect-ratio: 4 / 3; overflow: hidden;
+  border-radius: var(--ecke) var(--ecke) var(--ecke-klein) var(--ecke);
+}
+.seite .reisehotel__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.seite .reisehotel__text .reiseteil__titel { margin-bottom: 8px; }
+.seite .reisehotel__text .sterne { display: block; font-size: 18px; margin-bottom: 14px; }
+.seite .reisehotel__text p { color: var(--text-2); font-size: 16.5px; }
+@container reise (max-width: 600px) {
+  .seite .reisehotel { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Die Golfplätze als Karten. */
+.seite .golfplatzkarten {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: clamp(14px, calc(2 * var(--vw, 1vw)), 22px);
+}
+.seite .golfplatzkarte {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--flaeche);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+}
+.seite .golfplatzkarte__bild { aspect-ratio: 16 / 10; overflow: hidden; }
+.seite .golfplatzkarte__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.seite .golfplatzkarte__text { padding: 18px 20px 22px; }
+.seite .golfplatzkarte__text h3 { font-size: 20px; margin-bottom: 4px; }
+.seite .golfplatzkarte__daten {
+  font-size: 13px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--marke-dunkel); margin: 0 0 8px;
+}
+.seite .golfplatzkarte__text p:not(.golfplatzkarte__daten) { font-size: 15.5px; color: var(--text-2); line-height: 1.55; }
+/* Auf schmaler Spalte liegen Bild und Text nebeneinander – drei Plätze
+   untereinander mit je einem bildschirmbreiten Foto wären drei Bildschirme. */
+@container reise (max-width: 520px) {
+  .seite .golfplatzkarte { flex-direction: row; }
+  .seite .golfplatzkarte__bild { flex: 0 0 34%; aspect-ratio: auto; min-height: 120px; }
+  .seite .golfplatzkarte__bild.platzhalter { padding: 10px; }
+  .seite .golfplatzkarte__bild .platzhalter__text { font-size: 16px; }
+  .seite .golfplatzkarte__text { padding: 14px 16px 16px; }
+  .seite .golfplatzkarte__text h3 { font-size: 18px; }
+}
+
+/*
+ * Der Ablauf als Zeitleiste: links Tag und Datum, rechts eine Linie mit
+ * einem Punkt je Tag. Der letzte Tag hat keine Linie mehr nach unten –
+ * danach kommt nichts.
+ */
+.seite .reiseablauf { list-style: none; margin: 0; padding: 0; }
+.seite .reiseablauf__tag {
+  display: grid; grid-template-columns: 118px minmax(0, 1fr);
+  gap: clamp(14px, calc(2.4 * var(--vw, 1vw)), 26px);
+}
+.seite .reiseablauf__marke { text-align: right; padding-top: 1px; }
+.seite .reiseablauf__nr { display: block; font-weight: 600; font-size: 16px; }
+.seite .reiseablauf__datum { display: block; font-size: 14px; color: var(--text-3); }
+.seite .reiseablauf__inhalt {
+  position: relative; padding: 0 0 30px 28px;
+  border-left: 2px solid var(--rand);
+}
+.seite .reiseablauf__tag:last-child .reiseablauf__inhalt { border-left-color: transparent; padding-bottom: 0; }
+.seite .reiseablauf__inhalt::before {
+  content: ""; position: absolute; left: -8px; top: 5px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--grund); border: 2px solid var(--marke);
+}
+.seite .reiseablauf__inhalt h3 { font-size: clamp(19px, calc(1.8 * var(--vw, 1vw)), 22px); margin: 0 0 6px; }
+.seite .reiseablauf__inhalt p { color: var(--text-2); font-size: 16.5px; }
+.seite .reiseablauf__bild {
+  margin-top: 14px; max-width: 440px; aspect-ratio: 16 / 9; overflow: hidden;
+  border-radius: calc(var(--radius) * .8);
+}
+.seite .reiseablauf__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@container reise (max-width: 520px) {
+  .seite .reiseablauf__tag { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .seite .reiseablauf__marke {
+    text-align: left; display: flex; gap: 10px; align-items: baseline;
+    padding: 0 0 6px 28px; border-left: 2px solid var(--rand);
+  }
+  .seite .reiseablauf__tag:first-child .reiseablauf__marke { border-left-color: transparent; }
+  .seite .reiseablauf__inhalt::before { top: -24px; }
+}
+
+/* Die Preise – eine Tabelle, weil man Beträge untereinander vergleicht. */
+.seite .preistabelle { width: 100%; border-collapse: collapse; font-size: 16.5px; }
+.seite .preistabelle caption {
+  text-align: left; padding-bottom: 8px;
+  font-size: 13px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3);
+}
+.seite .preistabelle th, .seite .preistabelle td {
+  padding: 13px 0; border-top: 1px solid var(--rand);
+  text-align: left; font-weight: 400; vertical-align: baseline;
+}
+.seite .preistabelle td { text-align: right; font-weight: 600; white-space: nowrap; padding-left: 16px; font-variant-numeric: tabular-nums; }
+.seite .preistabelle tbody:last-child tr:last-child > * { border-bottom: 1px solid var(--rand); }
+.seite .preistabelle .ist-rabatt > * { color: var(--marke-dunkel); }
+.seite .preistabelle th.preistabelle__gruppe {
+  padding-top: 26px; border-top: 0;
+  font-size: 13px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3);
+}
+.seite .preistabelle__je { font-size: 14px; color: var(--text-3); margin-left: 4px; }
+.seite .reise-zahlung { margin: 14px 0 0; font-size: 15.5px; color: var(--text-2); }
+
+/* Der Kasten rechts: Preis ab, die drei wichtigsten Zeilen, der Knopf. */
+.seite .reisebox {
+  background: var(--flaeche);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+  padding: 26px 26px 24px;
+}
+.seite .reisebox__ab { margin: 0; font-size: 14px; color: var(--text-3); }
+.seite .reisebox__preis {
+  margin: 0; font-size: clamp(34px, calc(3.2 * var(--vw, 1vw)), 44px);
+  font-weight: 600; letter-spacing: -0.035em; line-height: 1.05;
+}
+.seite .reisebox__preis .preis-alt { font-size: 18px; }
+.seite .reisebox__pp { margin: 4px 0 16px; font-size: 14.5px; color: var(--text-2); line-height: 1.45; }
+.seite .reisebox__pp strong { color: var(--marke-dunkel); font-weight: 600; }
+.seite .reisebox__liste { list-style: none; margin: 0 0 20px; padding: 0; border-top: 1px solid var(--rand); }
+.seite .reisebox__liste li { padding: 9px 0; border-bottom: 1px solid var(--rand); font-size: 15.5px; }
+.seite .reisebox__klein { margin: 12px 0 0; font-size: 14px; color: var(--text-3); text-align: center; }
+
+/* Die Leiste am unteren Rand – nur dort, wo der Kasten rechts fehlt. */
+.seite .reiseleiste { display: none; }
+@media (max-width: 960px) {
+  .seite .reiseleiste {
+    display: flex; position: fixed; z-index: 40; left: 12px; right: 12px; bottom: 12px;
+    align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 10px 10px 20px;
+    background: var(--text); color: var(--grund);
+    border-radius: var(--ecke-knopf);
+    box-shadow: 0 12px 30px rgba(23, 39, 28, .28);
+    transition: transform .25s, opacity .25s;
+  }
+  .seite .reiseleiste.ist-weg { transform: translateY(140%); opacity: 0; pointer-events: none; }
+  .seite .reiseleiste__preis { font-size: 20px; font-weight: 600; white-space: nowrap; }
+  .seite .reiseleiste__ab, .seite .reiseleiste__pp { font-size: 13.5px; font-weight: 400; opacity: .85; }
+  .seite .reiseleiste .knopf { background: var(--akzent); color: #17271c; }
+  .seite .reiseleiste .knopf:hover { background: var(--grund); color: #17271c; }
+  .seite .reiseseite { padding-bottom: 84px; }
+}
+
+/* ------------------------------------------------- Reise buchen ------ */
+
+.seite .reisebuchung {
+  background: var(--flaeche-2);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+  padding: clamp(22px, calc(4 * var(--vw, 1vw)), 52px);
+  margin-bottom: clamp(20px, calc(3 * var(--vw, 1vw)), 36px);
+  scroll-margin-top: 100px;
+}
+.seite .reisebuchung > .hand { margin: 0 0 4px; }
+.seite .reiseformular {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: clamp(26px, calc(4 * var(--vw, 1vw)), 64px); align-items: start;
+}
+.seite .reiseformular__seite { position: sticky; top: 112px; }
+.seite .reiseformular [hidden] { display: none; }
+@media (max-width: 900px) {
+  .seite .reiseformular { grid-template-columns: minmax(0, 1fr); }
+  .seite .reiseformular__seite { position: static; }
+}
+.seite .reiseformular__teil { border: 0; margin: 0 0 30px; padding: 0; min-width: 0; }
+.seite .reiseformular__teil:last-child { margin-bottom: 0; }
+.seite .reiseformular__legende {
+  display: flex; align-items: center; gap: 12px; padding: 0; margin: 0 0 16px;
+  font-size: clamp(20px, calc(2 * var(--vw, 1vw)), 24px); font-weight: 500; letter-spacing: -0.02em;
+}
+.seite .reiseformular__nr {
+  flex: none; width: 32px; height: 32px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--marke); color: var(--grund); font-size: 15px; font-weight: 600; letter-spacing: 0;
+}
+
+.seite .reisender {
+  background: var(--grund); border: 1px solid var(--rand);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+  padding: 16px 20px 2px; margin-bottom: 12px;
+}
+.seite .reisender__kopf { display: flex; align-items: center; gap: 10px; }
+.seite .reisender__nr {
+  flex: none; width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--flaeche); font-size: 13px; font-weight: 600;
+}
+.seite .reisender__titel { font-weight: 500; font-size: 15.5px; }
+.seite .reisender__weg {
+  margin-left: auto; padding: 0 0 1px; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid var(--rand-stark);
+  font: inherit; font-size: 14.5px; color: var(--text-2);
+}
+.seite .reisender__weg:hover { color: var(--text); border-bottom-color: var(--text); }
+.seite .reisender .feld { margin-bottom: 14px; }
+.seite .reisender .feld-paar { column-gap: 20px; row-gap: 0; }
+.seite .reisender .feld-paar > * { flex-basis: 110px; }
+.seite .feld.ist-aus { opacity: .4; }
+.seite .reiseformular__plus {
+  width: 100%; margin-bottom: 10px; padding: 12px 20px; cursor: pointer;
+  font: inherit; font-size: 15.5px; font-weight: 600; color: var(--marke);
+  background: none; border: 1.5px dashed color-mix(in srgb, var(--marke) 50%, transparent);
+  border-radius: var(--ecke-knopf);
+}
+.seite .reiseformular__plus:hover { background: var(--marke-hell); }
+
+/* Zimmer als Karten zum Anklicken – der Knopf bleibt ein echter Radioknopf. */
+.seite .zimmerwahl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.seite .zimmerkarte { position: relative; display: block; cursor: pointer; }
+.seite .zimmerkarte input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seite .zimmerkarte__koerper {
+  position: relative; display: flex; flex-direction: column; gap: 2px; height: 100%;
+  padding: 16px 18px 16px 50px;
+  border: 1.5px solid var(--rand-stark);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+  background: var(--grund);
+  transition: border-color .15s, background .15s;
+}
+.seite .zimmerkarte__koerper::before {
+  content: ""; position: absolute; left: 18px; top: 19px;
+  width: 18px; height: 18px; box-sizing: border-box; border-radius: 50%;
+  border: 1.5px solid var(--rand-stark); background: var(--grund);
+}
+.seite .zimmerkarte:hover .zimmerkarte__koerper { border-color: var(--text-3); }
+.seite .zimmerkarte input:checked + .zimmerkarte__koerper { border-color: var(--marke); background: var(--marke-hell); }
+.seite .zimmerkarte input:checked + .zimmerkarte__koerper::before { border: 5px solid var(--marke); }
+.seite .zimmerkarte input:focus-visible + .zimmerkarte__koerper { outline: 2px solid var(--marke); outline-offset: 2px; }
+.seite .zimmerkarte__name { font-weight: 600; font-size: 16.5px; }
+.seite .zimmerkarte__preis { font-size: 15px; font-weight: 500; color: var(--marke-dunkel); }
+.seite .zimmerkarte__text { font-size: 14.5px; color: var(--text-2); line-height: 1.45; }
+
+.seite .extraliste { border-top: 1px solid var(--rand); }
+.seite .extrazeile { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--rand); }
+.seite .extrazeile__text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.4; }
+.seite .extrazeile__name { font-weight: 500; }
+.seite .extrazeile__preis { font-size: 14.5px; color: var(--text-2); }
+.seite .extrazeile__anzahl { flex: 0 0 110px; margin: 0; }
+.seite .extrazeile__anzahl select { padding: 8px 0; }
+.seite .extrazeile__haken { display: flex; align-items: center; gap: 8px; font-size: 15px; cursor: pointer; }
+.seite .extrazeile__haken input { width: 18px; height: 18px; accent-color: var(--marke); }
+
+/* Die Rechnung: Posten, Summe, Zahlungsplan. */
+.seite .reiserechnung {
+  background: var(--grund); border: 1px solid var(--rand);
+  border-radius: var(--ecke) var(--ecke) var(--ecke) var(--ecke-klein);
+  padding: 20px 22px; margin-bottom: 18px;
+}
+.seite [data-reiserechnung] { transition: opacity .15s; }
+.seite [data-reiserechnung].ist-rechnend { opacity: .5; }
+.seite .reiserechnung__kopf {
+  margin: 0 0 8px; font-size: 13px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3);
+}
+.seite .reiserechnung__tabelle { width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.4; }
+.seite .reiserechnung__tabelle th, .seite .reiserechnung__tabelle td {
+  padding: 7px 0; border: 0; text-align: left; font-weight: 400; vertical-align: top;
+}
+.seite .reiserechnung__tabelle td { text-align: right; white-space: nowrap; padding-left: 12px; font-variant-numeric: tabular-nums; }
+.seite .reiserechnung__menge { font-weight: 600; }
+.seite .reiserechnung__einzel { display: block; font-size: 13.5px; color: var(--text-3); }
+.seite .reiserechnung .ist-rabatt > * { color: var(--marke-dunkel); }
+.seite .reiserechnung__summe {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  margin-top: 8px; padding-top: 12px; border-top: 1.5px solid var(--text); font-size: 17px;
+}
+.seite .reiserechnung__summe strong { font-size: clamp(24px, calc(2.4 * var(--vw, 1vw)), 30px); font-weight: 600; letter-spacing: -0.02em; }
+.seite .reiserechnung__plan { margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--rand); font-size: 14.5px; }
+.seite .reiserechnung__plan div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+.seite .reiserechnung__plan dt { color: var(--text-2); }
+.seite .reiserechnung__plan dd { margin: 0; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.seite .reiserechnung__hinweis {
+  margin: 12px 0 0; padding: 10px 12px; border-radius: 10px;
+  background: #fdf4e0; color: #7a5c12; font-size: 14.5px; line-height: 1.45;
+}
+.seite .reiserechnung--fest { margin: 18px 0 8px; }
+.seite .reiseformular__seite .einwilligung { font-size: 14px; }
+.seite .reiseformular__rechnen { margin-top: 16px; }
+.seite .knopf:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Nach dem Buchen: was jetzt passiert, in Schritten. */
+.seite .reiseschritte { list-style: none; counter-reset: schritt; margin: 0 0 10px; padding: 0; }
+.seite .reiseschritte li { counter-increment: schritt; position: relative; padding: 0 0 18px 46px; }
+.seite .reiseschritte li::before {
+  content: counter(schritt); position: absolute; left: 0; top: 0;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--flaeche); color: var(--marke-dunkel); font-size: 14.5px; font-weight: 600;
+}
+.seite .reiseschritte strong { display: block; font-weight: 600; }
+.seite .reiseschritte span { color: var(--text-2); font-size: 16px; }
+.seite .reise-zurueck { display: flex; flex-wrap: wrap; gap: 24px; }
+
 /* ------------------------------------------------ Buchungskalender ---- */
 
 /*

@@ -1063,7 +1063,7 @@ final class Demo
     {
         $reisen = [
             [
-                'Golfwoche Mallorca', 'Son Servera', 'Spanien', 'Hotel Son Vida Golf ****',
+                'Golfwoche Mallorca', 'Son Servera', 'Spanien', 'Hotel Cala Verde Golf',
                 '+95 days', '+102 days', 14, 189000, 29000, 50000, 8, 'flug', 'Stuttgart',
                 'Sieben Nächte direkt am Platz, vier Greenfees und jeden Morgen Training.',
                 "Eine Woche, in der Golf nicht das Beiprogramm ist, sondern der Tag.\n\n"
@@ -1108,10 +1108,10 @@ final class Demo
                                    $enthalten, $nicht, $programm]) {
             $tage = [];
             foreach ($programm as [$tTitel, $tText]) {
-                $tage[] = ['titel' => $tTitel, 'text' => $tText];
+                $tage[] = ['titel' => $tTitel, 'text' => $tText, 'bild' => ''];
             }
 
-            $reiseId = Tenant::insert('trips', [
+            $reiseId = Tenant::insert('trips', self::reiseZusatz($i, $tage) + [
                 'titel' => $titel, 'slug' => Util::slug($titel),
                 'ziel' => $ziel, 'land' => $land, 'hotel' => $hotel,
                 'kurztext' => $kurz, 'beschreibung' => $text,
@@ -1131,27 +1131,129 @@ final class Demo
 
             /* Nicht voll und nicht leer: Die erste Reise ist gut gebucht,
                die zweite braucht noch Teilnehmer – beide Zustände sollen
-               in der Demo zu sehen sein. */
-            $wieViele = $i === 0 ? $plaetze - 2 : max(1, $mindest - 2);
+               in der Demo zu sehen sein. Jede dritte Buchung reist zu
+               zweit, wie im echten Leben. */
+            $reise    = Tenant::find('trips', $reiseId);
+            $soll     = $i === 0 ? $plaetze - 2 : max(1, $mindest - 2);
+            $belegt   = 0;
             $gemischt = self::$kunden;
             shuffle($gemischt);
-            foreach (array_slice($gemischt, 0, $wieViele) as $n => $k) {
-                $zimmer = $n % 4 === 0 ? 'ez' : 'dz';
+            foreach ($gemischt as $n => $k) {
+                $zuZweit = $n % 3 === 1 && $belegt + 2 <= $soll;
+                if ($belegt >= $soll) {
+                    break;
+                }
                 /* self::$kunden fuehrt nur die Kennung – Name und Adresse
                    stehen am Datensatz. */
-                $kunde = Tenant::find('customers', (int) $k['id']);
+                $kunde    = Tenant::find('customers', (int) $k['id']);
+                $name     = $kunde !== null ? Customers::name($kunde) : 'Teilnehmer';
+                $reisende = [['name' => $name, 'golfer' => true, 'hcp' => (string) mt_rand(12, 36)]];
+                if ($zuZweit) {
+                    $reisende[] = ['name' => self::MITREISENDE[$n % count(self::MITREISENDE)], 'golfer' => $n % 2 === 0, 'hcp' => ''];
+                }
+                $zimmer   = !$zuZweit && $n % 4 === 0 ? 'ez' : 'dz';
+                $rechnung = Trips::berechnen($reise, ['reisende' => $reisende, 'zimmer' => $zimmer,
+                                                     'extras' => $n % 5 === 0 ? [0 => count($reisende)] : []]);
+                $belegt  += count($reisende);
                 Tenant::insert('trip_signups', [
                     'trip_id' => $reiseId, 'customer_id' => $k['id'],
-                    'name' => $kunde !== null ? Customers::name($kunde) : 'Teilnehmer',
-                    'email' => (string) ($kunde['email'] ?? ''), 'telefon' => '',
-                    'zimmer' => $zimmer, 'hcp' => '',
-                    'preis_cent' => $preis + ($zimmer === 'ez' ? $ez : 0),
+                    'name' => $name, 'email' => (string) ($kunde['email'] ?? ''), 'telefon' => '',
+                    'zimmer' => $zimmer, 'hcp' => $reisende[0]['hcp'],
+                    'mitreisender' => (string) ($reisende[1]['name'] ?? ''),
+                    'personen' => count($reisende), 'reisende' => Util::json($rechnung['reisende']),
+                    'extras' => Util::json($rechnung['extras']), 'rabatt_cent' => $rechnung['rabatt'],
+                    'preis_cent' => $rechnung['summe'], 'anzahlung_cent' => $rechnung['anzahlung'],
+                    'rest_faellig' => $rechnung['rest_faellig'] . ' 00:00:00',
                     'anzahlung_bezahlt' => $n % 3 === 0 ? 0 : 1,
                     'status' => $n % 5 === 0 ? 'angemeldet' : 'bestaetigt',
                     'erstellt' => date('Y-m-d H:i:s', strtotime('-' . mt_rand(3, 40) . ' days')),
                 ]);
             }
         }
+    }
+
+    /** Namen für Mitreisende – die Kundenliste enthält nur die, die selbst buchen. */
+    private const MITREISENDE = ['Andrea Kessler', 'Thomas Brandt', 'Sabine Lorenz', 'Michael Roth', 'Petra Vogt'];
+
+    /**
+     * Was eine Reise im Katalog trägt: Bilder, Hotel, Plätze, Höhepunkte,
+     * Zusatzleistungen, Frühbucher. Die Bilder sind Illustrationen aus
+     * assets/demo – Fotos kann die Demo nicht mitbringen, und ein graues
+     * Rechteck verkauft keine Reise.
+     *
+     * @param list<array{titel:string, text:string, bild:string}> $tage
+     * @return array<string,mixed>
+     */
+    private static function reiseZusatz(int $nr, array $tage): array
+    {
+        $b = static fn (string $name): string => 'assets/demo/reisen/' . $name . '.svg';
+
+        if ($nr === 0) {
+            $tage[1]['bild'] = $b('training');
+            $tage[3]['bild'] = $b('mallorca-fairway');
+            $tage[5]['bild'] = $b('gruen');
+            return [
+                'bild'   => $b('mallorca-kueste'),
+                'bilder' => Util::json([$b('mallorca-fairway'), $b('gruen'), $b('mallorca-hotel'), $b('abend'), $b('training')]),
+                'programm' => Util::json($tage),
+                'highlights' => Util::json(['Vier Runden auf drei Plätzen, einer davon direkt am Meer',
+                    'Jeden Morgen Training in der Kleingruppe', 'Hotel am Platz mit Halbpension',
+                    'Turnier mit Siegerehrung am letzten Abend']),
+                'hotel_sterne' => 4,
+                'hotel_bild'   => $b('mallorca-hotel'),
+                'hotel_text'   => "Das Hotel liegt oberhalb der Bucht, fünf Minuten zu Fuß vom ersten Abschlag. "
+                                . "Die Zimmer haben Balkon, die meisten mit Blick aufs Meer.
+
+"
+                                . "Abends essen wir gemeinsam im Hotel – Halbpension ist im Preis enthalten.",
+                'golfplaetze'  => Util::json([
+                    ['name' => 'Platz am Meer', 'loecher' => 18, 'par' => 72, 'bild' => $b('gruen'),
+                     'text' => 'Weite Fairways, Wind vom Wasser und ein Grün direkt über der Bucht.'],
+                    ['name' => 'Bergplatz', 'loecher' => 18, 'par' => 71, 'bild' => $b('mallorca-fairway'),
+                     'text' => 'Schmale Bahnen zwischen Pinien, viel Gefälle, wenig Wind.'],
+                    ['name' => 'Kurzplatz am Hotel', 'loecher' => 9, 'par' => 30, 'bild' => '',
+                     'text' => 'Neun kurze Löcher zum Einspielen am Anreisetag.'],
+                ]),
+                'preis_nichtgolfer_cent'  => 139000,
+                'fruehbucher_bis'         => date('Y-m-d 00:00:00', strtotime('+30 days')),
+                'fruehbucher_rabatt_cent' => 10000,
+                'extras' => Util::json([
+                    ['name' => 'Leihschläger für die ganze Woche', 'preis_cent' => 9500, 'je' => 'person'],
+                    ['name' => 'Zusätzliche Runde auf dem Platz am Meer', 'preis_cent' => 8500, 'je' => 'person'],
+                    ['name' => 'Flughafentransfer im eigenen Wagen', 'preis_cent' => 12000, 'je' => 'buchung'],
+                ]),
+                'restzahlung_tage' => 30,
+                'hinweise' => "Für die Reise genügt der Personalausweis. Eine Reiserücktrittsversicherung ist "
+                            . "nicht enthalten – ich empfehle, eine abzuschließen.",
+            ];
+        }
+
+        $tage[1]['bild'] = $b('algarve-klippen');
+        return [
+            'bild'   => $b('algarve-klippen'),
+            'bilder' => Util::json([$b('algarve-resort'), $b('gruen'), $b('abend')]),
+            'programm' => Util::json($tage),
+            'highlights' => Util::json(['Drei verschiedene Plätze, einer an den Klippen',
+                'Kleine Gruppe mit höchstens zwölf Personen', 'Herbstsonne statt Nieselregen']),
+            'hotel_sterne' => 4,
+            'hotel_bild'   => $b('algarve-resort'),
+            'hotel_text'   => 'Ein Resort mit eigenem Übungsgelände, zehn Minuten vom Strand. Frühstück ist '
+                            . 'enthalten, abends gehen wir gemeinsam in Lagos essen.',
+            'golfplaetze'  => Util::json([
+                ['name' => 'Klippenplatz', 'loecher' => 18, 'par' => 72, 'bild' => $b('algarve-klippen'),
+                 'text' => 'Drei Löcher spielen direkt an der Steilküste.'],
+                ['name' => 'Platz im Hinterland', 'loecher' => 18, 'par' => 70, 'bild' => '',
+                 'text' => 'Korkeichen, Orangenhaine und ruhige Runden.'],
+                ['name' => 'Lagunenplatz', 'loecher' => 18, 'par' => 71, 'bild' => '',
+                 'text' => 'Flach, viel Wasser, die Abschlussrunde mit Wettspiel.'],
+            ]),
+            'preis_nichtgolfer_cent' => 109000,
+            'extras' => Util::json([
+                ['name' => 'Buggy für alle drei Runden', 'preis_cent' => 9000, 'je' => 'person'],
+                ['name' => 'Größerer Mietwagen', 'preis_cent' => 15000, 'je' => 'buchung'],
+            ]),
+            'restzahlung_tage' => 28,
+        ];
     }
 
     private static function leads(): void

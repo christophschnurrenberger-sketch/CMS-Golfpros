@@ -362,7 +362,31 @@ $akte    = Customers::akte($kundeId);
 $zahlen  = Customers::kennzahlen($kundeId);
 $naechster = $akte['kommend'][0] ?? null;
 
+/*
+ * Die Golfreisen des Kunden – nur über die Kundennummer, nicht über die
+ * E-Mail-Adresse: Eine Buchung, die jemand anderes mit dieser Adresse im
+ * Backend angelegt hat, ist nicht automatisch seine. Die Reise selbst
+ * kommt über Tenant::find() und damit nur aus diesem Betrieb.
+ */
+$reisenAn = Tenant::modul('travel');
+$meineReisen = ['kommend' => [], 'vergangen' => []];
+if ($reisenAn) {
+    foreach (Tenant::all('trip_signups', 'customer_id = :k', ['k' => $kundeId], 'erstellt DESC') as $b) {
+        $r = Tenant::find('trips', (int) $b['trip_id']);
+        if ($r === null) {
+            continue;
+        }
+        $vorbei = strtotime((string) $r['ende']) < strtotime(Util::heute());
+        $meineReisen[$vorbei || (string) $b['status'] === 'storniert' ? 'vergangen' : 'kommend'][] = ['buchung' => $b, 'reise' => $r];
+    }
+    usort($meineReisen['kommend'], static fn ($a, $b) => strcmp((string) $a['reise']['start'], (string) $b['reise']['start']));
+}
+if ($ansicht === 'reisen' && !$reisenAn) {
+    $ansicht = 'start';
+}
+
 $titel = match ($ansicht) {
+    'reisen'      => 'Meine Reisen',
     'buchen'      => 'Termin buchen',
     'termine'     => 'Meine Termine',
     'training'    => 'Mein Training',
@@ -416,6 +440,22 @@ if ($ansicht === 'start'):
           <?= Icon::svg('message', 15) ?> Nachricht schreiben</a>
       </div>
     </div></div>
+  <?php endif; ?>
+
+  <?php if ($meineReisen['kommend'] !== []):
+    $nr = $meineReisen['kommend'][0];
+    $nrBild = Reiseseite::bildUrl((string) $nr['reise']['bild']);
+    $nrTage = Util::tageBis((string) $nr['reise']['start']); ?>
+    <a class="pt-reisehinweis mb-5" href="<?= Util::attr(App::url('/portal/?ansicht=reisen')) ?>">
+      <?php if ($nrBild !== ''): ?><span class="pt-reisehinweis__bild"><img src="<?= Util::attr($nrBild) ?>" alt=""></span><?php endif; ?>
+      <span class="pt-reisehinweis__text">
+        <span class="pt-reisehinweis__label"><?= count($meineReisen['kommend']) === 1 ? 'Deine Reise' : 'Deine nächste Reise' ?></span>
+        <span class="pt-reisehinweis__titel"><?= Util::h((string) $nr['reise']['titel']) ?></span>
+        <span class="pt-reisehinweis__unter"><?= Util::h(Reiseseite::zeitraum((string) $nr['reise']['start'], (string) $nr['reise']['ende'])) ?>
+          <?= $nrTage > 0 ? ' · in ' . $nrTage . ($nrTage === 1 ? ' Tag' : ' Tagen') : '' ?></span>
+      </span>
+      <?= Icon::svg('chevron-right', 18) ?>
+    </a>
   <?php endif; ?>
 
   <div class="pt-kacheln mb-5">
@@ -983,7 +1023,130 @@ elseif ($ansicht === 'fortschritt'):
   <?php endif; ?>
 
 <?php
-/* ======================================================= Unterlagen === */
+/* ============================================================ Reisen === */
+elseif ($ansicht === 'reisen'):
+  /*
+   * Was der Kunde zu seiner Reise wissen will: Ist sie bestätigt, wer
+   * fährt mit, was ist gebucht, was muss ich wann zahlen und wohin. Die
+   * Beträge stehen so, wie sie beim Buchen berechnet und gespeichert
+   * wurden – eine spätere Preisänderung an der Reise ändert keine
+   * bestehende Buchung.
+   */
+  $w = Tenant::waehrung();
+  $bank = trim((string) Tenant::einstellung('bank', ''));
+  $statusText = [
+      'angemeldet' => ['Eingegangen – wartet auf Bestätigung', 'offen'],
+      'bestaetigt' => ['Bestätigt', 'erfolg'],
+      'warteliste' => ['Warteliste', 'offen'],
+      'storniert'  => ['Storniert', ''],
+  ];
+?>
+  <?php if ($meineReisen['kommend'] === [] && $meineReisen['vergangen'] === []): ?>
+    <div class="karte"><div class="karte__koerper gedimmt klein">
+      Hier erscheinen deine Golfreisen, sobald du eine gebucht hast.
+      <a class="pt-link" href="<?= Util::attr(Oeffentlich::url('/reisen.php')) ?>">Zu den Reisen</a>
+    </div></div>
+  <?php endif; ?>
+
+  <?php foreach ($meineReisen['kommend'] as ['buchung' => $b, 'reise' => $r]):
+    $bild     = Reiseseite::bildUrl((string) $r['bild']);
+    $tage     = Util::tageBis((string) $r['start']);
+    $summe    = (int) $b['preis_cent'];
+    $anz      = (int) $b['anzahlung_cent'];
+    $bestaetigt = (string) $b['status'] === 'bestaetigt';
+    $offen    = $bestaetigt && (((int) $b['anzahlung_bezahlt'] !== 1 && $anz > 0) || (int) $b['bezahlt'] !== 1);
+    [$stText, $stArt] = $statusText[(string) $b['status']] ?? [(string) $b['status'], ''];
+    $extras   = (array) Util::ausJson((string) ($b['extras'] ?? ''), []); ?>
+    <article class="pt-reise">
+      <?php if ($bild !== ''): ?><div class="pt-reise__bild"><img src="<?= Util::attr($bild) ?>" alt=""></div><?php endif; ?>
+      <div class="pt-reise__koerper">
+        <div class="pt-reise__kopf">
+          <div>
+            <h2 class="pt-reise__titel"><?= Util::h((string) $r['titel']) ?></h2>
+            <p class="pt-reise__zeit"><?= Util::h(trim((string) $r['ziel'] . ', ' . (string) $r['land'], ', ')) ?>
+              · <?= Util::h(Reiseseite::zeitraum((string) $r['start'], (string) $r['ende'])) ?>
+              · <?= (int) $r['naechte'] ?> Nächte</p>
+          </div>
+          <?= pille($stText, $stArt) ?>
+        </div>
+        <?php if ($tage > 0 && (string) $b['status'] !== 'warteliste'): ?>
+          <p class="pt-reise__countdown">Noch <?= $tage ?> <?= $tage === 1 ? 'Tag' : 'Tage' ?></p>
+        <?php endif; ?>
+
+        <div class="pt-reise__teile">
+          <div>
+            <div class="pt-reise__label">Reisende</div>
+            <ul class="pt-reise__liste">
+              <?php foreach (Trips::reisende($b) as $p): ?>
+                <li><?= Util::h($p['name']) ?><span class="pt-reise__klein"><?=
+                  $p['golfer'] ? ($p['hcp'] !== '' ? ' · HCP ' . Util::h($p['hcp']) : '') : ' · Nichtgolfer' ?></span></li>
+              <?php endforeach; ?>
+            </ul>
+            <div class="pt-reise__label mt-4">Gebucht</div>
+            <ul class="pt-reise__liste">
+              <li><?= Util::h(Trips::ZIMMER[(string) $b['zimmer']] ?? (string) $b['zimmer']) ?></li>
+              <?php if ((string) $r['hotel'] !== ''): ?><li><?= Util::h((string) $r['hotel']) ?></li><?php endif; ?>
+              <?php foreach ($extras as $x): ?>
+                <li><?= (int) ($x['anzahl'] ?? 1) ?> × <?= Util::h((string) ($x['name'] ?? '')) ?></li>
+              <?php endforeach; ?>
+            </ul>
+          </div>
+          <div>
+            <div class="pt-reise__label">Zahlung</div>
+            <?php if ($anz > 0): ?>
+              <div class="pt-zahlung<?= (int) $b['anzahlung_bezahlt'] === 1 ? ' ist-bezahlt' : '' ?>">
+                <span>Anzahlung<span class="pt-zahlung__stand"><?= (int) $b['anzahlung_bezahlt'] === 1
+                  ? 'bezahlt' : ($bestaetigt ? 'offen' : 'nach der Bestätigung') ?></span></span>
+                <span class="pt-zahlung__betrag"><?= Util::h(Util::geldKurz($anz, $w)) ?></span>
+              </div>
+            <?php endif; ?>
+            <div class="pt-zahlung<?= (int) $b['bezahlt'] === 1 ? ' ist-bezahlt' : '' ?>">
+              <span><?= $anz > 0 ? 'Restzahlung' : 'Reisepreis' ?><span class="pt-zahlung__stand"><?= (int) $b['bezahlt'] === 1
+                ? 'bezahlt' : 'bis ' . Util::h(Util::datum((string) $b['rest_faellig'])) ?></span></span>
+              <span class="pt-zahlung__betrag"><?= Util::h(Util::geldKurz($summe - $anz, $w)) ?></span>
+            </div>
+            <div class="pt-zahlung pt-zahlung--summe">
+              <span>Gesamt</span><span class="pt-zahlung__betrag"><?= Util::h(Util::geldKurz($summe, $w)) ?></span>
+            </div>
+            <?php if ($offen && $bank !== ''): ?>
+              <div class="pt-reise__bank">
+                <strong>Überweisung an</strong><br><?= nl2br(Util::h($bank)) ?><br>
+                <span class="gedimmt">Verwendungszweck: <?= Util::h((string) $r['titel'] . ' · ' . (string) $b['name']) ?></span>
+              </div>
+            <?php endif; ?>
+          </div>
+        </div>
+
+        <div class="pt-reise__fuss">
+          <?php if ((string) $r['status'] === Trips::OEFFENTLICH): ?>
+            <a class="btn btn--klein btn--rand" href="<?= Util::attr(Reiseseite::adresse($r)) ?>" target="_blank" rel="noopener">
+              Reise ansehen</a>
+          <?php endif; ?>
+          <a class="btn btn--klein btn--rand" href="<?= Util::attr(App::url('/portal/?ansicht=nachrichten')) ?>">
+            Frage zur Reise</a>
+        </div>
+      </div>
+    </article>
+  <?php endforeach; ?>
+
+  <?php if ($meineReisen['vergangen'] !== []): ?>
+    <h2 class="abschnitt-titel">Frühere Reisen</h2>
+    <div class="pt-liste">
+      <?php foreach ($meineReisen['vergangen'] as ['buchung' => $b, 'reise' => $r]): ?>
+        <div class="pt-zeile">
+          <span class="pt-zeile__text">
+            <span class="pt-zeile__titel"><?= Util::h((string) $r['titel']) ?></span>
+            <span class="pt-zeile__unter"><?= Util::h(Reiseseite::zeitraum((string) $r['start'], (string) $r['ende'])) ?>
+              · <?= (int) $b['personen'] ?> <?= (int) $b['personen'] === 1 ? 'Person' : 'Personen' ?></span>
+          </span>
+          <?php if ((string) $b['status'] === 'storniert'): ?><?= pille('Storniert') ?><?php endif; ?>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+<?php
+/* ======================================================== Unterlagen === */
 elseif ($ansicht === 'unterlagen'):
   $dokumente = array_filter($akte['dokumente'], static fn ($d) => (int) $d['sichtbar_portal'] === 1);
   $aktivePakete = array_filter($akte['pakete'], static fn ($p) => (string) $p['status'] === 'aktiv');

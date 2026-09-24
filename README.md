@@ -50,7 +50,7 @@ regelbasierten Generator weiter, ohne Cronjob läuft die Wartung beim
 ## Aufbau
 
 ```
-lib/          61 Klassen – je Datei eine, Autoloader ohne Composer
+lib/          62 Klassen – je Datei eine, Autoloader ohne Composer
 app/          Die Anwendung: 54 Seiten, eine je Bereich
 master/       Betreiberzentrale: alle Instanzen, Pakete, Rechnungen, Support Mode
 portal/       Kundenportal und Registrierung, mobil zuerst gedacht
@@ -58,13 +58,15 @@ site.php      Die öffentliche Website aller Mandanten
 buchen.php    Online-Buchung – angemeldet oder als Gast, nie mit Zwang
 kaufen.php    Kauf mit Stripe oder auf Rechnung
 anfrage.php   Formulareingang → Lead
+reisen.php    Reisekatalog der Website – alle ausgeschriebenen Golfreisen
+reise.php     Eine Golfreise mit Bildern, Programm, Preisen und Buchung für bis zu sechs Reisende
 datei.php     Videos und Unterlagen – erst prüfen, dann herausgeben
 cron.php      Wartung für alle, die einen Cronjob haben
 webhook.php   Stripe meldet Zahlungen hierher
 install.php   Einrichtung, danach löschen
 passwort.php  Passwort setzen – über den Link aus Einladung oder Reset
 bin/          Kommandozeile: Betreiber anlegen (php bin/betreiber.php)
-tests/        php tests/betreiber.php, php tests/baukasten.php – Prüfungen gegen eine Wegwerf-Datenbank
+tests/        php tests/betreiber.php, baukasten.php, reisen.php – Prüfungen gegen eine Wegwerf-Datenbank
 assets/       Stylesheets, Skripte und die Schriften auf eigenem Server
 docs/         Architektur, Betrieb und Upload im Detail
 .github/      Ein Workflow: Syntax prüfen, dann per FTPS hochladen
@@ -120,7 +122,8 @@ nirgends gespeichert.
 
 Der Installer legt auf Wunsch einen zweiten, vollständig getrennten
 Workspace an: 40 Kunden, über tausend Termine, Rechnungen, Trainingspläne,
-Videoanalysen, Kurse, Kampagnen und eine fertige Website. Zahlen, die
+Videoanalysen, Kurse, Kampagnen, zwei Golfreisen mit Bildern und Buchungen
+und eine fertige Website. Zahlen, die
 zueinander passen – die Paketeinheiten sind von echten Terminen verbraucht,
 der Umsatz entspricht den Preisen. Gut, um alles auszuprobieren, ohne die
 eigenen Daten anzufassen.

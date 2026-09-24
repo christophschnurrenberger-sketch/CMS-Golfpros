@@ -1298,6 +1298,72 @@
     });
   }
 
+  /* ------------------------------------------- Wiederholbare Zeilen -- */
+
+  /*
+   * Listen, in denen der Nutzer Zeilen anlegt: Galerie, Golfplätze,
+   * Tagesprogramm, Zusatzleistungen.
+   *
+   *   [data-zeilen]            die Hülle
+   *     [data-zeilen-liste]    darin die Zeilen [data-zeile]
+   *     <template data-zeilen-vorlage>  eine leere Zeile
+   *     [data-zeile-neu]       „+ … hinzufügen"
+   *   in einer Zeile: [data-zeile-weg], [data-zeile-hoch], [data-zeile-runter],
+   *   [data-zeile-nr] (wird durchgezählt)
+   *
+   * Ohne JavaScript steht am Ende eine leere Zeile ([data-zeile-leer]) –
+   * über sie kommt ein Eintrag dazu, und der Server lässt leere Zeilen
+   * weg. Mit JavaScript übernimmt der Knopf, und die leere Zeile geht.
+   */
+  $$('[data-zeilen]').forEach(huelle => {
+    const liste = $('[data-zeilen-liste]', huelle);
+    const vorlage = $('template[data-zeilen-vorlage]', huelle);
+    if (!liste || !vorlage) return;
+    $$('[data-zeile-leer]', liste).forEach(z => z.remove());
+    $$('[data-nur-js]', huelle).forEach(el => { el.hidden = false; });
+
+    const zaehlen = () => {
+      const zeilen = $$(':scope > [data-zeile]', liste);
+      zeilen.forEach((z, i) => {
+        $$('[data-zeile-nr]', z).forEach(n => { n.textContent = i + 1; });
+        const hoch = $('[data-zeile-hoch]', z);
+        const runter = $('[data-zeile-runter]', z);
+        if (hoch) hoch.disabled = i === 0;
+        if (runter) runter.disabled = i === zeilen.length - 1;
+      });
+      const anzahl = $('[data-zeilen-anzahl]', huelle);
+      if (anzahl) anzahl.textContent = zeilen.length;
+      const leer = $('[data-zeilen-leer]', huelle);
+      if (leer) leer.hidden = zeilen.length > 0;
+    };
+
+    huelle.addEventListener('click', (e) => {
+      const neu = e.target.closest('[data-zeile-neu]');
+      if (neu && huelle.contains(neu)) {
+        const z = vorlage.content.firstElementChild.cloneNode(true);
+        liste.appendChild(z);
+        zaehlen();
+        $$('[data-waechst]', z).forEach(el => el.addEventListener('input', () => { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; }));
+        /* Bei einer Galerie gleich den Bildwähler öffnen – wer „Bild
+           hinzufügen" klickt, will ein Bild aussuchen, keine leere Zeile. */
+        const bild = neu.hasAttribute('data-bild-sofort') ? $('[data-bild-waehlen]', z) : null;
+        if (bild) bild.click();
+        else { const f = $('input:not([type=hidden]), textarea, select', z); if (f) f.focus(); }
+        return;
+      }
+      const zeile = e.target.closest('[data-zeile]');
+      if (!zeile || !liste.contains(zeile)) return;
+      if (e.target.closest('[data-zeile-weg]')) { zeile.remove(); zaehlen(); return; }
+      if (e.target.closest('[data-zeile-hoch]') && zeile.previousElementSibling) {
+        liste.insertBefore(zeile, zeile.previousElementSibling); zaehlen(); return;
+      }
+      if (e.target.closest('[data-zeile-runter]') && zeile.nextElementSibling) {
+        liste.insertBefore(zeile.nextElementSibling, zeile); zaehlen();
+      }
+    });
+    zaehlen();
+  });
+
   /* ------------------------------------------------------ Kleinkram --- */
 
   // Textfelder wachsen mit

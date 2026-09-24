@@ -948,6 +948,69 @@ und Hoch, Runter, Kopieren und Entfernen sind Formulare. Mit JavaScript
 Geprüft in `tests/baukasten.php`: Rechte,
 Mandantengrenze, Typen, Reihenfolge, Ablage, Felder, Maskierung.
 
+## Eine Reise wird gebucht wie im Reisebüro
+
+Eine Golfreise war bis Schema 10 eine Anmeldung pro Person mit einem Feld
+„Mitreisender". So bucht niemand: Man bucht zu zweit ein Doppelzimmer, einer
+spielt, einer nicht, dazu Leihschläger für beide und einen Transfer. Jetzt
+ist eine Buchung, was man im Reisebüro bucht – bis zu sechs Reisende, ein
+Zimmerwunsch, gewählte Zusatzleistungen – und **belegte Plätze zählen
+Personen, nicht Zeilen**. Reichen die freien Plätze nicht für alle, kommt
+die ganze Buchung auf die Warteliste (oder wird abgelehnt, wenn die Reise
+keine führt). Eine Buchung wird nie geteilt: Wer zu zweit reist, will zu
+zweit reisen.
+
+**Den Preis rechnet genau eine Stelle aus: `Trips::berechnen()`.** Golfer,
+Nichtgolfer, Einzelzimmerzuschlag, Zusatzleistungen, Frühbucherrabatt,
+Anzahlung, Restzahlung – für die Website, das Backend, die E-Mail und das
+Portal. Die Rechnung neben dem Buchungsformular holt sich `reise.js` bei
+jeder Änderung vom Server (`aktion=rechnen`, `format=json`) und setzt das
+fertige HTML ein; eine zweite Preislogik in JavaScript liefe beim ersten
+neuen Rabatt auseinander. Das Formular nennt eine Zusatzleistung nur über
+ihre Nummer, Name und Preis kommen immer aus der Reise. Gespeichert wird,
+was beim Buchen berechnet wurde – eine spätere Preisänderung an der Reise
+ändert keine bestehende Buchung.
+
+Drei Regeln, die leicht danebengehen: Der Frühbucherrabatt gilt bis zum
+**Ende** des Stichtags. Die Anzahlung ist ein Betrag je Person und nie höher
+als der Reisepreis. Die Restzahlung wird N Tage vor der Abreise fällig, aber
+nie in der Vergangenheit – wer drei Wochen vorher bucht, zahlt sofort.
+
+**Die Website: Katalog und Reiseseite.** `reisen.php` zeigt alle
+veröffentlichten, kommenden Reisen mit einem Filter nach Land; `reise.php`
+die Reise mit Titelbild, Eckdaten, Galerie im Bilderfenster, Hotel,
+Golfplätzen, Ablauf Tag für Tag, Preistabelle und Buchung. Die Kachel
+steht einmal in `Reiseseite::kachel()` – Katalog und Baustein „Golfreisen"
+zeigen dieselbe. Beide Seiten hängen am Modul: Ist es im Paket oder beim
+Pro aus, gibt es sie nicht. Eine noch nicht veröffentlichte Reise sieht nur
+das eigene Team als Vorschau, ohne Buchen und mit `noindex`; nach der
+Anmeldung wird erst dann gefragt, sonst bekäme jeder Besucher eine Sitzung.
+Veröffentlichte Reisen tragen strukturierte Daten (`TouristTrip`), mit
+`JSON_HEX_TAG` kodiert – ein Titel mit `</script>` beendete sonst den Block.
+
+**Bildpfade werden geprüft, nicht nur maskiert.** `Trips::pfad()` nimmt nur
+Dateien unter `uploads/` oder `assets/` ohne `..` und vollständige
+`https://`-Adressen an. Ein `javascript:` oder `//fremd.example` hat in
+einem `src` nichts zu suchen, auch wenn es maskiert ausgegeben würde.
+
+**Ohne JavaScript geht es weiter.** Alle sechs Personenzeilen stehen da,
+„Preis neu berechnen" lädt die Seite mit der Rechnung neu, die Bilder
+öffnen als Datei. Das Skript blendet leere Personen aus, rechnet live,
+sperrt Zusatzleistungen über der Personenzahl und macht aus den Bildern ein
+Fenster mit Pfeilen, Tastatur und Wischen.
+
+**Im Portal über die Kundennummer, nicht über die E-Mail.** „Meine Reisen"
+zeigt Buchungen mit `customer_id` des angemeldeten Kunden. Eine Buchung, die
+jemand mit derselben Adresse im Backend angelegt hat, ist nicht
+automatisch seine.
+
+Die Demo bringt Illustrationen statt Fotos mit (`assets/demo/reisen/`,
+SVG) – Fotos kann sie nicht mitbringen, und ein graues Rechteck verkauft
+keine Reise. Geprüft in `tests/reisen.php`: Rechnung, Kappung der
+Zusatzleistungen, Stichtag, Plätze, Warteliste, doppeltes Absenden,
+eingeschleuste Preisfelder, Bildpfade, Vorschau, Mandantengrenze auf
+Website, Buchung, Portal und Editor.
+
 ## Persönliche Dateien gehen durch eine Tür
 
 Schwungvideos und Unterlagen lagen bis zum Sicherheitsdurchgang unter

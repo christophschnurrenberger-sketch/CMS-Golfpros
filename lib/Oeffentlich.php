@@ -45,24 +45,40 @@ final class Oeffentlich
     /** Adresse zurück auf die Website, mit erhaltenem Mandanten. */
     public static function url(string $pfad, array $parameter = []): string
     {
-        $slug = (string) (Tenant::workspace()['slug'] ?? '');
-        if ((string) (Tenant::workspace()['domain'] ?? '') === '') {
-            $parameter = ['w' => $slug] + $parameter;
-        }
+        $parameter = self::mitMandant($parameter);
         return App::url($pfad) . ($parameter !== [] ? '?' . http_build_query($parameter) : '');
+    }
+
+    /** Dasselbe mit Schema und Host – für E-Mails und strukturierte Daten. */
+    public static function urlAbsolut(string $pfad, array $parameter = []): string
+    {
+        $parameter = self::mitMandant($parameter);
+        return App::absolut($pfad) . ($parameter !== [] ? '?' . http_build_query($parameter) : '');
+    }
+
+    private static function mitMandant(array $parameter): array
+    {
+        if ((string) (Tenant::workspace()['domain'] ?? '') === '') {
+            $parameter = ['w' => (string) (Tenant::workspace()['slug'] ?? '')] + $parameter;
+        }
+        return $parameter;
     }
 
     /**
      * Seite im Gewand der Website. Nutzt denselben Kopf und Fuß wie der
      * Renderer – ein Buchungsschritt, der plötzlich anders aussieht als
      * die Seite davor, kostet Vertrauen und damit Buchungen.
+     *
+     * Vorgänge – Buchen, Kaufen, Anfragen – bleiben aus den Suchmaschinen
+     * heraus. Seiten, die gefunden werden sollen, wie der Reisekatalog,
+     * sagen es mit `index => true` und geben ein Vorschaubild mit.
      */
     public static function seite(string $titel, string $inhalt, array $o = []): never
     {
         $pseudoSeite = [
             'id' => 0, 'titel' => $titel, 'slug' => (string) ($o['slug'] ?? ''), 'startseite' => 0,
             'seo' => Util::json(['titel' => $titel, 'beschreibung' => (string) ($o['beschreibung'] ?? ''),
-                                 'bild' => '', 'index' => false]),
+                                 'bild' => (string) ($o['bild'] ?? ''), 'index' => !empty($o['index'])]),
         ];
         echo Website::ausgeben($pseudoSeite, $inhalt);
         exit;

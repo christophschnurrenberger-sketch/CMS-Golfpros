@@ -3159,3 +3159,95 @@ ol.schritte { list-style: none; padding: 0; margin-left: 0; }
 }
 /* Schmale Seitenkarte: Bezeichnung über dem Wert statt daneben. */
 .angaben--gestapelt .angabe { grid-template-columns: minmax(0, 1fr); gap: 1px; }
+
+/* ============================================================= Reisen == */
+
+.reiter--rollend { white-space: nowrap; scrollbar-width: thin; }
+.reiter__zahl {
+  display: inline-block; min-width: 20px; margin-left: 4px; padding: 0 6px; border-radius: 999px;
+  background: var(--flaeche-3); color: var(--text-2); font-size: 11px; font-weight: 620; text-align: center;
+}
+.reiter__teil.ist-aktiv .reiter__zahl { background: var(--marke-hell); color: var(--marke); }
+
+/* Speichern bleibt in Reichweite, auch am Ende einer langen Karte. */
+.reise-editor__fuss {
+  position: sticky; bottom: 0; z-index: 5;
+  display: flex; justify-content: flex-end; gap: 8px;
+  margin-top: var(--r4); padding: 12px 0;
+  background: linear-gradient(to top, var(--grund) 70%, transparent);
+}
+
+/* Übersicht: jede Reise mit ihrem Bild. */
+.reisekarte { display: block; color: inherit; overflow: hidden; }
+.reisekarte:hover { color: inherit; box-shadow: var(--schatten-3); }
+.reisekarte__bild { position: relative; display: block; aspect-ratio: 16 / 9; background: var(--flaeche-2); overflow: hidden; }
+.reisekarte__bild img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
+.reisekarte:hover .reisekarte__bild img { transform: scale(1.03); }
+.reisekarte__ohne {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px;
+  color: var(--text-4); font-size: 12.5px;
+  background: repeating-linear-gradient(135deg, var(--flaeche-2) 0 10px, var(--flaeche-3) 10px 20px);
+}
+.reisekarte__marken { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; }
+.reisekarte__marken .pille { background: var(--flaeche); box-shadow: var(--schatten-1); }
+.reisekarte__marken .pille--erfolg { color: var(--erfolg); }
+.reisekarte__marken .pille--marke { background: var(--marke); color: var(--auf-marke); }
+.reisekarte__zahl {
+  position: absolute; right: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 999px; background: rgba(16, 24, 19, .94); color: #fff; font-size: 11.5px; font-weight: 600;
+}
+
+.reise-vorschau { overflow: hidden; }
+.reise-vorschau img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+
+/* Galerie im Editor: Kacheln mit großem Vorschaubild. */
+.galerie-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 12px; }
+.galerie-editor__teil {
+  position: relative; border: 1px solid var(--rand); border-radius: 12px; padding: 8px; background: var(--flaeche);
+}
+.galerie-editor__teil .bildfeld__reihe { flex-direction: column; align-items: stretch; }
+.galerie-editor__teil .bildfeld__schau { width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 8px; }
+.galerie-editor__teil .bildfeld__pfad { display: none; }
+.galerie-editor__teil .zeile__knoepfe { position: absolute; right: 12px; top: 12px; background: var(--flaeche); border-radius: 8px; box-shadow: var(--schatten-1); }
+.galerie-editor__teil:first-child::after {
+  content: "zuerst"; position: absolute; left: 14px; top: 14px; padding: 1px 7px; border-radius: 999px;
+  background: var(--flaeche); color: var(--text-2); font-size: 11px; font-weight: 620; box-shadow: var(--schatten-1);
+}
+
+.zeile__knoepfe { display: inline-flex; gap: 2px; }
+.zeile__knoepfe .rundknopf:disabled { opacity: .3; cursor: default; }
+.zeile__weg:hover { color: var(--gefahr); }
+
+.zeilenkarte { border: 1px solid var(--rand); border-radius: 12px; padding: 10px 14px 4px; background: var(--flaeche); }
+.zeilenkarte__kopf { display: flex; align-items: center; justify-content: space-between; min-height: 30px; margin-bottom: 6px; }
+.zeilenkarte__zwei { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 220px); gap: 16px; }
+.tag-marke {
+  display: inline-block; padding: 2px 10px; border-radius: 999px;
+  background: var(--marke); color: var(--auf-marke); font-size: 12px; font-weight: 640;
+}
+.extra-zeile { display: grid; grid-template-columns: minmax(0, 1fr) 130px 120px auto; gap: 8px; align-items: center; }
+
+/* Buchungen */
+.buchungstabelle td { vertical-align: top; }
+/* Zeilenaktionen sind sonst blass, bis man darüberfährt. „Bestätigen" ist
+   aber die offene Aufgabe einer neuen Buchung – die soll man sehen. */
+.buchungstabelle .aktionen .btn--primaer { opacity: 1; }
+.buchungstabelle tr.ist-blass td { opacity: .55; }
+.buchungstabelle select { min-width: 130px; }
+.zahlung { margin: 0; }
+.zahlung__knopf {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--rand); background: var(--flaeche); color: var(--text-2);
+  font: inherit; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.zahlung__knopf:hover:not(:disabled) { border-color: var(--erfolg); color: var(--erfolg); }
+.zahlung__knopf.ist-bezahlt { background: var(--erfolg-hell); border-color: color-mix(in srgb, var(--erfolg) 30%, transparent); color: var(--erfolg); }
+.zahlung__knopf:disabled { cursor: default; }
+.pille--klein { font-size: 10.5px; padding: 1px 6px; }
+
+@media (max-width: 700px) {
+  .zeilenkarte__zwei { grid-template-columns: minmax(0, 1fr); }
+  .extra-zeile { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .extra-zeile > input:first-child { grid-column: 1 / -1; }
+}

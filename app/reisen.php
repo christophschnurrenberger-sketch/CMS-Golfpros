@@ -43,8 +43,10 @@ foreach (Trips::kommende(50, false) as $r) {
 $titel = 'Reisen';
 $unter = Tenant::count('trips', 'ende >= :jetzt', ['jetzt' => Util::jetzt()]) . ' kommende Reisen · '
        . $offeneAnmeldungen . ' Anmeldungen · ' . Util::geld($gebunden) . ' gebucht';
-$aktionen = Auth::darf('travel.write')
-    ? '<button class="btn btn--primaer" data-modal-auf="modal-reise">' . Icon::svg('plus', 15) . ' Reise anlegen</button>' : '';
+$aktionen = '<a class="btn" target="_blank" rel="noopener" href="' . Util::attr(Oeffentlich::url('/reisen.php')) . '">'
+          . Icon::svg('external', 15) . ' Reisekatalog</a>'
+          . (Auth::darf('travel.write')
+             ? '<button class="btn btn--primaer" data-modal-auf="modal-reise">' . Icon::svg('plus', 15) . ' Reise anlegen</button>' : '');
 require __DIR__ . '/partials/kopf.php';
 ?>
 
@@ -67,27 +69,35 @@ require __DIR__ . '/partials/kopf.php';
     <?php foreach ($reisen as $r):
       $belegt   = Trips::belegt((int) $r['id']);
       $frei     = Trips::freiePlaetze($r);
-      $warte    = count(Trips::anmeldungen((int) $r['id'], 'warteliste'));
+      $warte    = array_sum(array_map(static fn ($b) => (int) $b['personen'], Trips::anmeldungen((int) $r['id'], 'warteliste')));
       $fehlt    = Trips::fehlend($r);
-      $quote    = (int) $r['plaetze'] > 0 ? (int) round($belegt / (int) $r['plaetze'] * 100) : 0; ?>
-      <a class="karte" href="<?= Util::attr(App::url('/app/reise.php?id=' . (int) $r['id'])) ?>"
-         style="display:block;color:inherit">
+      $quote    = (int) $r['plaetze'] > 0 ? (int) round($belegt / (int) $r['plaetze'] * 100) : 0;
+      $bilder   = count(Trips::galerie($r)) + ((string) $r['bild'] !== '' ? 1 : 0); ?>
+      <a class="karte reisekarte" href="<?= Util::attr(App::url('/app/reise.php?id=' . (int) $r['id'])) ?>">
+        <span class="reisekarte__bild">
+          <?php if ((string) $r['bild'] !== ''): ?>
+            <img src="<?= Util::attr(App::url((string) $r['bild'])) ?>" alt="" loading="lazy">
+          <?php else: ?>
+            <span class="reisekarte__ohne"><?= Icon::svg('image', 22) ?><span>Noch kein Titelbild</span></span>
+          <?php endif; ?>
+          <span class="reisekarte__marken">
+            <?= pille(Trips::STATUS[(string) $r['status']] ?? (string) $r['status'], (string) $r['status'] === 'veroeffentlicht' ? 'erfolg' : '') ?>
+            <?php if (Trips::istFruehbucher($r)): ?><?= pille('Frühbucher', 'marke') ?><?php endif; ?>
+          </span>
+          <?php if ($bilder > 1): ?><span class="reisekarte__zahl"><?= Icon::svg('image', 13) ?> <?= $bilder ?></span><?php endif; ?>
+        </span>
         <div class="karte__koerper">
-          <div class="reihe reihe--eng mb-3">
-            <?= pille(Trips::ANREISE[(string) $r['anreise']] ?? (string) $r['anreise'], 'offen') ?>
-            <?= pille((string) $r['status'], (string) $r['status'] === 'veroeffentlicht' ? 'erfolg' : '') ?>
+          <div class="reihe reihe--eng mb-2">
+            <span class="klein gedimmt reihe reihe--eng"><?= Icon::svg('pin', 14) ?>
+              <?= Util::h(trim((string) $r['ziel'] . ' · ' . (string) $r['land'], ' ·')) ?></span>
             <div class="fueller"></div>
-            <span class="halbfett"><?= Util::h(Util::geldKurz((int) $r['preis_cent'])) ?></span>
+            <span class="halbfett">ab <?= Util::h(Util::geldKurz(Trips::abPreis($r))) ?></span>
           </div>
           <h3 class="mb-2"><?= Util::h((string) $r['titel']) ?></h3>
           <div class="klein gedimmt reihe reihe--eng">
-            <?= Icon::svg('pin', 14) ?>
-            <?= Util::h(trim((string) $r['ziel'] . ' · ' . (string) $r['land'], ' ·')) ?>
-          </div>
-          <div class="klein gedimmt reihe reihe--eng mt-2">
             <?= Icon::svg('calendar', 14) ?>
             <?= Util::h(Util::datum((string) $r['start'])) ?>–<?= Util::h(Util::datum((string) $r['ende'])) ?>
-            · <?= (int) $r['naechte'] ?> Nächte
+            · <?= (int) $r['naechte'] ?> Nächte · <?= Util::h(Trips::ANREISE[(string) $r['anreise']] ?? '') ?>
           </div>
           <div class="mt-4">
             <div class="reihe klein mb-2">

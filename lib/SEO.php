@@ -197,6 +197,9 @@ final class SEO
         if ($zeiten !== []) {
             $daten['openingHoursSpecification'] = $zeiten;
         }
-        return '<script type="application/ld+json">' . Util::json($daten) . '</script>';
+        /* JSON_HEX_TAG: Ein „</script>" in der Beschreibung beendete sonst den Block. */
+        return '<script type="application/ld+json">'
+             . json_encode($daten, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP)
+             . '</script>';
     }
 }

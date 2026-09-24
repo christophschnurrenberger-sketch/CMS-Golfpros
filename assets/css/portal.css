@@ -412,6 +412,9 @@
   transition: background .15s;
 }
 .portal__buchen:hover { background: var(--marke-dunkel); color: var(--grund); }
+/* `.portal a { color: inherit }` wiegt mehr als eine einzelne Klasse – ohne
+   diese Zeile stand „Termin buchen" in dunkler Schrift auf dem Grün. */
+.portal a.portal__buchen { color: var(--grund); }
 .portal__buchen span { display: none; }
 /*
  * Der Umbruch steht hier und nicht oben bei den anderen.
@@ -538,3 +541,58 @@
    Portal lädt site.css aber nicht, und ein sichtbares Feld namens
    „website" würden echte Besucher ausfüllen und dann abgewiesen. */
 .portal .honigtopf { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+
+/* ------------------------------------------------------------ Reisen -- */
+
+/*
+ * Die nächste Reise auf der Startseite: klein, mit Bild, ein Klick zur
+ * ganzen Buchung. Nicht in der Leiste unten – die hat fünf Plätze, und
+ * die meisten Kunden verreisen nie mit ihrem Pro.
+ */
+.portal .pt-reisehinweis {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 18px 12px 12px;
+  border: 1px solid var(--rand); border-radius: 20px 20px 20px 6px;
+  color: inherit; transition: border-color .16s;
+}
+.portal .pt-reisehinweis:hover { border-color: var(--marke); }
+.portal .pt-reisehinweis__bild { flex: none; width: 84px; height: 64px; border-radius: 12px; overflow: hidden; }
+.portal .pt-reisehinweis__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.portal .pt-reisehinweis__text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.portal .pt-reisehinweis__label { font-family: var(--hand); font-size: 19px; color: var(--marke); }
+.portal .pt-reisehinweis__titel { font-weight: 600; font-size: 17px; letter-spacing: -0.015em; }
+.portal .pt-reisehinweis__unter { font-size: 14px; color: var(--text-3); margin-top: 2px; }
+
+/* Eine gebuchte Reise – Status, Reisende, Zahlungsplan. */
+.portal .pt-reise {
+  border: 1px solid var(--rand);
+  border-radius: clamp(20px, 3vw, 28px) clamp(20px, 3vw, 28px) clamp(20px, 3vw, 28px) 6px;
+  overflow: hidden; margin-bottom: 26px;
+}
+.portal .pt-reise__bild { aspect-ratio: 21 / 8; overflow: hidden; background: var(--flaeche); }
+.portal .pt-reise__bild img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.portal .pt-reise__koerper { padding: clamp(18px, 4vw, 28px); }
+.portal .pt-reise__kopf { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.portal .pt-reise__titel { font-size: clamp(22px, 5vw, 28px); line-height: 1.1; }
+.portal .pt-reise__zeit { margin: 6px 0 0; font-size: 15px; color: var(--text-2); }
+.portal .pt-reise__countdown { margin: 10px 0 0; font-family: var(--hand); font-size: 23px; color: var(--marke); line-height: 1.2; }
+.portal .pt-reise__teile {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 22px 32px;
+  margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--rand);
+}
+.portal .pt-reise__label { font-size: 12.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+.portal .pt-reise__liste { list-style: none; margin: 0; padding: 0; font-size: 15.5px; }
+.portal .pt-reise__liste li { padding: 2px 0; }
+.portal .pt-reise__klein { color: var(--text-3); font-size: 14px; }
+.portal .pt-zahlung {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--rand); font-size: 15.5px; line-height: 1.35;
+}
+.portal .pt-zahlung__stand { display: block; font-size: 13.5px; color: #7a5c12; }
+.portal .pt-zahlung.ist-bezahlt .pt-zahlung__stand { color: var(--marke); }
+.portal .pt-zahlung__betrag { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.portal .pt-zahlung--summe { border-bottom: 0; font-weight: 500; }
+.portal .pt-reise__bank { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--flaeche); font-size: 14.5px; line-height: 1.5; }
+.portal .pt-reise__fuss { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+.portal .pt-link { color: var(--marke); border-bottom: 1px solid currentColor; }
+.portal .portal__titel + .pt-reise { margin-top: clamp(16px, 3vw, 24px); }

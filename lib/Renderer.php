@@ -1280,41 +1280,25 @@ final class Renderer
      */
     private static function blockReisen(array $d): string
     {
-        $reisen = Trips::kommende(max(1, (int) ($d['anzahl'] ?? 3)));
+        $anzahl = max(1, (int) ($d['anzahl'] ?? 3));
+        /* Eine mehr holen als gezeigt: Nur dann weiß der Baustein, ob der
+           Katalog etwas zeigt, was hier nicht steht. */
+        $reisen = Trips::kommende($anzahl + 1);
         if ($reisen === []) {
             return '';
         }
+        $mehr = count($reisen) > $anzahl;
 
         $kacheln = '';
-        foreach ($reisen as $r) {
-            $frei = Trips::freiePlaetze($r);
-            $ziel = Oeffentlich::url('/reise.php', ['r' => (string) $r['slug']]);
-            $ort  = trim((string) $r['ziel'] . ' · ' . (string) $r['land'], ' ·');
-
-            $kacheln .= '<a class="reisekachel" href="' . Util::attr($ziel) . '">'
-                      . ((string) $r['bild'] !== ''
-                         ? '<span class="reisekachel__bild"><img src="'
-                           . Util::attr(App::url((string) $r['bild'])) . '" alt="" loading="lazy"></span>'
-                         : '')
-                      . '<span class="reisekachel__koerper">'
-                      . ($ort !== '' ? '<span class="reisekachel__ort">' . Util::h($ort) . '</span>' : '')
-                      . '<span class="reisekachel__titel">' . Util::h((string) $r['titel']) . '</span>'
-                      . '<span class="reisekachel__zeit">'
-                      . Util::h(Util::datum((string) $r['start'])) . ' – '
-                      . Util::h(Util::datum((string) $r['ende'])) . ' · '
-                      . (int) $r['naechte'] . ' Nächte</span>'
-                      . ((string) $r['kurztext'] !== ''
-                         ? '<span class="reisekachel__text">' . Util::h((string) $r['kurztext']) . '</span>' : '')
-                      . '<span class="reisekachel__fuss">'
-                      . '<span class="reisekachel__preis">ab ' . Util::h(Util::geldKurz((int) $r['preis_cent']))
-                      . '</span>'
-                      . '<span class="reisekachel__frei">'
-                      . ($frei > 0 ? 'noch ' . ($frei === 1 ? '1 Platz' : $frei . ' Plätze') : 'ausgebucht') . '</span>'
-                      . '</span></span></a>';
+        foreach (array_slice($reisen, 0, $anzahl) as $r) {
+            $kacheln .= Reiseseite::kachel($r);
         }
 
         return '<div class="inhalt-breite" id="reisen">' . self::kopfzeile($d)
-             . '<div class="reisekacheln">' . $kacheln . '</div></div>';
+             . '<div class="reisekacheln">' . $kacheln . '</div>'
+             . ($mehr ? '<p class="reisekacheln__alle"><a class="knopf knopf--strich" href="'
+                        . Util::attr(Oeffentlich::url('/reisen.php')) . '">Alle Reisen ansehen</a></p>' : '')
+             . '</div>';
     }
 
     /** Beiträge als abwechselnd eingerückte Zeilen mit Bild und Text. */
