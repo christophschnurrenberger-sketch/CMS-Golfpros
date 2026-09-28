@@ -67,7 +67,7 @@ install.php   Einrichtung, danach löschen
 passwort.php  Passwort setzen – über den Link aus Einladung oder Reset
 tls-freigabe.php  Fragt Caddy vor jedem Zertifikat: gehört die Domain zu einer Instanz?
 bin/          Kommandozeile: Betreiber anlegen, Probemail, eigenen Server einrichten
-tests/        php tests/betreiber.php, baukasten.php, reisen.php, mail.php, server.php – Prüfungen gegen eine Wegwerf-Datenbank
+tests/        php tests/anwendung.php, betreiber.php, baukasten.php, reisen.php, mail.php, server.php – Prüfungen gegen eine Wegwerf-Datenbank
 assets/       Stylesheets, Skripte und die Schriften auf eigenem Server
 docs/         Architektur, Betrieb und Upload im Detail
 .github/      Ein Workflow: Syntax prüfen, dann per FTPS hochladen

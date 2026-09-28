@@ -11,24 +11,27 @@
  *   $ohneKopf     true blendet den Seitenkopf aus (z. B. Baukasten)
  *   $vollbild     true blendet auch Seitenleiste und Kopfzeile aus (Baukasten)
  *
- * Alle eigenen Variablen hier beginnen mit $k. Diese Datei läuft im
- * Gültigkeitsbereich der Seite: Hieß die Schleife über das Menü
- * `$eintraege`, überschrieb sie die gleichnamige Liste der Seite – das
- * Änderungsprotokoll zeigte deshalb die Menüpunkte statt der Einträge.
+ * Alle eigenen Variablen hier beginnen mit $k und einem Großbuchstaben
+ * ($kMarke, $kBenutzer). Diese Datei läuft im Gültigkeitsbereich der
+ * Seite: Hieß die Schleife über das Menü `$eintraege`, überschrieb sie die
+ * gleichnamige Liste der Seite – das Änderungsprotokoll zeigte deshalb die
+ * Menüpunkte statt der Einträge. Und `$kunde` für die Markenfarbe fing
+ * zwar mit k an, ersetzte auf der Kundenakte aber den Kunden durch einen
+ * Farbwert – die Seite brach nach der Kopfzeile ab.
  */
 if (!defined('GP_ROOT')) {
     exit;
 }
 
-$benutzer   = Auth::benutzer();
-$branding   = Tenant::branding();
+$kBenutzer  = Auth::benutzer();
+$kBranding  = Tenant::branding();
 $bereich    = $bereich ?? App::bereich();
 $titel      = $titel ?? Module::name($bereich);
 $unter      = $unter ?? '';
 $aktionen   = $aktionen ?? '';
 $brotkrumen = $brotkrumen ?? [];
-$ungelesen  = Notify::ungelesen(Auth::id());
-$logo       = (string) (Tenant::workspace()['logo'] ?? '');
+$kUngelesen = Notify::ungelesen(Auth::id());
+$kLogo      = (string) (Tenant::workspace()['logo'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="de" data-theme="hell">
@@ -62,19 +65,19 @@ document.documentElement.setAttribute('data-theme',d?'dunkel':'hell');}catch(e){
  * `Website::stilVariablen()`, als Inline-Stil auf `.seite`. Sie bleibt
  * davon unberührt.
  */
-$kunde  = Util::attr((string) $branding['primaer']);
-$kAkzent = Util::attr((string) $branding['akzent']);
+$kMarke  = Util::attr((string) $kBranding['primaer']);
+$kAkzent = Util::attr((string) $kBranding['akzent']);
 ?>
 <style>
 :root{
-  --kunde: <?= $kunde ?>;
-  --kunde-hell: color-mix(in srgb, <?= $kunde ?> 10%, #fff);
-  --kunde-rand: color-mix(in srgb, <?= $kunde ?> 28%, #fff);
+  --kunde: <?= $kMarke ?>;
+  --kunde-hell: color-mix(in srgb, <?= $kMarke ?> 10%, #fff);
+  --kunde-rand: color-mix(in srgb, <?= $kMarke ?> 28%, #fff);
   --kunde-akzent: <?= $kAkzent ?>;
 }
 [data-theme="dunkel"]{
-  --kunde-hell: color-mix(in srgb, <?= $kunde ?> 22%, #0e1a15);
-  --kunde-rand: color-mix(in srgb, <?= $kunde ?> 42%, #0e1a15);
+  --kunde-hell: color-mix(in srgb, <?= $kMarke ?> 22%, #0e1a15);
+  --kunde-rand: color-mix(in srgb, <?= $kMarke ?> 42%, #0e1a15);
 }
 </style>
 </head>
@@ -93,8 +96,8 @@ $kAkzent = Util::attr((string) $branding['akzent']);
      * jedem Fall, damit das Produkt nicht unsichtbar wird.
      */ ?>
     <span class="marke__zeichen">
-      <?php if ($logo !== '' && is_file(GP_ROOT . '/' . ltrim($logo, '/'))): ?>
-        <img src="<?= Util::attr(App::url($logo)) ?>" alt="">
+      <?php if ($kLogo !== '' && is_file(GP_ROOT . '/' . ltrim($kLogo, '/'))): ?>
+        <img src="<?= Util::attr(App::url($kLogo)) ?>" alt="">
       <?php else: ?>
         <?= Marke::zeichen(26) ?>
       <?php endif; ?>
@@ -167,7 +170,7 @@ $kAkzent = Util::attr((string) $branding['akzent']);
         <?= Icon::svg('chevron-up', 15) ?>
       </button>
       <div class="aufklapp__menue aufklapp__menue--links aufklapp__menue--oben" style="min-width:230px">
-        <div class="aufklapp__titel"><?= Util::h((string) ($benutzer['email'] ?? '')) ?></div>
+        <div class="aufklapp__titel"><?= Util::h((string) ($kBenutzer['email'] ?? '')) ?></div>
         <a class="aufklapp__eintrag" href="<?= Util::attr(App::url('/app/profil.php')) ?>">
           <?= Icon::svg('user', 16) ?> Mein Profil</a>
         <?php if (Auth::darf('settings.allgemein')): ?>
@@ -215,12 +218,12 @@ $kAkzent = Util::attr((string) $branding['akzent']);
    * arbeitet, ist nicht der Inhaber – und soll das in keinem Moment
    * vergessen, auch nicht nach einer Stunde in den Einstellungen.
    */
-  $supportSitzung = Support::daten();
-  if ($supportSitzung !== null): ?>
+  $kSupport = Support::daten();
+  if ($kSupport !== null): ?>
     <div class="support-leiste" role="status">
       <span class="support-leiste__marke">Support Mode</span>
       <span class="support-leiste__text">Du greifst gerade als TeePilot Master Admin auf diese Instanz zu.
-        <b><?= Util::h(Tenant::name()) ?></b> · angemeldet als <?= Util::h((string) ($benutzer['name'] ?? '')) ?>
+        <b><?= Util::h(Tenant::name()) ?></b> · angemeldet als <?= Util::h((string) ($kBenutzer['name'] ?? '')) ?>
         · noch <?= Support::restMinuten() ?> Min.</span>
       <form method="post" action="<?= Util::attr(App::url('/master/support.php')) ?>">
         <?= Auth::csrfFeld() ?><input type="hidden" name="aktion" value="ende">
@@ -263,14 +266,14 @@ $kAkzent = Util::attr((string) $branding['akzent']);
       <div class="aufklapp">
         <button class="rundknopf" data-aufklapp aria-label="Benachrichtigungen">
           <?= Icon::svg('bell', 18) ?>
-          <?php if ($ungelesen > 0): ?>
-            <span class="rundknopf__punkt"><?= $ungelesen > 9 ? '9+' : $ungelesen ?></span>
+          <?php if ($kUngelesen > 0): ?>
+            <span class="rundknopf__punkt"><?= $kUngelesen > 9 ? '9+' : $kUngelesen ?></span>
           <?php endif; ?>
         </button>
         <div class="aufklapp__menue" style="min-width:340px;max-width:min(400px,calc(100vw - 28px))">
           <div class="reihe reihe--zwischen" style="padding:7px 9px 4px">
             <span class="versal gedimmt-2">Benachrichtigungen</span>
-            <?php if ($ungelesen > 0): ?>
+            <?php if ($kUngelesen > 0): ?>
               <a class="klein" href="<?= Util::attr(App::url('/app/benachrichtigungen.php?aktion=alle_gelesen')) ?>">Alle gelesen</a>
             <?php endif; ?>
           </div>

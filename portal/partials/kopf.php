@@ -12,15 +12,18 @@
  *   $titel     Überschrift
  *   $kunde     Datensatz des angemeldeten Kunden
  *   $ansicht   aktueller Bereich
+ *
+ * Eigene Variablen beginnen mit $k und einem Großbuchstaben – die Datei
+ * läuft im Gültigkeitsbereich der Seite, wie app/partials/kopf.php.
  */
 if (!defined('GP_ROOT')) {
     exit;
 }
 require_once GP_ROOT . '/lib/vorlage.php';
 
-$branding = Tenant::branding();
-$ansicht  = $ansicht ?? 'start';
-$logo     = (string) (Tenant::workspace()['logo'] ?? '');
+$kBranding = Tenant::branding();
+$ansicht   = $ansicht ?? 'start';
+$kLogo     = (string) (Tenant::workspace()['logo'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -35,9 +38,9 @@ $logo     = (string) (Tenant::workspace()['logo'] ?? '');
 <style>
 /* Nur die Marke kommt aus dem Workspace; alles andere steht im Stylesheet. */
 .portal{
-  --marke: <?= Util::attr((string) $branding['primaer']) ?>;
-  --marke-dunkel: color-mix(in srgb, <?= Util::attr((string) $branding['primaer']) ?> 82%, #000);
-  --akzent: <?= Util::attr((string) $branding['akzent']) ?>;
+  --marke: <?= Util::attr((string) $kBranding['primaer']) ?>;
+  --marke-dunkel: color-mix(in srgb, <?= Util::attr((string) $kBranding['primaer']) ?> 82%, #000);
+  --akzent: <?= Util::attr((string) $kBranding['akzent']) ?>;
 }
 </style>
 </head>
@@ -45,8 +48,8 @@ $logo     = (string) (Tenant::workspace()['logo'] ?? '');
 
 <header class="portal__kopf">
   <a class="portal__marke" href="<?= Util::attr(App::url('/portal/')) ?>">
-    <?php if ($logo !== '' && is_file(GP_ROOT . '/' . ltrim($logo, '/'))): ?>
-      <img src="<?= Util::attr(App::url($logo)) ?>" alt="<?= Util::attr(Tenant::name()) ?>" style="max-height:34px">
+    <?php if ($kLogo !== '' && is_file(GP_ROOT . '/' . ltrim($kLogo, '/'))): ?>
+      <img src="<?= Util::attr(App::url($kLogo)) ?>" alt="<?= Util::attr(Tenant::name()) ?>" style="max-height:34px">
     <?php else: ?>
       <span class="portal__marke-text"><?= Util::h(Tenant::name()) ?></span>
     <?php endif; ?>
@@ -86,20 +89,20 @@ $logo     = (string) (Tenant::workspace()['logo'] ?? '');
     ['training',  'Training', 'training'],
     ['fortschritt', 'Fortschritt', 'trend-up'],
     ['unterlagen', 'Unterlagen', 'folder'],
-  ] as [$key, $name, $icon]): ?>
-    <a class="portal__navi-teil<?= $ansicht === $key ? ' ist-aktiv' : '' ?>"
-       href="<?= Util::attr(App::url('/portal/?ansicht=' . $key)) ?>">
-      <?= Icon::svg($icon, 19) ?>
-      <span><?= Util::h($name) ?></span>
+  ] as [$kZiel, $kName, $kIcon]): ?>
+    <a class="portal__navi-teil<?= $ansicht === $kZiel ? ' ist-aktiv' : '' ?>"
+       href="<?= Util::attr(App::url('/portal/?ansicht=' . $kZiel)) ?>">
+      <?= Icon::svg($kIcon, 19) ?>
+      <span><?= Util::h($kName) ?></span>
     </a>
   <?php endforeach; ?>
 </nav>
 
 <main class="portal__inhalt">
-  <?php foreach (App::meldungen() as $m): ?>
-    <div class="hinweis hinweis--<?= $m['typ'] === 'fehler' ? 'gefahr' : ($m['typ'] === 'info' ? 'still' : 'erfolg') ?> mb-4">
-      <?= Icon::svg($m['typ'] === 'fehler' ? 'alert' : 'check', 17) ?>
-      <div class="hinweis__text"><?= Util::h($m['text']) ?></div>
+  <?php foreach (App::meldungen() as $kM): ?>
+    <div class="hinweis hinweis--<?= $kM['typ'] === 'fehler' ? 'gefahr' : ($kM['typ'] === 'info' ? 'still' : 'erfolg') ?> mb-4">
+      <?= Icon::svg($kM['typ'] === 'fehler' ? 'alert' : 'check', 17) ?>
+      <div class="hinweis__text"><?= Util::h($kM['text']) ?></div>
     </div>
   <?php endforeach; ?>
   <h1 class="portal__titel"><?= Util::h($titel) ?></h1>
