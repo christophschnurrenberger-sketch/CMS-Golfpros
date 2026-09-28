@@ -56,10 +56,16 @@ return [
     // 'rechnungsablage' => '',
 
     // Absender für Systemmails.
+    //
+    // 'mail' nutzt den Postausgang des Hosters (Webspace). Ein eigener
+    // Server hat keinen – dort 'smtp' und die Daten eines Postfachs.
+    // Bei SMTP steht als Absender immer from_email (das Konto), davor der
+    // Name der Golfschule; ihre eigene Adresse wird zur Antwortadresse.
+    // secure: 'tls' = STARTTLS (Port 587), 'ssl' = Port 465.
+    // Prüfen: php bin/mail-test.php du@adresse.de
     'mail' => [
         'from_name'  => 'TeePilot',
         'from_email' => '',
-        // 'transport' => 'mail' | 'smtp'
         'transport'  => 'mail',
         'smtp'       => ['host' => '', 'port' => 587, 'user' => '', 'pass' => '', 'secure' => 'tls'],
     ],

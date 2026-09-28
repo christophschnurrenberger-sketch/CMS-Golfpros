@@ -24,6 +24,22 @@ anlegen, der nur in das Webverzeichnis darf. Dann liegt nicht das
 Hauptpasswort bei GitHub, und der Zugang lässt sich einzeln sperren, ohne
 dass sonst etwas stehen bleibt.
 
+**Auf einem eigenen Server** meldet sich der Upload nicht mit Passwort,
+sondern mit einem Schlüssel an – dort ist die Anmeldung mit Passwort aus.
+Statt `FTP_PASSWORT` dann:
+
+| Name              | Inhalt                                                    |
+|-------------------|-----------------------------------------------------------|
+| `SFTP_SCHLUESSEL` | der private Upload-Schlüssel, vollständig mit den Zeilen `-----BEGIN …` und `-----END …` |
+| `SFTP_HOSTKEY`    | der öffentliche Schlüssel des Servers, `ssh-ed25519 AAAA…` |
+
+Beides gibt `bin/server-einrichten.sh` am Ende aus; wie es weitergeht,
+steht in [SERVER.md](SERVER.md). `SFTP_HOSTKEY` nagelt fest, mit welchem
+Server gesprochen wird. Ohne ihn nimmt der Lauf den Schlüssel an, den die
+Gegenstelle gerade zeigt – und weil der Runner bei jedem Lauf frisch ist,
+jedes Mal aufs Neue. Ist `SFTP_SCHLUESSEL` gesetzt, wird er genommen, auch
+wenn noch ein `FTP_PASSWORT` daneben steht.
+
 ### Variables (im Klartext lesbar, keine Geheimnisse)
 
 | Name              | Voreinstellung | Wofür                                              |
@@ -283,6 +299,15 @@ explizites FTPS. Der Reihe nach probieren:
 3. Bleibt nur `ftp`, geht das Passwort im Klartext über das Netz. Dann
    wenigstens einen eigenen, auf das Webverzeichnis beschränkten Zugang
    dafür anlegen.
+
+**`Host key verification failed`** (SFTP mit Schlüssel) – `SFTP_HOSTKEY`
+passt nicht zum Server, meist nach einer Neuinstallation. Auf dem Server
+`cat /etc/ssh/ssh_host_ed25519_key.pub` und die ersten beiden Teile neu
+eintragen.
+
+**`Permission denied (publickey)`** – `SFTP_SCHLUESSEL` ist unvollständig
+kopiert, oder der öffentliche Teil steht nicht in
+`/home/teepilot/.ssh/authorized_keys` auf dem Server.
 
 **`protocol: invalid parameter`** – in `FTP_PROTOKOLL` steht etwas, das
 die Action nicht kennt. Erlaubt sind nur `ftp`, `ftps` und `ftps-legacy`;

@@ -1186,6 +1186,47 @@ weiter – nur innerhalb von `/app/`.
 
 Ausführlich: [BETREIBER.md](BETREIBER.md).
 
+## Ein eigener Server bleibt ein Webspace
+
+Die Anlage läuft auf einem gewöhnlichen Webspace, und dabei bleibt es auch
+auf einem eigenen Server: Dieselben Dateien, derselbe Upload, keine
+Dienste daneben. `bin/server-einrichten.sh` baut einem nackten Debian genau
+die Umgebung, die ein Webspace mitbringt – und schreibt drei Dinge, die
+dort der Hoster erledigt, selbst hin. Anleitung: [SERVER.md](SERVER.md).
+
+**PHP läuft als der Benutzer, der hochlädt.** Wie beim Webspace: Der
+Upload-Benutzer `teepilot` besitzt die Dateien, PHP-FPM läuft unter ihm und
+darf `data/` und `uploads/` beschreiben, Caddy liest nur, was öffentlich
+ist, und erreicht PHP über einen Socket, der nur ihm gehört. Die Rechte,
+die der Upload setzt (`config.php` und Datenbank nur für den Eigentümer),
+gelten damit unverändert. Der Benutzer kann per SSH nur Dateien
+übertragen (`ForceCommand internal-sftp`).
+
+**Die Sperren stehen zweimal.** Unter Apache in den `.htaccess`-Dateien,
+unter Caddy im Caddyfile, das das Skript schreibt – dieselben Pfade,
+dieselben sauberen Adressen. Wer eine neue Sperre in eine `.htaccess`
+schreibt, trägt sie auch dort ein. Unbekannte Adressen enden in 404 und
+nicht still auf der Startseite (`try_files … =404`).
+
+**Zertifikate auf Zuruf, aber nur für bekannte Domains.** Trägt eine
+Golfschule ihre Domain ein und lässt sie auf den Server zeigen, holt
+Caddy beim ersten Aufruf das Zertifikat. Vorher fragt es
+`tls-freigabe.php` – nur von `127.0.0.1` erreichbar –, und die antwortet
+nur für die Adresse der Anlage und die Domain einer aktiven Instanz
+(`App::zertifikatErlaubt()`, geprüft in `tests/server.php`). Ohne diese
+Frage bekäme jede Domain ein Zertifikat, die jemand auf die IP zeigen
+lässt.
+
+**Mail über SMTP, in eigenem Namen.** Ein Server hat keinen Postausgang.
+`Mail` spricht SMTP selbst (STARTTLS oder TLS, Zertifikat immer geprüft,
+Anmeldung nie vor der Verschlüsselung). Absender ist das Konto aus der
+`config.php`, davor der Name der Golfschule; ihre Adresse steht in
+`Reply-To`. Ein Postausgang nimmt fremde Absender nicht an, und SPF und
+DKIM passen nur zur eigenen Domain. Die Nachricht geht als
+quoted-printable hinaus, weil die HTML-Vorlage eine einzige lange Zeile
+ist und SMTP bei 998 Zeichen abbricht. Geprüft in `tests/mail.php` gegen
+einen nachgebauten Server.
+
 ## Wo die Grenzen liegen
 
 Ehrlichkeitshalber:
@@ -1198,5 +1239,7 @@ Ehrlichkeitshalber:
   Zehntausende gehört ein Versanddienst davor.
 * Videos liegen im Dateisystem und werden unverändert ausgeliefert. Es
   gibt keine Umkodierung – die würde `ffmpeg` voraussetzen.
-* Es gibt keine automatisierten Tests. Geprüft wurde mit `php -l` über
-  alle Dateien und mit Abrufen aller Routen; das ersetzt keine Testsuite.
+* Die Prüfungen in `tests/` laufen von Hand (`php tests/…`), nicht bei
+  jedem Push: Der Workflow prüft nur die Syntax. Sie decken die heiklen
+  Stellen ab – Betreiberzentrale, Baukasten, Reisen, Mailversand –, nicht
+  jede Seite.

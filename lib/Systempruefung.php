@@ -111,9 +111,17 @@ final class Systempruefung
             (string) Config::get('base_url', '') ?: 'nicht gesetzt', 'Ohne base_url entstehen Links in E-Mails aus der Anfrage.');
         $zeilen[] = self::zeile('Sitzungsgeheimnis', strlen((string) Config::get('secret', '')) >= 32,
             strlen((string) Config::get('secret', '')) >= 32 ? 'gesetzt' : 'zu kurz oder fehlt');
-        $mail = function_exists('mail') && (string) Config::get('mail.transport', 'mail') === 'mail';
-        $zeilen[] = self::zeile('Mailversand', $mail ? null : false, $mail ? 'mail() verfügbar – Zustellung nicht geprüft' : 'kein Versandweg',
-            'Ob Mails ankommen, lässt sich von hier nicht prüfen. Eine Einladung an die eigene Adresse zeigt es.');
+        $transport = (string) Config::get('mail.transport', 'mail');
+        if ($transport === 'smtp') {
+            $host = (string) Config::get('mail.smtp.host', '');
+            $zeilen[] = self::zeile('Mailversand', $host !== '' ? null : false,
+                $host !== '' ? 'SMTP über ' . $host . ' – Zustellung nicht geprüft' : 'SMTP gewählt, aber kein Server eingetragen',
+                'Prüfen auf dem Server: php bin/mail-test.php an@deine-adresse.de');
+        } else {
+            $mail = function_exists('mail') && $transport === 'mail';
+            $zeilen[] = self::zeile('Mailversand', $mail ? null : false, $mail ? 'mail() verfügbar – Zustellung nicht geprüft' : 'kein Versandweg',
+                'Ob Mails ankommen, lässt sich von hier nicht prüfen. Eine Einladung an die eigene Adresse zeigt es.');
+        }
         $letzte = 0;
         foreach (DB::all("SELECT wert FROM settings WHERE schluessel = 'wartung_letzter_lauf' AND workspace_id > 0") as $z) {
             $letzte = max($letzte, (int) $z['wert']);

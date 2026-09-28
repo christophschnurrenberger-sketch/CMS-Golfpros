@@ -58,6 +58,35 @@ GitHub ist in [DEPLOY.md](DEPLOY.md) beschrieben. Er fasst Datenbank,
 `config.php` und den `uploads`-Ordner nicht an – ein Umzug betrifft also
 nur die Zugangsdaten im Repository.
 
+**Vom Webspace auf einen eigenen Server** – Einrichtung, Umzug der Daten,
+eigene Domains der Instanzen mit automatischem HTTPS: [SERVER.md](SERVER.md).
+
+## Mailversand
+
+Auf einem Webspace verschickt TeePilot über PHP `mail()` – der Hoster
+stellt den Postausgang. Ein eigener Server hat keinen; dort geht es über
+SMTP zu einem Postfach oder Versanddienst:
+
+```php
+'mail' => [
+    'from_name'  => 'TeePilot',
+    'from_email' => 'noreply@deine-domain.de',
+    'transport'  => 'smtp',
+    'smtp'       => ['host' => 'smtp.example.org', 'port' => 587, 'user' => 'noreply@deine-domain.de',
+                     'pass' => '…', 'secure' => 'tls'],
+],
+```
+
+`secure` ist `tls` (STARTTLS, meist Port 587) oder `ssl` (Port 465). Das
+Zertifikat der Gegenstelle wird immer geprüft. Als Absender steht bei SMTP
+immer `from_email` – ein Postausgang nimmt nur die eigene Adresse an –,
+davor der Name der Golfschule; ihre Absenderadresse aus den Einstellungen
+wird zur Antwortadresse.
+
+Prüfen: `php bin/mail-test.php du@adresse.de` sagt, ob die Mail
+angenommen wurde oder an welchem Schritt es hing – ohne das Passwort
+auszugeben. Die Systemprüfung zeigt den gewählten Weg.
+
 ## Schemaänderungen
 
 Die Datenbank zieht sich selbst nach, aber nicht bei jedem Aufruf: In den

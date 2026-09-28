@@ -8,15 +8,47 @@
  *
  * Auf Systemen ohne Postausgang (viele Entwicklungsumgebungen) wird nur
  * protokolliert. Der Ablauf bricht dadurch nie ab.
+ *
+ * mail() ist der Weg auf dem Webspace: Dort steht ein Postausgang des
+ * Hosters bereit. Ein eigener Server hat keinen – dort geht es über SMTP
+ * zu einem Postfach oder Versanddienst (`mail.transport = smtp`). Der
+ * SMTP-Weg steht hier selbst, ohne Bibliothek: Mehr als Verbinden,
+ * verschlüsseln, anmelden, abgeben braucht es nicht, und eine Abhängigkeit
+ * weniger heißt ein Update weniger.
  */
 final class Mail
 {
     public static function senden(string $an, string $betreff, string $text, array $o = []): bool
     {
+        $transport = (string) Config::get('mail.transport', 'mail');
         $vonName  = (string) (($o['von_name'] ?? '') ?: (Tenant::einstellung('mail_absender_name', '') ?: Config::get('mail.from_name', 'TeePilot')));
-        $vonMail  = (string) (Tenant::einstellung('mail_absender', '') ?: Config::get('mail.from_email', ''));
+        $vonMail  = self::adresse((string) (Tenant::einstellung('mail_absender', '') ?: Config::get('mail.from_email', '')));
         if ($vonMail === '') {
-            $vonMail = 'noreply@' . (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $vonMail = 'noreply@' . preg_replace('/:\d+$/', '', App::host());
+        }
+        $antwort = self::adresse((string) ($o['antwort'] ?? '')) ?: $vonMail;
+
+        /*
+         * Über SMTP schreibt man nur in eigenem Namen: Der Postausgang nimmt
+         * als Absender die Adresse des Kontos an, mit dem man sich anmeldet.
+         * Eine fremde lehnt er ab, oder die Mail landet im Spam, weil SPF und
+         * DKIM nicht zur Domain passen. Die Adresse des Betriebs wandert
+         * deshalb nach Reply-To – Antworten gehen trotzdem an den Pro, und
+         * im Absender steht weiter sein Name.
+         */
+        if ($transport === 'smtp') {
+            $konto = self::adresse((string) (Config::get('mail.from_email', '') ?: Config::get('mail.smtp.user', '')));
+            if ($konto !== '') {
+                $vonMail = $konto;
+            }
+        }
+
+        /* Eine Empfängeradresse mit Zeilenumbruch wäre eine eingeschleuste
+           Kopfzeile. Was keine Adresse ist, wird nicht verschickt. */
+        $an = self::adresse($an);
+        if ($an === '') {
+            self::protokollieren($an, $betreff, $text, $o, false);
+            return false;
         }
 
         $html = $o['html'] ?? self::vorlage($betreff, $text, $o);
@@ -24,16 +56,23 @@ final class Mail
 
         $kopf = [
             'From: ' . self::kodieren($vonName) . ' <' . $vonMail . '>',
-            'Reply-To: ' . ($o['antwort'] ?? $vonMail),
+            'Reply-To: ' . $antwort,
             'MIME-Version: 1.0',
             'Content-Type: multipart/alternative; boundary="' . $grenze . '"',
             'X-Mailer: TeePilot',
         ];
 
+        /*
+         * quoted-printable statt 8bit: Eine Zeile darf in einer Mail höchstens
+         * 998 Zeichen lang sein, und die HTML-Vorlage ist eine einzige Zeile.
+         * Manche Postausgänge brechen sie irgendwo um – mitten in einem
+         * Attribut –, andere lehnen die Mail ab. So bleibt jede Zeile kurz.
+         */
+        $qp = static fn (string $t): string => quoted_printable_encode(preg_replace('/\r\n|\r|\n/', "\r\n", $t) ?? $t);
         $koerper = "--{$grenze}\r\nContent-Type: text/plain; charset=UTF-8\r\n"
-                 . "Content-Transfer-Encoding: 8bit\r\n\r\n" . $text . "\r\n\r\n"
+                 . "Content-Transfer-Encoding: quoted-printable\r\n\r\n" . $qp($text) . "\r\n\r\n"
                  . "--{$grenze}\r\nContent-Type: text/html; charset=UTF-8\r\n"
-                 . "Content-Transfer-Encoding: 8bit\r\n\r\n" . $html . "\r\n\r\n"
+                 . "Content-Transfer-Encoding: quoted-printable\r\n\r\n" . $qp((string) $html) . "\r\n\r\n"
                  . "--{$grenze}--";
 
         /*
@@ -61,12 +100,179 @@ final class Mail
         }
 
         $ok = false;
-        if (function_exists('mail') && (string) Config::get('mail.transport', 'mail') === 'mail') {
+        if ($transport === 'smtp') {
+            $domain = substr((string) strrchr($vonMail, '@'), 1) ?: 'teepilot.local';
+            $ok = self::smtp($an, $vonMail, array_merge([
+                'Date: ' . date(DATE_RFC2822),
+                'To: ' . $an,
+                'Subject: ' . self::kodieren($betreff),
+                'Message-ID: <' . Util::token(16) . '@' . $domain . '>',
+            ], $kopf), $koerper);
+        } elseif (function_exists('mail') && $transport === 'mail') {
             $ok = @mail($an, self::kodieren($betreff), $koerper, implode("\r\n", $kopf));
         }
 
         self::protokollieren($an, $betreff, $text, $o, $ok);
         return $ok;
+    }
+
+    /** Warum der letzte SMTP-Versand gescheitert ist – für bin/mail-test.php. */
+    public static string $letzterFehler = '';
+
+    /**
+     * Die Adresse, wenn es eine ist – sonst leer.
+     *
+     * Bewusst kein FILTER_VALIDATE_EMAIL: Das lehnt Domains mit Umlaut ab
+     * (info@golfschule-müller.de), und die gibt es. Ausgeschlossen wird,
+     * was eine Kopfzeile oder einen SMTP-Befehl verbiegen könnte:
+     * Zeilenumbrüche, Leerraum, spitze Klammern, Trennzeichen.
+     */
+    private static function adresse(string $adresse): string
+    {
+        $adresse = trim($adresse);
+        return preg_match('/^[^@\s<>,;:"\\\\\x00-\x1F\x7F]+@[^@\s<>,;:"\\\\\x00-\x1F\x7F]+\.[^@\s<>,;:"\\\\\x00-\x1F\x7F]+$/u', $adresse) === 1
+            ? $adresse : '';
+    }
+
+    /**
+     * Eine fertige Nachricht über SMTP abgeben.
+     *
+     * `secure` = tls heißt STARTTLS auf Port 587, ssl heißt von Anfang an
+     * verschlüsselt auf Port 465. Das Zertifikat der Gegenstelle wird immer
+     * geprüft; ohne Prüfung könnte jeder dazwischen das Passwort mitlesen.
+     * Unverschlüsselt (`secure` leer) nur zu einem Postausgang auf
+     * demselben Rechner – und dann ohne Anmeldung, sonst ginge das Passwort
+     * im Klartext über die Leitung.
+     *
+     * Fehlermeldungen nennen den Befehl und die Antwort des Servers, nie
+     * die Zugangsdaten.
+     *
+     * @param list<string> $kopf
+     */
+    private static function smtp(string $an, string $absender, array $kopf, string $koerper): bool
+    {
+        self::$letzterFehler = '';
+        $c    = (array) Config::get('mail.smtp', []);
+        $host = trim((string) ($c['host'] ?? ''));
+        $art  = strtolower(trim((string) ($c['secure'] ?? 'tls')));
+        $port = (int) ($c['port'] ?? 0) ?: ($art === 'ssl' ? 465 : 587);
+        $user = (string) ($c['user'] ?? '');
+        $pass = (string) ($c['pass'] ?? '');
+
+        if ($host === '') {
+            return self::smtpFehler('In der config.php steht kein SMTP-Server (mail.smtp.host).');
+        }
+        $lokal = in_array(strtolower($host), ['localhost', '127.0.0.1', '::1'], true);
+        if ($art === '' && !$lokal) {
+            return self::smtpFehler('Unverschlüsselt nur zu einem Postausgang auf diesem Rechner – bitte secure = tls oder ssl.');
+        }
+
+        $kontext = stream_context_create(['ssl' => [
+            'verify_peer' => true, 'verify_peer_name' => true, 'peer_name' => $host,
+        ]]);
+        $verbindung = @stream_socket_client(($art === 'ssl' ? 'ssl://' : 'tcp://') . $host . ':' . $port,
+            $nummer, $meldung, 15, STREAM_CLIENT_CONNECT, $kontext);
+        if ($verbindung === false) {
+            return self::smtpFehler('Keine Verbindung zu ' . $host . ':' . $port . ' (' . trim((string) $meldung) . ').');
+        }
+        stream_set_timeout($verbindung, 30);
+
+        try {
+            self::smtpAntwort($verbindung, [220], 'Begrüßung');
+            $faehig = self::smtpBefehl($verbindung, 'EHLO ' . self::smtpName(), [250]);
+            if ($art === 'tls') {
+                self::smtpBefehl($verbindung, 'STARTTLS', [220]);
+                if (!@stream_socket_enable_crypto($verbindung, true,
+                        STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT)) {
+                    throw new RuntimeException('STARTTLS: Verschlüsselung kam nicht zustande (Zertifikat prüfen).');
+                }
+                $faehig = self::smtpBefehl($verbindung, 'EHLO ' . self::smtpName(), [250]);
+            }
+            if ($user !== '') {
+                if (preg_match('/^250[ -]AUTH\b[^\r\n]*\bPLAIN\b/mi', $faehig) === 1) {
+                    self::smtpBefehl($verbindung, 'AUTH PLAIN ' . base64_encode("\0" . $user . "\0" . $pass), [235], 'Anmeldung');
+                } else {
+                    self::smtpBefehl($verbindung, 'AUTH LOGIN', [334]);
+                    self::smtpBefehl($verbindung, base64_encode($user), [334], 'Anmeldung');
+                    self::smtpBefehl($verbindung, base64_encode($pass), [235], 'Anmeldung');
+                }
+            }
+            self::smtpBefehl($verbindung, 'MAIL FROM:<' . $absender . '>', [250]);
+            self::smtpBefehl($verbindung, 'RCPT TO:<' . $an . '>', [250, 251]);
+            self::smtpBefehl($verbindung, 'DATA', [354]);
+
+            /* Einheitlich CRLF, und eine Zeile, die mit einem Punkt beginnt,
+               bekommt einen zweiten – sonst hielte der Server sie für das
+               Ende der Nachricht (RFC 5321, 4.5.2). */
+            $daten = preg_replace('/\r\n|\r|\n/', "\r\n", implode("\r\n", $kopf) . "\r\n\r\n" . $koerper) ?? '';
+            $daten = preg_replace('/^\./m', '..', $daten) ?? '';
+            self::smtpSchreiben($verbindung, $daten . "\r\n.\r\n");
+            self::smtpAntwort($verbindung, [250], 'Nachricht');
+            @fwrite($verbindung, "QUIT\r\n");
+            return true;
+        } catch (RuntimeException $e) {
+            return self::smtpFehler($e->getMessage());
+        } finally {
+            fclose($verbindung);
+        }
+    }
+
+    /** @param list<int> $erwartet */
+    private static function smtpBefehl($verbindung, string $befehl, array $erwartet, string $name = ''): string
+    {
+        self::smtpSchreiben($verbindung, $befehl . "\r\n");
+        /* Im Fehlertext steht der Befehl ohne Argumente – bei der Anmeldung
+           wären das die Zugangsdaten. */
+        return self::smtpAntwort($verbindung, $erwartet, $name !== '' ? $name : strtok($befehl, ' :'));
+    }
+
+    /** @param list<int> $erwartet */
+    private static function smtpAntwort($verbindung, array $erwartet, string $name): string
+    {
+        $text = '';
+        while (($zeile = fgets($verbindung, 2048)) !== false) {
+            $text .= $zeile;
+            /* „250-…" heißt: es kommt noch eine Zeile, „250 …" ist die letzte. */
+            if (strlen($zeile) < 4 || $zeile[3] !== '-') {
+                break;
+            }
+        }
+        if ($text === '') {
+            throw new RuntimeException($name . ': keine Antwort vom Server (Zeitüberschreitung).');
+        }
+        if (!in_array((int) substr($text, 0, 3), $erwartet, true)) {
+            $letzte = trim((string) preg_replace('/^.*\n(?=.)/s', '', trim($text)));
+            throw new RuntimeException($name . ': ' . mb_substr($letzte, 0, 200));
+        }
+        return $text;
+    }
+
+    private static function smtpSchreiben($verbindung, string $daten): void
+    {
+        while ($daten !== '') {
+            $geschrieben = @fwrite($verbindung, $daten);
+            if ($geschrieben === false || $geschrieben === 0) {
+                throw new RuntimeException('Verbindung abgebrochen.');
+            }
+            $daten = (string) substr($daten, $geschrieben);
+        }
+    }
+
+    /** Der Name, mit dem sich dieser Server im EHLO vorstellt. */
+    private static function smtpName(): string
+    {
+        $name = (string) parse_url((string) Config::get('base_url', ''), PHP_URL_HOST);
+        if ($name === '') {
+            $name = (string) gethostname();
+        }
+        return preg_replace('/[^A-Za-z0-9.-]/', '', $name) ?: 'localhost';
+    }
+
+    private static function smtpFehler(string $meldung): bool
+    {
+        self::$letzterFehler = $meldung;
+        error_log('TeePilot SMTP: ' . $meldung);
+        return false;
     }
 
     public static function anKunden(array $kunde, string $betreff, string $text, array $o = []): bool

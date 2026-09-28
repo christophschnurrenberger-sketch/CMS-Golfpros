@@ -65,8 +65,9 @@ cron.php      Wartung für alle, die einen Cronjob haben
 webhook.php   Stripe meldet Zahlungen hierher
 install.php   Einrichtung, danach löschen
 passwort.php  Passwort setzen – über den Link aus Einladung oder Reset
-bin/          Kommandozeile: Betreiber anlegen (php bin/betreiber.php)
-tests/        php tests/betreiber.php, baukasten.php, reisen.php – Prüfungen gegen eine Wegwerf-Datenbank
+tls-freigabe.php  Fragt Caddy vor jedem Zertifikat: gehört die Domain zu einer Instanz?
+bin/          Kommandozeile: Betreiber anlegen, Probemail, eigenen Server einrichten
+tests/        php tests/betreiber.php, baukasten.php, reisen.php, mail.php, server.php – Prüfungen gegen eine Wegwerf-Datenbank
 assets/       Stylesheets, Skripte und die Schriften auf eigenem Server
 docs/         Architektur, Betrieb und Upload im Detail
 .github/      Ein Workflow: Syntax prüfen, dann per FTPS hochladen
@@ -136,6 +137,9 @@ eigenen Daten anzufassen.
   Fehlersuche
 * [docs/DEPLOY.md](docs/DEPLOY.md) – der automatische Upload auf den
   Webspace: was einzurichten ist und was er nicht anfasst
+* [docs/SERVER.md](docs/SERVER.md) – ein eigener Server (netcup o. ä.) von
+  leer bis live: Debian, Caddy mit HTTPS für jede Instanz-Domain, SMTP,
+  Umzug vom Webspace, Sicherung
 * [docs/API.md](docs/API.md) – die Schnittstelle, über die ein
   Newslettersystem die Empfänger abholt. Zum Weitergeben gedacht
 * [docs/BETREIBER.md](docs/BETREIBER.md) – die Betreiberzentrale: ersten

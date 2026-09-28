@@ -164,6 +164,32 @@ final class App
         return self::$hosts = array_values(array_unique($liste));
     }
 
+    /**
+     * Darf für diesen Hostnamen ein Zertifikat geholt werden?
+     *
+     * Ja für die Adresse der Anlage selbst (base_url, erlaubte_hosts) und
+     * für die eigene Domain jeder aktiven Instanz, mit und ohne www. Fragt
+     * tls-freigabe.php, bevor Caddy bei Let's Encrypt bestellt – ohne diese
+     * Prüfung bekäme jede Domain ein Zertifikat, die jemand auf den Server
+     * zeigen lässt.
+     */
+    public static function zertifikatErlaubt(string $host): bool
+    {
+        $host = strtolower(trim($host));
+        if ($host === '' || strlen($host) > 253
+            || preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/', $host) !== 1) {
+            return false;
+        }
+        $eigene = [(string) parse_url((string) Config::get('base_url', ''), PHP_URL_HOST)];
+        foreach ((array) Config::get('erlaubte_hosts', []) as $eintrag) {
+            $eigene[] = preg_replace('/:\d+$/', '', strtolower(trim((string) $eintrag)));
+        }
+        if (in_array($host, array_map('strtolower', $eigene), true)) {
+            return true;
+        }
+        return Tenant::nachDomain($host) !== null;
+    }
+
     public static function weiter(string $pfad): never
     {
         header('Location: ' . self::url($pfad));

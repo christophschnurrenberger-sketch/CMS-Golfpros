@@ -161,7 +161,11 @@ require __DIR__ . '/partials/kopf.php';
                  value="<?= Util::attr((string) Tenant::einstellung('mail_absender_name', (string) $w['name'])) ?>"></div>
         <div class="feld"><label class="feld__label" for="mail_absender">Absenderadresse</label>
           <input class="eingabe" id="mail_absender" type="email" name="mail_absender"
-                 value="<?= Util::attr((string) Tenant::einstellung('mail_absender', '')) ?>"></div>
+                 value="<?= Util::attr((string) Tenant::einstellung('mail_absender', '')) ?>">
+          <?php if ((string) Config::get('mail.transport', 'mail') === 'smtp'): ?>
+            <div class="feld__hinweis">Mails gehen über das Postfach der Anlage hinaus; diese Adresse steht
+              darin als Antwortadresse – Antworten kommen hier an.</div>
+          <?php endif; ?></div>
       </div>
     </div>
     <div class="karte__fuss"><div class="fueller"></div>

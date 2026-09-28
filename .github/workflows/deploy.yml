@@ -262,21 +262,61 @@ jobs:
           SERVER:   ${{ secrets.FTP_SERVER }}
           BENUTZER: ${{ secrets.FTP_BENUTZER }}
           PASSWORT: ${{ secrets.FTP_PASSWORT }}
+          SCHLUESSEL: ${{ secrets.SFTP_SCHLUESSEL }}
+          HOSTKEY:  ${{ secrets.SFTP_HOSTKEY }}
           PORT:     ${{ steps.zugang.outputs.port }}
           ZIEL:     ${{ steps.zugang.outputs.ziel }}
           LOESCHEN: ${{ vars.FTP_LOESCHEN }}
         run: |
           set -u
-
-          # Das Passwort geht ueber eine .netrc, nicht ueber die
-          # Befehlszeile. Sonst stuende es in der Prozessliste, und ein
-          # Anfuehrungszeichen oder Semikolon darin wuerde das lftp-Skript
-          # zerlegen - im schlimmsten Fall mit einem fremden Befehl darin.
           heim=$(mktemp -d)
           trap 'rm -rf "$heim"' EXIT
-          printf 'machine %s\nlogin %s\npassword %s\n' \
-            "$SERVER" "$BENUTZER" "$PASSWORT" > "$heim/.netrc"
-          chmod 600 "$heim/.netrc"
+
+          # Zwei Arten, sich anzumelden:
+          #
+          #   SFTP_SCHLUESSEL gesetzt   mit Schluessel - der Weg fuer einen
+          #                             eigenen Server (docs/SERVER.md), auf
+          #                             dem die Anmeldung mit Passwort aus ist
+          #   sonst                     mit Passwort - der Weg fuer einen
+          #                             Webspace wie IONOS
+          #
+          # SFTP_HOSTKEY nagelt fest, mit welchem Server gesprochen wird.
+          # Ohne ihn nimmt der Lauf jeden Schluessel an, den die Gegenstelle
+          # zeigt - bei jedem Lauf aufs Neue, denn der Runner vergisst ihn.
+          if [ -n "${SCHLUESSEL:-}" ]; then
+            # Kopiert aus einem Windows-Editor, traegt der Schluessel oft
+            # Wagenruecklaeufe; ssh hielte ihn dann fuer kaputt.
+            printf '%s\n' "$SCHLUESSEL" | tr -d '\r' > "$heim/schluessel"
+            chmod 600 "$heim/schluessel"
+            if [ -n "${HOSTKEY:-}" ]; then
+              wer="$SERVER"
+              [ "$PORT" = "22" ] || wer="[$SERVER]:$PORT"
+              printf '%s %s\n' "$wer" "$(printf '%s' "$HOSTKEY" | tr -d '\r' | awk '{print $1, $2}')" > "$heim/known_hosts"
+              pruefung="StrictHostKeyChecking=yes"
+            else
+              : > "$heim/known_hosts"
+              pruefung="StrictHostKeyChecking=accept-new"
+              echo "::warning::SFTP_HOSTKEY fehlt - der Schluessel des Servers wird ungeprueft"
+              echo "::warning::angenommen. Eintragen: siehe docs/SERVER.md, Schritt 5."
+            fi
+            ssh="ssh -a -x -i $heim/schluessel -o IdentitiesOnly=yes -o BatchMode=yes -o UserKnownHostsFile=$heim/known_hosts -o $pruefung"
+            # Das Komma nach dem Benutzer heisst: kein Passwort, nicht
+            # danach fragen.
+            anmeldung="set sftp:connect-program \"$ssh\"; open -u \"$BENUTZER\", sftp://$SERVER:$PORT;"
+          elif [ -n "${PASSWORT:-}" ]; then
+            # Das Passwort geht ueber eine .netrc, nicht ueber die
+            # Befehlszeile. Sonst stuende es in der Prozessliste, und ein
+            # Anfuehrungszeichen oder Semikolon darin wuerde das lftp-Skript
+            # zerlegen - im schlimmsten Fall mit einem fremden Befehl darin.
+            printf 'machine %s\nlogin %s\npassword %s\n' \
+              "$SERVER" "$BENUTZER" "$PASSWORT" > "$heim/.netrc"
+            chmod 600 "$heim/.netrc"
+            anmeldung="open -u \"$BENUTZER\" sftp://$SERVER:$PORT;"
+          else
+            echo "::error::Fuer SFTP fehlt die Anmeldung: entweder das Secret SFTP_SCHLUESSEL"
+            echo "::error::(eigener Server) oder FTP_PASSWORT (Webspace)."
+            exit 1
+          fi
 
           # Dieselben Regeln wie in der exclude-Liste der Action, nur in
           # lftps Schreibweise: regulaere Ausdruecke auf den Pfad, nicht
@@ -342,7 +382,7 @@ jobs:
             set cmd:interactive false;
             set net:max-retries 3;
             set net:timeout 20;
-            open -u \"$BENUTZER\" sftp://$SERVER:$PORT;
+            $anmeldung
           "
 
           # Erst ein Trockenlauf ins Protokoll. Wer spaeter wissen will, was
