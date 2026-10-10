@@ -5,23 +5,36 @@
 import React from 'react';
 import {Easing, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {farbe, schrift} from '../marke';
+import {useQuer} from './Format';
 
 export type Zeile = {text: string; farbe?: string};
 
+/*
+ * Ohne Angaben steht die Überschrift im Hochformat oben über die ganze
+ * Breite, im Querformat links in einer Spalte neben den Geräten.
+ */
 export const Titel: React.FC<{
   zeilen: Zeile[];
   start?: number;
   groesse?: number;
   oben?: number;
+  links?: number;
+  rechts?: number;
   notiz?: string;
   notizStart?: number;
+  notizGroesse?: number;
   mitte?: boolean;
-}> = ({zeilen, start = 4, groesse = 104, oben = 270, notiz, notizStart = 22, mitte = false}) => {
+}> = ({zeilen, start = 4, groesse, oben, links, rechts, notiz, notizStart = 22, notizGroesse, mitte = false}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
+  const quer = useQuer();
+  groesse = groesse ?? (quer ? 86 : 104);
+  oben = oben ?? (quer ? 300 : 270);
+  links = links ?? (quer ? 120 : 80);
+  rechts = rechts ?? (quer ? 1100 : 80);
   let nr = 0;
   return (
-    <div style={{position: 'absolute', top: oben, left: 80, right: 80, textAlign: mitte ? 'center' : 'left'}}>
+    <div style={{position: 'absolute', top: oben, left: links, right: rechts, textAlign: mitte ? 'center' : 'left'}}>
       {zeilen.map((z, i) => (
         <div key={i} style={{overflow: 'hidden', padding: `0 0 ${groesse * 0.1}px`, margin: `0 0 ${-groesse * 0.1}px`}}>
           <div
@@ -42,17 +55,18 @@ export const Titel: React.FC<{
           </div>
         </div>
       ))}
-      {notiz ? <Notiz text={notiz} start={notizStart} mitte={mitte} /> : null}
+      {notiz ? <Notiz text={notiz} start={notizStart} mitte={mitte} groesse={notizGroesse ?? (quer ? 48 : 64)} eineZeile={quer} /> : null}
     </div>
   );
 };
 
-export const Notiz: React.FC<{text: string; start: number; groesse?: number; mitte?: boolean; farbeText?: string}> = ({
+export const Notiz: React.FC<{text: string; start: number; groesse?: number; mitte?: boolean; farbeText?: string; eineZeile?: boolean}> = ({
   text,
   start,
   groesse = 64,
   mitte = false,
   farbeText = farbe.signal,
+  eineZeile = false,
 }) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
@@ -63,6 +77,7 @@ export const Notiz: React.FC<{text: string; start: number; groesse?: number; mit
       style={{
         marginTop: groesse * 0.35, display: 'inline-block', position: 'relative', fontFamily: schrift.hand, fontWeight: 600,
         fontSize: groesse, lineHeight: 1.05, color: farbeText, opacity: p, transformOrigin: mitte ? 'center' : 'left center',
+        whiteSpace: eineZeile ? 'nowrap' : undefined,
         transform: `rotate(-2.5deg) translateY(${(1 - p) * 30}px)`,
       }}
     >

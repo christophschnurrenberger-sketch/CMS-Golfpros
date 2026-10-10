@@ -7,6 +7,7 @@ import React from 'react';
 import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {aufnahme, farbe, mitte, schrift} from './marke';
 import {Browser} from './teile/Browser';
+import {useQuer} from './teile/Format';
 import {Logo, Zeichen} from './teile/Marke';
 import {Telefon} from './teile/Telefon';
 import {Notiz, Titel} from './teile/Titel';
@@ -25,26 +26,48 @@ const TEL_B = 560;
 const TEL_LINKS = (1080 - TEL_B * 1.09) / 2;
 const TEL_OBEN = 615;
 
+/* Im Querformat steht es rechts neben der Überschrift, so hoch wie das Bild. */
+const TEL_QUER = {breite: 400, links: 1152, oben: 66};
+
 export const Funktionstelefon: React.FC<Omit<React.ComponentProps<typeof Telefon>, 'breite'> & {start?: number}> = ({start = 0, style, ...rest}) => {
   const p = useAufstieg(start);
-  return <Telefon {...rest} breite={TEL_B} style={{left: TEL_LINKS, top: TEL_OBEN, transform: `translateY(${(1 - p) * 320}px)`, ...style}} />;
+  const quer = useQuer();
+  return (
+    <Telefon
+      {...rest}
+      breite={quer ? TEL_QUER.breite : TEL_B}
+      style={{left: quer ? TEL_QUER.links : TEL_LINKS, top: quer ? TEL_QUER.oben : TEL_OBEN, transform: `translateY(${(1 - p) * 320}px)`, ...style}}
+    />
+  );
 };
 
 /* ----------------------------------------------------------- 1 Hook --- */
 
 export const Hook: React.FC = () => {
   const frame = useCurrentFrame();
+  const quer = useQuer();
   const ball = useAufstieg(56, 160);
   const bogen = interpolate(frame, [60, 84], [0, 1], {...klemmen, easing: Easing.inOut(Easing.cubic)});
+  /* Hoch: Text über die Breite, das Zeichen unten rechts. Quer: Text links, das Zeichen groß rechts. */
+  const l = quer
+    ? {oben: 250, links: 160, rechts: 560, groesse: 128, zeile: 131, notizOben: 800, zeichen: {left: 1440, top: 470, groesse: 300}}
+    : {oben: 520, links: 80, rechts: 80, groesse: 136, zeile: 139, notizOben: 1140, zeichen: {left: 790, top: 1290, groesse: 200}};
   return (
     <AbsoluteFill>
-      <Titel oben={520} groesse={136} start={3} zeilen={[{text: 'Du gibst'}, {text: 'Golfstunden.'}]} />
-      <Titel oben={520 + 2 * 139} groesse={136} start={30} zeilen={[{text: 'Keine', farbe: farbe.signal}, {text: 'Bürostunden.', farbe: farbe.signal}]} />
-      <div style={{position: 'absolute', top: 1140, left: 80}}>
+      <Titel oben={l.oben} links={l.links} rechts={l.rechts} groesse={l.groesse} start={3} zeilen={[{text: 'Du gibst'}, {text: 'Golfstunden.'}]} />
+      <Titel
+        oben={l.oben + 2 * l.zeile}
+        links={l.links}
+        rechts={l.rechts}
+        groesse={l.groesse}
+        start={30}
+        zeilen={[{text: 'Keine', farbe: farbe.signal}, {text: 'Bürostunden.', farbe: farbe.signal}]}
+      />
+      <div style={{position: 'absolute', top: l.notizOben, left: l.links}}>
         <Notiz text="Für den Rest gibt’s TeePilot." start={54} groesse={74} farbeText={farbe.sand} />
       </div>
-      <div style={{position: 'absolute', left: 790, top: 1290, opacity: ball > 0.01 ? 1 : 0}}>
-        <Zeichen groesse={200} ball={ball} bogen={bogen} />
+      <div style={{position: 'absolute', left: l.zeichen.left, top: l.zeichen.top, opacity: ball > 0.01 ? 1 : 0}}>
+        <Zeichen groesse={l.zeichen.groesse} ball={ball} bogen={bogen} />
       </div>
     </AbsoluteFill>
   );
@@ -230,9 +253,13 @@ export const Schluss: React.FC<{aufruf: string; adresse: string; desktop?: strin
 }) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
+  const quer = useQuer();
   const logo = useAufstieg(0, 150);
   const knopf = spring({frame: frame - 30, fps, config: {damping: 11, stiffness: 160}});
   const puls = 1 + Math.max(0, Math.sin((frame - 60) / 7)) * 0.025 * (frame > 60 ? 1 : 0);
+  if (quer) {
+    return <SchlussQuer {...{aufruf, adresse, desktop, bereiche, logo, knopf, puls}} />;
+  }
   const telefone = [
     {screen: 'kunde', x: 30, y: 1290, dreh: -11, start: 6},
     {screen: 'reise', x: 650, y: 1290, dreh: 11, start: 10},
@@ -288,6 +315,74 @@ export const Schluss: React.FC<{aufruf: string; adresse: string; desktop?: strin
   );
 };
 
+/** Querformat: links Marke, Satz, Knopf und Bereiche – rechts Schreibtisch und Telefone. */
+const SchlussQuer: React.FC<{
+  aufruf: string;
+  adresse: string;
+  desktop?: string;
+  bereiche: string[];
+  logo: number;
+  knopf: number;
+  puls: number;
+}> = ({aufruf, adresse, desktop, bereiche, logo, knopf, puls}) => {
+  const frame = useCurrentFrame();
+  const fenster = useAufstieg(0, 80);
+  const telefone = [
+    {screen: 'kunde', x: 1010, y: 430, dreh: -7, start: 8, breite: 280},
+    {screen: 'portal', x: 1570, y: 330, dreh: 6, start: 4, breite: 300},
+  ];
+  return (
+    <AbsoluteFill>
+      {desktop ? (
+        <div style={{position: 'absolute', left: 960, top: 170, width: 880, perspective: 2200}}>
+          <Browser
+            screen={desktop}
+            breite={880}
+            titel="Dashboard · Golf Academy Bergmann"
+            style={{position: 'relative', transformOrigin: 'right center', transform: `translateY(${(1 - fenster) * 500}px) rotateY(${-8 * (0.6 + 0.4 * fenster)}deg)`}}
+          />
+        </div>
+      ) : null}
+      {telefone.map((t) => (
+        <SchlussTelefon key={t.screen} {...t} />
+      ))}
+      <AbsoluteFill style={{background: 'linear-gradient(90deg, rgba(11,43,34,1) 0%, rgba(11,43,34,0.94) 40%, rgba(11,43,34,0) 56%)'}} />
+      <div style={{position: 'absolute', left: 140, top: 210, transform: `translateY(${(1 - logo) * 40}px)`, opacity: logo}}>
+        <Logo groesse={100} />
+      </div>
+      <Titel oben={370} links={140} rechts={980} groesse={96} start={8} zeilen={[{text: 'Dein Auftritt.'}, {text: 'In deiner Hand.', farbe: farbe.signal}]} />
+      <div
+        style={{
+          position: 'absolute', left: 140, top: 620, padding: '26px 56px', borderRadius: 999, background: farbe.signal, color: farbe.pine,
+          fontFamily: schrift.titel, fontWeight: 750, fontSize: 46, letterSpacing: '-0.02em', transformOrigin: 'left center',
+          transform: `scale(${knopf * puls})`, boxShadow: '0 20px 60px rgba(195,227,92,0.25)',
+        }}
+      >
+        {aufruf}
+      </div>
+      {adresse ? (
+        <div style={{position: 'absolute', left: 146, top: 750, fontFamily: schrift.mono, fontWeight: 500, fontSize: 34, color: farbe.chalk, opacity: interpolate(frame, [40, 52], [0, 1], klemmen)}}>
+          {adresse}
+        </div>
+      ) : null}
+      <div style={{position: 'absolute', left: 140, width: 780, top: adresse ? 820 : 770, display: 'flex', flexWrap: 'wrap', gap: '12px 14px'}}>
+        {bereiche.map((b, i) => (
+          <span
+            key={b}
+            style={{
+              fontFamily: schrift.mono, fontWeight: 500, fontSize: 24, color: farbe.chalk, padding: '7px 16px',
+              border: '1.5px solid rgba(246,245,240,0.28)', borderRadius: 999,
+              opacity: interpolate(frame, [44 + i * 2, 54 + i * 2], [0, 0.9], klemmen),
+            }}
+          >
+            {b}
+          </span>
+        ))}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 const SchlussFenster: React.FC<{screen: string}> = ({screen}) => {
   const p = useAufstieg(0, 80);
   return (
@@ -302,9 +397,16 @@ const SchlussFenster: React.FC<{screen: string}> = ({screen}) => {
   );
 };
 
-const SchlussTelefon: React.FC<{screen: string; x: number; y: number; dreh: number; start: number}> = ({screen, x, y, dreh, start}) => {
+const SchlussTelefon: React.FC<{screen: string; x: number; y: number; dreh: number; start: number; breite?: number}> = ({
+  screen,
+  x,
+  y,
+  dreh,
+  start,
+  breite = 390,
+}) => {
   const p = useAufstieg(start, 90);
   return (
-    <Telefon breite={390} zustaende={[{screen, ab: 0}]} style={{left: x, top: y, transform: `translateY(${(1 - p) * 600}px) rotate(${dreh}deg)`}} />
+    <Telefon breite={breite} zustaende={[{screen, ab: 0}]} style={{left: x, top: y, transform: `translateY(${(1 - p) * 600}px) rotate(${dreh}deg)`}} />
   );
 };

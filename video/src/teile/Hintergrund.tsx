@@ -21,7 +21,8 @@ export const Hintergrund: React.FC = () => {
                      radial-gradient(90% 45% at 100% 105%, rgba(143,203,180,0.16) 0%, rgba(143,203,180,0) 70%), ${farbe.pine}`,
       }}
     >
-      <svg viewBox="0 0 1080 1920" style={{position: 'absolute', inset: 0, width: '100%', height: '100%'}}>
+      {/* `slice`: im Querformat füllen dieselben Linien die Fläche, statt schmal in der Mitte zu stehen. */}
+      <svg viewBox="0 0 1080 1920" preserveAspectRatio="xMidYMid slice" style={{position: 'absolute', inset: 0, width: '100%', height: '100%'}}>
         {BAHNEN.map((b, i) => (
           <path
             key={i}

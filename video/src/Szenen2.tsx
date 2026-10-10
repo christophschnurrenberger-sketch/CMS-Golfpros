@@ -9,6 +9,7 @@ import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConf
 import {aufnahme, farbe, mitte, schrift} from './marke';
 import {Funktionstelefon, useAufstieg} from './Szenen';
 import {Browser} from './teile/Browser';
+import {useQuer} from './teile/Format';
 import {Logo} from './teile/Marke';
 import {Telefon, type Tipp, type Zustand} from './teile/Telefon';
 import {Notiz, Titel, type Zeile} from './teile/Titel';
@@ -16,6 +17,11 @@ import {Notiz, Titel, type Zeile} from './teile/Titel';
 const klemmen = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
 
 type Kamera = {bis: number; ursprung: string; von?: number; start?: number; ende?: number};
+
+/* Im Querformat darf ein Zoom nie nach links in die Überschrift wachsen:
+   die linke Kante bleibt stehen, nur die Höhe des Ursprungs gilt. */
+const ursprungFuer = (ursprung: string | undefined, quer: boolean) =>
+  quer ? `0% ${(ursprung ?? 'center center').split(' ')[1] ?? '50%'}` : (ursprung ?? 'center');
 
 /**
  * Schreibtisch und Telefon: ein Browserfenster, leicht gedreht, davor das
@@ -37,18 +43,26 @@ const Arbeitsplatz: React.FC<{
     ? interpolate(frame, [kamera.start ?? 20, kamera.ende ?? 100], [kamera.von ?? 1, kamera.bis], {...klemmen, easing: Easing.inOut(Easing.cubic)})
     : 1;
   const rechts = seite === 'rechts';
+  const quer = useQuer();
+  /* Hoch: Fenster unter der Überschrift, Telefon davor. Quer: beides rechts neben der Überschrift. */
+  const l = quer
+    ? {
+        fenster: rechts ? {left: 860, top: 190, width: 980} : {left: 920, top: 190, width: 960},
+        tel: {left: rechts ? 1590 : 830, top: 380, breite: 280},
+      }
+    : {fenster: {left: 70, top: 680, width: 940}, tel: {left: rechts ? 640 : 26, top: 1000, breite: 380}};
   return (
     <AbsoluteFill>
       <Titel zeilen={zeilen} notiz={notiz} />
       <div
         style={{
-          position: 'absolute', left: 70, top: 680, width: 940, perspective: 2400,
-          transform: `scale(${zoom})`, transformOrigin: kamera?.ursprung ?? 'center',
+          position: 'absolute', left: l.fenster.left, top: l.fenster.top, width: l.fenster.width, perspective: 2400,
+          transform: `scale(${zoom})`, transformOrigin: ursprungFuer(kamera?.ursprung, quer),
         }}
       >
         <Browser
           zustaende={desktop.zustaende}
-          breite={940}
+          breite={l.fenster.width}
           titel={desktop.titel}
           style={{
             position: 'relative', transformOrigin: rechts ? 'left center' : 'right center',
@@ -59,11 +73,11 @@ const Arbeitsplatz: React.FC<{
       </div>
       {telefon ? (
         <Telefon
-          breite={380}
+          breite={l.tel.breite}
           zustaende={telefon.zustaende}
           tipps={telefon.tipps}
           style={{
-            left: rechts ? 640 : 26, top: 1000,
+            left: l.tel.left, top: l.tel.top,
             transform: `translateY(${(1 - tel) * 760}px) rotate(${(rechts ? 3 : -3) + (1 - tel) * (rechts ? 8 : -8)}deg)`,
           }}
         />
@@ -82,14 +96,16 @@ const GrossesFenster: React.FC<{zeilen: Zeile[]; notiz: string; zustaende: Zusta
 }) => {
   const frame = useCurrentFrame();
   const p = useAufstieg(2, 90);
+  const quer = useQuer();
   const zoom = interpolate(frame, [kamera.start ?? 10, kamera.ende ?? 90], [kamera.von ?? 1.1, kamera.bis], {...klemmen, easing: Easing.inOut(Easing.cubic)});
+  const l = quer ? {left: 860, top: 170, width: 1000} : {left: 40, top: 720, width: 1000};
   return (
     <AbsoluteFill>
       <Titel zeilen={zeilen} notiz={notiz} />
-      <div style={{position: 'absolute', left: 40, top: 720, width: 1000, perspective: 2400, transform: `scale(${zoom})`, transformOrigin: kamera.ursprung}}>
+      <div style={{position: 'absolute', left: l.left, top: l.top, width: l.width, perspective: 2400, transform: `scale(${zoom})`, transformOrigin: ursprungFuer(kamera.ursprung, quer)}}>
         <Browser
           zustaende={zustaende}
-          breite={1000}
+          breite={l.width}
           titel={titel}
           style={{position: 'relative', transformOrigin: 'center top', transform: `translateY(${(1 - p) * 420}px) rotateX(${(1 - p) * 22}deg)`}}
         />
@@ -107,7 +123,8 @@ const GrossesFenster: React.FC<{zeilen: Zeile[]; notiz: string; zustaende: Zusta
  */
 const ZIELGRUPPEN = ['Golfpros,', 'Coaches', '& Academies.'];
 /* Oberkante des Blocks – so, dass er in der Mitte der sicheren Zone steht. */
-const ZG_OBEN = 430;
+const ZG_OBEN_HOCH = 430;
+const ZG_OBEN_QUER = 140;
 
 export const Zielgruppe: React.FC = () => {
   const frame = useCurrentFrame();
@@ -116,6 +133,7 @@ export const Zielgruppe: React.FC = () => {
   const bogen = interpolate(frame, [3, 18], [0, 1], {...klemmen, easing: Easing.inOut(Easing.cubic)});
   const zug = useAufstieg(7, 150);
   const auftritt = (start: number) => spring({frame: frame - start, fps, config: {damping: 16, stiffness: 150, mass: 0.7}});
+  const ZG_OBEN = useQuer() ? ZG_OBEN_QUER : ZG_OBEN_HOCH;
   const fuer = auftritt(16);
   const zeile: React.CSSProperties = {
     position: 'absolute', left: 0, right: 0, textAlign: 'center', fontFamily: schrift.titel, letterSpacing: '-0.035em', overflow: 'hidden',

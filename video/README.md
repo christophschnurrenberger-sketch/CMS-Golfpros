@@ -1,12 +1,46 @@
 # TeePilot – Werbevideos
 
-Zwei Fassungen im Hochformat 1080 × 1920 (9:16), 30 fps – für Reels, TikTok,
-Shorts und den Status. Gebaut mit [Remotion](https://www.remotion.dev).
+Gebaut mit [Remotion](https://www.remotion.dev), 30 fps.
 
-| Komposition | Länge | Ton | Inhalt |
-|---|---|---|---|
-| `TeePilot` | 30 s | ohne | sieben Funktionen, überwiegend auf dem Telefon |
-| `TeePilotLang` | 60 s | eigene Musik + Geräusche | für wen es ist, dann elf Funktionen, jede am Schreibtisch **und** auf dem Telefon |
+| Komposition | Format | Länge | Ton | Wofür |
+|---|---|---|---|---|
+| `TeePilot` | 1080 × 1920 (9:16) | 30 s | ohne | Reels, TikTok, Status – Musik aus der Plattform |
+| `TeePilotLang` | 1080 × 1920 (9:16) | 60 s | eigene Musik | Reels, TikTok, YouTube Shorts |
+| `TeePilotQuer` | 1920 × 1080 (16:9) | 60 s | eigene Musik | YouTube und die eigene Website |
+| `Vorschaubild` | 1920 × 1080 | Standbild | – | Poster auf der Website, als 1280 × 720 das YouTube-Thumbnail |
+
+`TeePilotQuer` ist dieselbe Fassung wie `TeePilotLang` – gleicher Ablauf,
+gleiche Musik. Die Szenen fragen das Format ab (`src/teile/Format.ts`) und
+ordnen sich selbst um: hoch steht die Überschrift oben und die Geräte
+darunter, quer steht sie links und rechts daneben Schreibtisch und Telefon.
+
+## Quer: YouTube und Website
+
+```bash
+npm run rendern:quer   # → out/teepilot-youtube-1080p.mp4 und out/teepilot-website-1080p.mp4
+npm run vorschaubild   # → out/teepilot-vorschau-1920x1080.jpg und out/teepilot-youtube-thumbnail-1280x720.jpg
+```
+
+* **YouTube:** `teepilot-youtube-1080p.mp4` hochladen (höchste Qualität –
+  YouTube kodiert ohnehin neu) und `teepilot-youtube-thumbnail-1280x720.jpg`
+  als benutzerdefiniertes Thumbnail setzen. Das Hochformat (`TeePilotLang`)
+  geht als Short.
+* **Website:** `teepilot-website-1080p.mp4` ist kleiner (CRF 25, Ton
+  128 kbit/s) und beginnt sofort zu spielen, weil das Inhaltsverzeichnis der
+  Datei vorne steht. Selbst gehostet statt YouTube eingebettet: Dann lädt
+  die Seite nichts von Google, und es braucht dafür keine Einwilligung –
+  wie bei den Schriften der App.
+
+```html
+<video controls playsinline preload="metadata"
+       poster="/videos/teepilot-vorschau-1920x1080.jpg"
+       width="1920" height="1080" style="width:100%;height:auto;border-radius:12px">
+  <source src="/videos/teepilot-website-1080p.mp4" type="video/mp4">
+</video>
+```
+
+`preload="metadata"` lädt nur die ersten Kilobyte, bis jemand auf Abspielen
+drückt; Autoplay mit Ton blockieren die Browser ohnehin.
 
 Alle Bildschirme sind **echte Aufnahmen aus der App** – keine nachgebauten
 Oberflächen. Jeder Fingertipp ist ein Klick, den das Aufnahmeskript wirklich
@@ -152,7 +186,8 @@ aufnahme/aufnehmen.js         Playwright: Seiten, Klicks, feste Leisten
 ton/musik.mjs                 Musik und Geräusche, im Code synthetisiert
 src/Werbevideo.tsx            kurze Fassung: Reihenfolge, Längen, Übergänge
 src/Werbevideo2.tsx           lange Fassung: dasselbe, dazu Musik und Geräusche
-src/Szenen.tsx, Szenen2.tsx   die Szenen
-src/teile/                    Telefon, Browserfenster, Überschrift, Marke, Grund, Ton
+src/Szenen.tsx, Szenen2.tsx   die Szenen – hoch und quer
+src/Vorschaubild.tsx          Thumbnail und Poster
+src/teile/                    Telefon, Browserfenster, Überschrift, Marke, Grund, Ton, Format
 src/marke.ts                  Farben und Schriften aus lib/Marke.php / app.css
 ```
