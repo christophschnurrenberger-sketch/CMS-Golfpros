@@ -7,7 +7,7 @@
  * gibt es keine Lizenzfrage, und Instagram, TikTok oder YouTube schalten das
  * Video nicht stumm. Ergebnis in public/ton/:
  *
- *   musik-lang.wav  58 Sekunden, 120 BPM, D-Dur (D – A – h – G)
+ *   musik-lang.wav  60 Sekunden, 120 BPM, D-Dur (D – A – h – G)
  *   tipp.wav        ein leiser Fingertipp
  *   wisch.wav       ein kurzes Rauschen für die Übergänge
  *
@@ -30,11 +30,11 @@ const BPM = 120;
 const SCHLAG = 60 / BPM;
 const TAKT = SCHLAG * 4;
 const SECHZEHNTEL = SCHLAG / 4;
-const DAUER = 58;
+const DAUER = 60;
 /* Wo die Musik etwas tut – passend zu src/Werbevideo2.tsx (Startframe / 30). */
-const BRUCH = 29; //   ein halber Takt ohne Bassdrum, danach der zweite Teil
-const SCHLUSS = 52; // Einschlag: der Schluss mit dem Knopf beginnt
-const ENDE = 56; //    Schlussakkord, klingt bis DAUER aus
+const BRUCH = 31; //   ein halber Takt ohne Bassdrum, danach der zweite Teil
+const SCHLUSS = 56; // Einschlag: der Schluss mit dem Knopf beginnt
+const ENDE = 58; //    Schlussakkord, klingt bis DAUER aus
 const N = Math.ceil(DAUER * SR);
 
 const ziel = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'ton');

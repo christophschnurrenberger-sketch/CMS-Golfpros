@@ -5,12 +5,13 @@
  * Seitenleiste und Kopfzeile, wie im Browser.
  */
 import React from 'react';
-import {AbsoluteFill, Easing, interpolate, useCurrentFrame} from 'remotion';
-import {aufnahme, farbe, mitte} from './marke';
+import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import {aufnahme, farbe, mitte, schrift} from './marke';
 import {Funktionstelefon, useAufstieg} from './Szenen';
 import {Browser} from './teile/Browser';
+import {Logo} from './teile/Marke';
 import {Telefon, type Tipp, type Zustand} from './teile/Telefon';
-import {Titel, type Zeile} from './teile/Titel';
+import {Notiz, Titel, type Zeile} from './teile/Titel';
 
 const klemmen = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
 
@@ -98,6 +99,49 @@ const GrossesFenster: React.FC<{zeilen: Zeile[]; notiz: string; zustaende: Zusta
 };
 
 /* ------------------------------------------------------------- Szenen --- */
+
+/**
+ * Für wen das ist – gleich nach dem Haken, auf dem Einschlag der Musik.
+ * Erst das Logo, dann je Schlag eine Zielgruppe, dann wofür. Sechs
+ * Sekunden: Wer hier weiterwischt, soll vorher wissen, ob er gemeint ist.
+ */
+const ZIELGRUPPEN = ['Golfpros,', 'Coaches', '& Academies.'];
+/* Oberkante des Blocks – so, dass er in der Mitte der sicheren Zone steht. */
+const ZG_OBEN = 430;
+
+export const Zielgruppe: React.FC = () => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const ball = useAufstieg(1, 200);
+  const bogen = interpolate(frame, [3, 18], [0, 1], {...klemmen, easing: Easing.inOut(Easing.cubic)});
+  const zug = useAufstieg(7, 150);
+  const auftritt = (start: number) => spring({frame: frame - start, fps, config: {damping: 16, stiffness: 150, mass: 0.7}});
+  const fuer = auftritt(16);
+  const zeile: React.CSSProperties = {
+    position: 'absolute', left: 0, right: 0, textAlign: 'center', fontFamily: schrift.titel, letterSpacing: '-0.035em', overflow: 'hidden',
+  };
+  return (
+    <AbsoluteFill>
+      <div style={{position: 'absolute', top: ZG_OBEN, left: 0, right: 0, display: 'flex', justifyContent: 'center'}}>
+        <Logo groesse={120} ball={ball} bogen={bogen} schriftzug={zug} />
+      </div>
+      <div style={{...zeile, top: ZG_OBEN + 256, fontWeight: 650, fontSize: 84, lineHeight: 1.15, color: farbe.chalk}}>
+        <div style={{transform: `translateY(${(1 - fuer) * 110}%)`}}>Die App für</div>
+      </div>
+      {ZIELGRUPPEN.map((g, i) => {
+        const p = auftritt(30 + i * 15);
+        return (
+          <div key={g} style={{...zeile, top: ZG_OBEN + 366 + i * 124, fontWeight: 800, fontSize: 118, lineHeight: 1.08, color: farbe.signal}}>
+            <div style={{transform: `translateY(${(1 - p) * 110}%)`}}>{g}</div>
+          </div>
+        );
+      })}
+      <div style={{position: 'absolute', top: ZG_OBEN + 760, left: 0, right: 0, display: 'flex', justifyContent: 'center'}}>
+        <Notiz text="für alles neben dem Unterricht" start={84} groesse={74} mitte farbeText={farbe.sand} />
+      </div>
+    </AbsoluteFill>
+  );
+};
 
 /*
  * Lesbar vor schnell: Erst steht die Überschrift (ANFANG), dann bewegt sich

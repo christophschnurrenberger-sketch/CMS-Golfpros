@@ -1,19 +1,20 @@
 /**
- * TeePilot – lange Fassung: 58 Sekunden, 1080×1920, mit Musik.
+ * TeePilot – lange Fassung: 60 Sekunden, 1080×1920, mit Musik.
  *
  * Mehr Funktionen, jede am Schreibtisch und auf dem Telefon. Die Musik
  * (ton/musik.mjs, 120 BPM) ist für genau diesen Ablauf geschrieben: Alle
  * Szenenlängen und der Übergang sind Vielfache eines Schlags (15 Frames),
- * jeder Schnitt fällt auf einen Schlag. Der Einschlag bei 4 s bringt das
- * Logo, der bei 52 s den Schluss (ton/musik.mjs: SCHLUSS).
+ * jeder Schnitt fällt auf einen Schlag. Auf dem Einschlag bei 4 s kommt mit
+ * einem harten Schnitt Logo und Zielgruppe, auf dem bei 56 s der Schluss
+ * (ton/musik.mjs: SCHLUSS).
  */
 import React from 'react';
 import {AbsoluteFill, Html5Audio, interpolate, Sequence, staticFile} from 'remotion';
 import {linearTiming, springTiming, TransitionSeries} from '@remotion/transitions';
 import {fade} from '@remotion/transitions/fade';
 import {slide} from '@remotion/transitions/slide';
-import {Buchung, Hook, Marke, Schluss} from './Szenen';
-import {Auswertung2, Dashboard2, Kalender2, Kunde2, Leads2, Portal2, Rechnungen2, Reisen2, Training2, Website2} from './Szenen2';
+import {Buchung, Hook, Schluss} from './Szenen';
+import {Auswertung2, Dashboard2, Kalender2, Kunde2, Leads2, Portal2, Rechnungen2, Reisen2, Training2, Website2, Zielgruppe} from './Szenen2';
 import {Hintergrund} from './teile/Hintergrund';
 import {MitTon} from './teile/Ton';
 import type {WerbevideoProps} from './Werbevideo';
@@ -24,7 +25,8 @@ export const SCHLAG = 15;
 const BEREICHE2 = ['Online-Buchung', 'Kalender', 'Dashboard', 'Kundenakte', 'Training', 'Leads', 'Website', 'Golfreisen', 'Rechnungen', 'Auswertung', 'Kundenportal'];
 export const UEBERGANG2 = SCHLAG;
 
-type Szene = {name: string; dauer: number; zu: 'blende' | 'wisch'; element: (p: WerbevideoProps, dauer: number) => React.ReactNode};
+/* `schnitt` ist ein harter Schnitt ohne Überlappung – auf dem Einschlag der Musik. */
+type Szene = {name: string; dauer: number; zu: 'blende' | 'wisch' | 'schnitt'; element: (p: WerbevideoProps, dauer: number) => React.ReactNode};
 
 /*
  * Jeder Bildschirm steht gut vier Sekunden (zwei Takte) – so lange, dass man
@@ -32,9 +34,9 @@ type Szene = {name: string; dauer: number; zu: 'blende' | 'wisch'; element: (p: 
  * hereinkommt (die erste ignoriert es).
  */
 const SZENEN2: Szene[] = [
-  {name: 'hook', dauer: 105, zu: 'blende', element: () => <Hook />},
-  {name: 'marke', dauer: 90, zu: 'blende', element: () => <Marke verzoegerung={28} />},
-  {name: 'buchung', dauer: 165, zu: 'blende', element: () => <Buchung />},
+  {name: 'hook', dauer: 120, zu: 'blende', element: () => <Hook />},
+  {name: 'zielgruppe', dauer: 195, zu: 'schnitt', element: () => <Zielgruppe />},
+  {name: 'buchung', dauer: 165, zu: 'wisch', element: () => <Buchung />},
   {name: 'kalender', dauer: 135, zu: 'wisch', element: (_, d) => <Kalender2 dauer={d} />},
   {name: 'dashboard', dauer: 135, zu: 'wisch', element: (_, d) => <Dashboard2 dauer={d} />},
   {name: 'kunde', dauer: 150, zu: 'wisch', element: (_, d) => <Kunde2 dauer={d} />},
@@ -44,14 +46,19 @@ const SZENEN2: Szene[] = [
   {name: 'reisen', dauer: 150, zu: 'wisch', element: (_, d) => <Reisen2 dauer={d} />},
   {name: 'rechnungen', dauer: 150, zu: 'wisch', element: (_, d) => <Rechnungen2 dauer={d} />},
   {name: 'auswertung', dauer: 135, zu: 'wisch', element: (_, d) => <Auswertung2 dauer={d} />},
-  {name: 'portal', dauer: 120, zu: 'wisch', element: (_, d) => <Portal2 dauer={d} />},
-  {name: 'schluss', dauer: 180, zu: 'blende', element: (p) => <Schluss {...p} desktop="dashboard-desk" bereiche={BEREICHE2} />},
+  {name: 'portal', dauer: 105, zu: 'wisch', element: (_, d) => <Portal2 dauer={d} />},
+  {name: 'schluss', dauer: 120, zu: 'blende', element: (p) => <Schluss {...p} desktop="dashboard-desk" bereiche={BEREICHE2} />},
 ];
 
-/** Startframe jeder Szene im fertigen Video. */
-export const STARTS2 = SZENEN2.reduce<number[]>((s, sz, i) => [...s, i === 0 ? 0 : s[i - 1] + SZENEN2[i - 1].dauer - UEBERGANG2], []);
+const ueberlappung = (sz: Szene) => (sz.zu === 'schnitt' ? 0 : UEBERGANG2);
 
-export const GESAMT2 = SZENEN2.reduce((a, s) => a + s.dauer, 0) - UEBERGANG2 * (SZENEN2.length - 1);
+/** Startframe jeder Szene im fertigen Video. */
+export const STARTS2 = SZENEN2.reduce<number[]>(
+  (s, sz, i) => [...s, i === 0 ? 0 : s[i - 1] + SZENEN2[i - 1].dauer - ueberlappung(sz)],
+  [],
+);
+
+export const GESAMT2 = STARTS2[STARTS2.length - 1] + SZENEN2[SZENEN2.length - 1].dauer;
 
 export const Werbevideo2: React.FC<WerbevideoProps> = (props) => (
   <MitTon>
@@ -60,7 +67,7 @@ export const Werbevideo2: React.FC<WerbevideoProps> = (props) => (
       <TransitionSeries>
         {SZENEN2.map((sz, i) => (
           <React.Fragment key={sz.name}>
-            {i > 0 ? (
+            {i > 0 && sz.zu !== 'schnitt' ? (
               <TransitionSeries.Transition
                 presentation={sz.zu === 'wisch' ? slide({direction: 'from-bottom'}) : fade()}
                 timing={

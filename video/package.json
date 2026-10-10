@@ -1,7 +1,7 @@
 {
   "name": "teepilot-werbevideo",
   "private": true,
-  "description": "Werbevideos für TeePilot im Hochformat – mit Remotion, aus echten Screens der App: 30 s ohne Ton und 58 s mit eigener Musik.",
+  "description": "Werbevideos für TeePilot im Hochformat – mit Remotion, aus echten Screens der App: 30 s ohne Ton und 60 s mit eigener Musik.",
   "scripts": {
     "aufnehmen": "bash aufnahme/alles-aufnehmen.sh",
     "musik": "node ton/musik.mjs",
@@ -9,7 +9,7 @@
     "studio": "remotion studio",
     "rendern": "remotion render TeePilot out/teepilot-werbevideo.mp4",
     "prerendern:lang": "node ton/musik.mjs",
-    "rendern:lang": "remotion render TeePilotLang out/teepilot-werbevideo-58s-musik.mp4",
+    "rendern:lang": "remotion render TeePilotLang out/teepilot-werbevideo-60s-musik.mp4",
     "standbild": "remotion still TeePilot"
   },
   "dependencies": {
