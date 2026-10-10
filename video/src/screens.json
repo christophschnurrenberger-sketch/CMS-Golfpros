@@ -1,0 +1,224 @@
+{
+  "buchen-kalender": {
+    "bild": "screens/buchen-kalender.png",
+    "breite": 390,
+    "hoehe": 1685,
+    "statusfarbe": "color(srgb 0.984314 0.972549 0.941177 / 0.9)",
+    "overlays": [
+      {
+        "bild": "screens/buchen-kalender--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 390,
+        "hoehe": 157,
+        "unten": false
+      }
+    ],
+    "marken": {
+      "tag": {
+        "x": 69,
+        "y": 739,
+        "breite": 47,
+        "hoehe": 47
+      },
+      "kalender": {
+        "x": 18,
+        "y": 616,
+        "breite": 354,
+        "hoehe": 478
+      }
+    },
+    "scrollZiel": 416
+  },
+  "buchen-zeiten": {
+    "bild": "screens/buchen-zeiten.png",
+    "breite": 390,
+    "hoehe": 844,
+    "statusfarbe": "rgb(251, 248, 240)",
+    "overlays": [],
+    "marken": {
+      "zeit": {
+        "x": 45,
+        "y": 392,
+        "breite": 76,
+        "hoehe": 51
+      }
+    }
+  },
+  "buchen-angaben": {
+    "bild": "screens/buchen-angaben.png",
+    "breite": 390,
+    "hoehe": 1500,
+    "statusfarbe": "color(srgb 0.984314 0.972549 0.941177 / 0.9)",
+    "overlays": [
+      {
+        "bild": "screens/buchen-angaben--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 390,
+        "hoehe": 157,
+        "unten": false
+      }
+    ],
+    "marken": {
+      "gewaehlt": {
+        "x": 18,
+        "y": 399,
+        "breite": 354,
+        "hoehe": 121
+      }
+    }
+  },
+  "kunde": {
+    "bild": "screens/kunde.png",
+    "breite": 390,
+    "hoehe": 3000,
+    "statusfarbe": "color(srgb 1 1 1 / 0.88)",
+    "overlays": [
+      {
+        "bild": "screens/kunde--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 390,
+        "hoehe": 60,
+        "unten": false
+      }
+    ],
+    "marken": {
+      "handicap": {
+        "x": 16,
+        "y": 1753,
+        "breite": 358,
+        "hoehe": 268
+      }
+    }
+  },
+  "plan": {
+    "bild": "screens/plan.png",
+    "breite": 390,
+    "hoehe": 2600,
+    "statusfarbe": "color(srgb 1 1 1 / 0.88)",
+    "overlays": [
+      {
+        "bild": "screens/plan--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 390,
+        "hoehe": 60,
+        "unten": false
+      }
+    ],
+    "marken": {}
+  },
+  "rechnungen": {
+    "bild": "screens/rechnungen.png",
+    "breite": 390,
+    "hoehe": 2600,
+    "statusfarbe": "color(srgb 1 1 1 / 0.88)",
+    "overlays": [
+      {
+        "bild": "screens/rechnungen--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 390,
+        "hoehe": 60,
+        "unten": false
+      }
+    ],
+    "marken": {
+      "abrechnen": {
+        "x": 16,
+        "y": 591,
+        "breite": 358,
+        "hoehe": 540
+      },
+      "knopf": {
+        "x": 244,
+        "y": 702,
+        "breite": 100,
+        "hoehe": 28
+      }
+    },
+    "scrollZiel": 451
+  },
+  "rechnung-neu": {
+    "bild": "screens/rechnung-neu.png",
+    "breite": 390,
+    "hoehe": 844,
+    "statusfarbe": "color(srgb 1 1 1 / 0.88)",
+    "overlays": [],
+    "marken": {}
+  },
+  "reise": {
+    "bild": "screens/reise.png",
+    "breite": 390,
+    "hoehe": 3400,
+    "statusfarbe": "color(srgb 0.984314 0.972549 0.941177 / 0.9)",
+    "overlays": [
+      {
+        "bild": "screens/reise--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 390,
+        "hoehe": 157,
+        "unten": false
+      },
+      {
+        "bild": "screens/reise--1.png",
+        "x": 12,
+        "y": 767,
+        "breite": 366,
+        "hoehe": 65,
+        "unten": true
+      }
+    ],
+    "marken": {
+      "bilder": {
+        "x": 18,
+        "y": 1426,
+        "breite": 354,
+        "hoehe": 28
+      }
+    }
+  },
+  "website": {
+    "bild": "screens/website.png",
+    "breite": 390,
+    "hoehe": 844,
+    "statusfarbe": "color(srgb 0.984314 0.972549 0.941177 / 0.9)",
+    "overlays": [],
+    "marken": {}
+  },
+  "portal": {
+    "bild": "screens/portal.png",
+    "breite": 390,
+    "hoehe": 844,
+    "statusfarbe": "color(srgb 0.984314 0.972549 0.941177 / 0.9)",
+    "overlays": [],
+    "marken": {}
+  },
+  "dashboard": {
+    "bild": "screens/dashboard.png",
+    "breite": 390,
+    "hoehe": 844,
+    "statusfarbe": "color(srgb 1 1 1 / 0.88)",
+    "overlays": [],
+    "marken": {}
+  },
+  "kalender": {
+    "bild": "screens/kalender.png",
+    "breite": 1440,
+    "hoehe": 900,
+    "statusfarbe": null,
+    "overlays": [],
+    "marken": {}
+  },
+  "baukasten": {
+    "bild": "screens/baukasten.png",
+    "breite": 1440,
+    "hoehe": 900,
+    "statusfarbe": null,
+    "overlays": [],
+    "marken": {}
+  }
+}

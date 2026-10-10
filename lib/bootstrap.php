@@ -9,6 +9,17 @@
 
 declare(strict_types=1);
 
+/*
+ * Nur einmal. index.php liefert die Website aus, indem es site.php
+ * einbindet – und site.php lädt diese Datei selbst, weil es auch direkt
+ * aufgerufen wird. Der zweite Durchlauf öffnete die Datenbank erneut,
+ * hängte einen zweiten Autoloader an und schrieb bei jedem Aufruf der
+ * Startseite „Constant GP_VERSION already defined“ ins Fehlerlog.
+ */
+if (defined('GP_VERSION')) {
+    return;
+}
+
 if (!defined('GP_ROOT')) {
     define('GP_ROOT', dirname(__DIR__));
 }

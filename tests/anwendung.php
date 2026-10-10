@@ -226,6 +226,14 @@ try {
     }
     pruefe($pro->holen('/app/kunden.php')->vollstaendig(), 'danach noch angemeldet');
 
+    abschnitt('Website der Golfschule');
+    /* Über index.php: Die Startseite und jede saubere Adresse laufen dort
+       hinein und binden site.php ein – das lud bootstrap.php zweimal. */
+    $gast = new Besucher($basis, $ordner);
+    foreach (['/', '/ueber-mich', '/buchen.php', '/reisen.php', '/reise.php?r=golfwoche-mallorca'] as $adresse) {
+        pruefe($gast->holen($adresse)->vollstaendig(), $adresse);
+    }
+
     abschnitt('Serverlog');
     $log = is_file($ordner . '/fehler.log') ? trim((string) file_get_contents($ordner . '/fehler.log')) : '';
     pruefe($log === '', 'keine PHP-Fehler oder Warnungen' . ($log === '' ? '' : ":\n" . substr($log, 0, 1500)));

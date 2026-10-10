@@ -207,6 +207,8 @@ jobs:
           #       Für die erste Einrichtung siehe docs/DEPLOY.md.
           #   tests/                         Prüfungen laufen lokal, nicht
           #       auf dem Webspace.
+          #   video/                         Das Werbevideo (Remotion) –
+          #       Quelltext und Aufnahmen, nichts davon gehört auf den Server.
           #   docs/, README.md               Interne Unterlagen gehören
           #       nicht unter die eigene Domain.
           exclude: |
@@ -227,6 +229,7 @@ jobs:
             install.php
             docs/**
             tests/**
+            video/**
             README.md
 
       # ------------------------------------------------------------------
@@ -333,6 +336,7 @@ jobs:
           #                 uploads/ gehen weiterhin mit.
           #   ^install\.php der Installer
           #   ^docs/, ^README\.md            interne Unterlagen
+          #   ^tests/, ^video/              Prüfungen und das Werbevideo
           aus="--exclude ^\.git"
           aus="$aus --exclude ^\.github/"
           aus="$aus --exclude ^config\.php$"
@@ -342,6 +346,7 @@ jobs:
           aus="$aus --exclude ^install\.php$"
           aus="$aus --exclude ^docs/"
           aus="$aus --exclude ^tests/"
+          aus="$aus --exclude ^video/"
           aus="$aus --exclude ^README\.md$"
 
           # Aufraeumen ist Absicht, nicht Voreinstellung.
