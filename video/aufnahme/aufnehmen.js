@@ -61,10 +61,10 @@ async function rechteck(p, selektor) {
  * Ganze Seite aufnehmen, feste Leisten getrennt.
  * leisten: Selektoren für Kopf- und Fußleisten, die stehen bleiben sollen.
  */
-async function ganzeSeite(p, name, { leisten = [], hoechstens = 3200, marken = {} } = {}) {
+async function ganzeSeite(p, name, { leisten = [], hoechstens = 3200, marken = {}, viewport = TELEFON } = {}) {
   await p.evaluate(() => window.scrollTo(0, 0));
   await p.waitForTimeout(150);
-  const statusfarbe = await obenFarbe(p);
+  const statusfarbe = viewport === TELEFON ? await obenFarbe(p) : null;
   const overlays = [];
   for (const sel of leisten) {
     const loc = p.locator(sel).first();
@@ -75,16 +75,16 @@ async function ganzeSeite(p, name, { leisten = [], hoechstens = 3200, marken = {
     });
     const datei = `${name}--${overlays.length}.png`;
     await loc.screenshot({ path: path.join(BILDER, datei) });
-    overlays.push({ bild: 'screens/' + datei, ...r, unten: r.y > TELEFON.height / 2 });
+    overlays.push({ bild: 'screens/' + datei, ...r, unten: r.y > viewport.height / 2 });
   }
   const gefundeneMarken = {};
   for (const [k, sel] of Object.entries(marken)) gefundeneMarken[k] = await rechteck(p, sel);
   const stil = await p.addStyleTag({ content: leisten.map((s) => `${s}{visibility:hidden!important}`).join('\n') });
   const hoehe = Math.min(hoechstens, await p.evaluate(() => document.documentElement.scrollHeight));
-  await p.screenshot({ path: path.join(BILDER, name + '.png'), fullPage: true, clip: { x: 0, y: 0, width: TELEFON.width, height: hoehe } });
+  await p.screenshot({ path: path.join(BILDER, name + '.png'), fullPage: true, clip: { x: 0, y: 0, width: viewport.width, height: hoehe } });
   // Wieder einblenden: Was danach auf dieser Seite aufgenommen wird, soll aussehen wie im Browser.
   await stil.evaluate((e) => e.remove());
-  manifest[name] = { bild: `screens/${name}.png`, breite: TELEFON.width, hoehe, statusfarbe, overlays, marken: gefundeneMarken };
+  manifest[name] = { bild: `screens/${name}.png`, breite: viewport.width, hoehe, fenster: viewport.height, statusfarbe, overlays, marken: gefundeneMarken };
   console.log(`  ${name}: ${hoehe}px, ${overlays.length} Leisten, Marken: ${Object.keys(gefundeneMarken).join(', ') || '–'}`);
 }
 
@@ -100,7 +100,7 @@ async function ausschnitt(p, name, viewport, marken = {}) {
   }
   const statusfarbe = viewport === TELEFON ? await obenFarbe(p) : null;
   await p.screenshot({ path: path.join(BILDER, name + '.png') });
-  manifest[name] = { bild: `screens/${name}.png`, breite: viewport.width, hoehe: viewport.height, statusfarbe, overlays: [], marken: gefundeneMarken };
+  manifest[name] = { bild: `screens/${name}.png`, breite: viewport.width, hoehe: viewport.height, fenster: viewport.height, statusfarbe, overlays: [], marken: gefundeneMarken };
   console.log(`  ${name}: Ausschnitt ${viewport.width}×${viewport.height}`);
 }
 
@@ -115,6 +115,24 @@ function obenFarbe(p) {
     }
     return getComputedStyle(document.body).backgroundColor || '#ffffff';
   });
+}
+
+/** Der Tag der nächsten Woche mit den meisten Terminen – gezählt in der Tagesansicht. */
+async function vollsterTagDerWoche(p) {
+  let bester = null;
+  let meiste = -1;
+  for (let i = 7; i < 14; i++) {
+    const tag = isoTag(new Date(Date.now() + i * 86400000));
+    await p.goto(BASIS + '/app/kalender.php?ansicht=tag&datum=' + tag);
+    await p.waitForLoadState('networkidle');
+    const anzahl = await p.locator('[data-wer]').count();
+    if (anzahl > meiste) {
+      meiste = anzahl;
+      bester = tag;
+    }
+  }
+  console.log(`  vollster Tag: ${bester} (${meiste} Termine)`);
+  return bester;
 }
 
 function isoTag(d) {
@@ -207,6 +225,7 @@ function isoTag(d) {
   await p.evaluate((y) => window.scrollTo(0, y), Math.max(0, manifest.rechnungen.marken.abrechnen.y - 140));
   await Promise.all([p.waitForNavigation(), p.locator(knopf).first().click()]);
   await warten(p);
+  const neueRechnung = p.url();
   await ausschnitt(p, 'rechnung-neu', TELEFON);
   manifest.rechnungen.scrollZiel = Math.max(0, manifest.rechnungen.marken.abrechnen.y - 140);
 
@@ -229,6 +248,13 @@ function isoTag(d) {
   await p.goto(BASIS + '/app/');
   await warten(p);
   await ausschnitt(p, 'dashboard', TELEFON);
+
+  // Kalender unterwegs: Tagesansicht des vollsten Tages der nächsten Woche
+  const naechsteWoche = new Date(Date.now() + 7 * 86400000);
+  const vollsterTag = await vollsterTagDerWoche(p);
+  await p.goto(BASIS + '/app/kalender.php?ansicht=tag&datum=' + vollsterTag);
+  await warten(p);
+  await ganzeSeite(p, 'kalender-tag', { leisten: ['header.kopf'], hoechstens: 1800 });
   await tel.close();
 
   /* ------------------------------------------------------ Desktop --- */
@@ -236,7 +262,6 @@ function isoTag(d) {
   const d = await desk.newPage();
   await anmelden(d);
   console.log('Desktop');
-  const naechsteWoche = new Date(Date.now() + 7 * 86400000);
   await d.goto(BASIS + '/app/kalender.php?ansicht=woche&datum=' + isoTag(naechsteWoche));
   await warten(d);
   await d.mouse.move(DESKTOP.width - 5, DESKTOP.height - 5);
@@ -245,6 +270,33 @@ function isoTag(d) {
   await warten(d);
   await d.mouse.move(DESKTOP.width - 5, DESKTOP.height - 5);
   await ausschnitt(d, 'baukasten', DESKTOP);
+
+  /* Für die lange Fassung: jede Funktion auch am Schreibtisch. Seitenleiste
+     und Kopfzeile stehen fest, die Seite läuft darunter durch. */
+  const desktopLeisten = ['aside.seitenleiste', 'header.kopf'];
+  const desktopSeiten = [
+    ['dashboard-desk', '/app/', 1800],
+    ['kunde-desk', '/app/kunde.php?id=1', 1500],
+    ['plan-desk', '/app/trainingsplan.php?id=1', 1500],
+    ['auswertung-desk', '/app/auswertung.php', 1900],
+  ];
+  for (const [name, adresse, hoechstens] of desktopSeiten) {
+    await d.goto(BASIS + adresse);
+    await warten(d);
+    await d.mouse.move(DESKTOP.width - 5, DESKTOP.height - 5);
+    await ganzeSeite(d, name, { leisten: desktopLeisten, hoechstens, viewport: DESKTOP });
+  }
+  for (const [name, adresse] of [
+    ['leads-desk', '/app/leads.php'],
+    ['reise-desk', '/app/reise.php?id=1'],
+    ['rechnung-desk', new URL(neueRechnung).pathname + new URL(neueRechnung).search],
+    ['website-desk', '/'],
+  ]) {
+    await d.goto(BASIS + adresse);
+    await warten(d);
+    await d.mouse.move(DESKTOP.width - 5, DESKTOP.height - 5);
+    await ausschnitt(d, name, DESKTOP);
+  }
   await desk.close();
 
   await browser.close();

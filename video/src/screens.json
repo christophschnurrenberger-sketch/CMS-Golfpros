@@ -3,6 +3,7 @@
     "bild": "screens/buchen-kalender.png",
     "breite": 390,
     "hoehe": 1685,
+    "fenster": 844,
     "statusfarbe": "color(srgb 0.984314 0.972549 0.941177 / 0.9)",
     "overlays": [
       {
@@ -34,6 +35,7 @@
     "bild": "screens/buchen-zeiten.png",
     "breite": 390,
     "hoehe": 844,
+    "fenster": 844,
     "statusfarbe": "rgb(251, 248, 240)",
     "overlays": [],
     "marken": {
@@ -49,6 +51,7 @@
     "bild": "screens/buchen-angaben.png",
     "breite": 390,
     "hoehe": 1500,
+    "fenster": 844,
     "statusfarbe": "color(srgb 0.984314 0.972549 0.941177 / 0.9)",
     "overlays": [
       {
@@ -73,6 +76,7 @@
     "bild": "screens/kunde.png",
     "breite": 390,
     "hoehe": 3000,
+    "fenster": 844,
     "statusfarbe": "color(srgb 1 1 1 / 0.88)",
     "overlays": [
       {
@@ -97,6 +101,7 @@
     "bild": "screens/plan.png",
     "breite": 390,
     "hoehe": 2600,
+    "fenster": 844,
     "statusfarbe": "color(srgb 1 1 1 / 0.88)",
     "overlays": [
       {
@@ -114,6 +119,7 @@
     "bild": "screens/rechnungen.png",
     "breite": 390,
     "hoehe": 2600,
+    "fenster": 844,
     "statusfarbe": "color(srgb 1 1 1 / 0.88)",
     "overlays": [
       {
@@ -145,6 +151,7 @@
     "bild": "screens/rechnung-neu.png",
     "breite": 390,
     "hoehe": 844,
+    "fenster": 844,
     "statusfarbe": "color(srgb 1 1 1 / 0.88)",
     "overlays": [],
     "marken": {}
@@ -153,6 +160,7 @@
     "bild": "screens/reise.png",
     "breite": 390,
     "hoehe": 3400,
+    "fenster": 844,
     "statusfarbe": "color(srgb 0.984314 0.972549 0.941177 / 0.9)",
     "overlays": [
       {
@@ -185,6 +193,7 @@
     "bild": "screens/website.png",
     "breite": 390,
     "hoehe": 844,
+    "fenster": 844,
     "statusfarbe": "color(srgb 0.984314 0.972549 0.941177 / 0.9)",
     "overlays": [],
     "marken": {}
@@ -193,6 +202,7 @@
     "bild": "screens/portal.png",
     "breite": 390,
     "hoehe": 844,
+    "fenster": 844,
     "statusfarbe": "color(srgb 0.984314 0.972549 0.941177 / 0.9)",
     "overlays": [],
     "marken": {}
@@ -201,14 +211,34 @@
     "bild": "screens/dashboard.png",
     "breite": 390,
     "hoehe": 844,
+    "fenster": 844,
     "statusfarbe": "color(srgb 1 1 1 / 0.88)",
     "overlays": [],
+    "marken": {}
+  },
+  "kalender-tag": {
+    "bild": "screens/kalender-tag.png",
+    "breite": 390,
+    "hoehe": 1800,
+    "fenster": 844,
+    "statusfarbe": "color(srgb 1 1 1 / 0.88)",
+    "overlays": [
+      {
+        "bild": "screens/kalender-tag--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 390,
+        "hoehe": 60,
+        "unten": false
+      }
+    ],
     "marken": {}
   },
   "kalender": {
     "bild": "screens/kalender.png",
     "breite": 1440,
     "hoehe": 900,
+    "fenster": 900,
     "statusfarbe": null,
     "overlays": [],
     "marken": {}
@@ -217,6 +247,147 @@
     "bild": "screens/baukasten.png",
     "breite": 1440,
     "hoehe": 900,
+    "fenster": 900,
+    "statusfarbe": null,
+    "overlays": [],
+    "marken": {}
+  },
+  "dashboard-desk": {
+    "bild": "screens/dashboard-desk.png",
+    "breite": 1440,
+    "hoehe": 1800,
+    "fenster": 900,
+    "statusfarbe": null,
+    "overlays": [
+      {
+        "bild": "screens/dashboard-desk--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 244,
+        "hoehe": 900,
+        "unten": false
+      },
+      {
+        "bild": "screens/dashboard-desk--1.png",
+        "x": 244,
+        "y": 0,
+        "breite": 1196,
+        "hoehe": 60,
+        "unten": false
+      }
+    ],
+    "marken": {}
+  },
+  "kunde-desk": {
+    "bild": "screens/kunde-desk.png",
+    "breite": 1440,
+    "hoehe": 1500,
+    "fenster": 900,
+    "statusfarbe": null,
+    "overlays": [
+      {
+        "bild": "screens/kunde-desk--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 244,
+        "hoehe": 900,
+        "unten": false
+      },
+      {
+        "bild": "screens/kunde-desk--1.png",
+        "x": 244,
+        "y": 0,
+        "breite": 1196,
+        "hoehe": 60,
+        "unten": false
+      }
+    ],
+    "marken": {}
+  },
+  "plan-desk": {
+    "bild": "screens/plan-desk.png",
+    "breite": 1440,
+    "hoehe": 1500,
+    "fenster": 900,
+    "statusfarbe": null,
+    "overlays": [
+      {
+        "bild": "screens/plan-desk--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 244,
+        "hoehe": 900,
+        "unten": false
+      },
+      {
+        "bild": "screens/plan-desk--1.png",
+        "x": 244,
+        "y": 0,
+        "breite": 1196,
+        "hoehe": 60,
+        "unten": false
+      }
+    ],
+    "marken": {}
+  },
+  "auswertung-desk": {
+    "bild": "screens/auswertung-desk.png",
+    "breite": 1440,
+    "hoehe": 1900,
+    "fenster": 900,
+    "statusfarbe": null,
+    "overlays": [
+      {
+        "bild": "screens/auswertung-desk--0.png",
+        "x": 0,
+        "y": 0,
+        "breite": 244,
+        "hoehe": 900,
+        "unten": false
+      },
+      {
+        "bild": "screens/auswertung-desk--1.png",
+        "x": 244,
+        "y": 0,
+        "breite": 1196,
+        "hoehe": 60,
+        "unten": false
+      }
+    ],
+    "marken": {}
+  },
+  "leads-desk": {
+    "bild": "screens/leads-desk.png",
+    "breite": 1440,
+    "hoehe": 900,
+    "fenster": 900,
+    "statusfarbe": null,
+    "overlays": [],
+    "marken": {}
+  },
+  "reise-desk": {
+    "bild": "screens/reise-desk.png",
+    "breite": 1440,
+    "hoehe": 900,
+    "fenster": 900,
+    "statusfarbe": null,
+    "overlays": [],
+    "marken": {}
+  },
+  "rechnung-desk": {
+    "bild": "screens/rechnung-desk.png",
+    "breite": 1440,
+    "hoehe": 900,
+    "fenster": 900,
+    "statusfarbe": null,
+    "overlays": [],
+    "marken": {}
+  },
+  "website-desk": {
+    "bild": "screens/website-desk.png",
+    "breite": 1440,
+    "hoehe": 900,
+    "fenster": 900,
     "statusfarbe": null,
     "overlays": [],
     "marken": {}

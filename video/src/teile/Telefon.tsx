@@ -7,8 +7,9 @@
  * im Browser. Ein Zustandswechsel ist ein echter Klick aus der Aufnahme.
  */
 import React from 'react';
-import {Easing, Img, interpolate, staticFile, useCurrentFrame} from 'remotion';
+import {Easing, Html5Audio, Img, interpolate, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {aufnahme, farbe, schrift} from '../marke';
+import {useTon} from './Ton';
 
 const SEITE_B = 390;
 const SEITE_H = 844;
@@ -25,7 +26,7 @@ export type Zustand = {
 
 export type Tipp = {frame: number; x: number; y: number};
 
-const scrollBei = (frame: number, punkte: Array<[number, number]> | undefined): number => {
+export const scrollBei = (frame: number, punkte: Array<[number, number]> | undefined): number => {
   if (!punkte || punkte.length === 0) return 0;
   if (frame <= punkte[0][0]) return punkte[0][1];
   for (let i = 1; i < punkte.length; i++) {
@@ -123,6 +124,7 @@ export const Telefon: React.FC<{
   style?: React.CSSProperties;
 }> = ({zustaende, tipps = [], breite, style}) => {
   const frame = useCurrentFrame();
+  const ton = useTon();
   const s = breite / SEITE_B;
   const rand = breite * 0.045;
   const radius = breite * 0.15;
@@ -160,6 +162,13 @@ export const Telefon: React.FC<{
         {tipps.map((t) => (
           <Fingertipp key={t.frame} t={t} s={s} frame={frame} />
         ))}
+        {ton
+          ? tipps.map((t) => (
+              <Sequence key={'ton' + t.frame} from={Math.max(0, t.frame - 1)} durationInFrames={8} layout="none">
+                <Html5Audio src={staticFile('ton/tipp.wav')} volume={0.55} />
+              </Sequence>
+            ))
+          : null}
         {/* Home-Indikator */}
         <div
           style={{

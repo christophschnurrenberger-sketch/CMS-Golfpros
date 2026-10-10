@@ -2,10 +2,17 @@
  * Ein Browserfenster mit einer Desktop-Aufnahme der App. Statt einer
  * erfundenen Adresse steht oben ein Tab mit dem echten Seitentitel und dem
  * Favicon von TeePilot (dem TP-Monogramm aus lib/Marke.php).
+ *
+ * Wie beim Telefon kann die Seite scrollen: Seitenleiste und Kopfzeile sind
+ * eigene Aufnahmen und bleiben stehen, die Seite läuft darunter durch.
  */
 import React from 'react';
-import {Img, staticFile} from 'remotion';
+import {Img, interpolate, staticFile, useCurrentFrame} from 'remotion';
 import {aufnahme, farbe, schrift} from '../marke';
+import {scrollBei, type Zustand} from './Telefon';
+
+const FENSTER_B = 1440;
+const FENSTER_H = 900;
 
 export const Monogramm: React.FC<{groesse: number}> = ({groesse}) => (
   <svg viewBox="0 0 100 100" width={groesse} height={groesse} style={{display: 'block', flex: 'none'}}>
@@ -16,46 +23,79 @@ export const Monogramm: React.FC<{groesse: number}> = ({groesse}) => (
   </svg>
 );
 
-export const Browser: React.FC<{screen: string; breite: number; titel: string; style?: React.CSSProperties}> = ({
-  screen,
-  breite,
-  titel,
-  style,
-}) => {
-  const a = aufnahme(screen);
-  const k = breite / 1000;
-  const leiste = 50 * k;
+const Seite: React.FC<{z: Zustand; k: number; frame: number}> = ({z, k, frame}) => {
+  const a = aufnahme(z.screen);
+  const fenster = a.fenster ?? FENSTER_H;
+  const scroll = Math.min(scrollBei(frame, z.scroll), Math.max(0, a.hoehe - fenster));
   return (
-    <div
-      style={{
-        position: 'absolute', width: breite, borderRadius: 18 * k, overflow: 'hidden', background: '#e6e5de',
-        boxShadow: `0 ${50 * k}px ${110 * k}px rgba(0,0,0,0.5), 0 0 0 ${1.5 * k}px rgba(255,255,255,0.12)`,
-        ...style,
-      }}
-    >
-      <div style={{height: leiste, position: 'relative', background: '#dedcd6'}}>
-        {['#ff5f57', '#febc2e', '#28c840'].map((c, i) => (
-          <div
-            key={c}
-            style={{position: 'absolute', left: (20 + i * 22) * k, top: (leiste - 13 * k) / 2, width: 13 * k, height: 13 * k, borderRadius: '50%', background: c}}
-          />
-        ))}
-        <div
-          style={{
-            position: 'absolute', left: 100 * k, bottom: 0, height: leiste - 10 * k, width: 380 * k,
-            background: '#f6f5f0', borderRadius: `${10 * k}px ${10 * k}px 0 0`, display: 'flex', alignItems: 'center',
-            gap: 10 * k, padding: `0 ${14 * k}px`, boxSizing: 'border-box',
-          }}
-        >
-          <Monogramm groesse={18 * k} />
-          <span style={{fontFamily: schrift.titel, fontSize: 15 * k, fontWeight: 500, color: '#40433c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
-            {titel}
-          </span>
-        </div>
-      </div>
-      <Img src={staticFile(a.bild)} style={{display: 'block', width: breite, height: (a.hoehe / a.breite) * breite}} />
+    <div style={{position: 'absolute', inset: 0, overflow: 'hidden', background: '#f6f5f0'}}>
+      <Img src={staticFile(a.bild)} style={{position: 'absolute', left: 0, top: 0, width: FENSTER_B * k, transform: `translateY(${-scroll * k}px)`}} />
+      {a.overlays.map((o) => (
+        <Img key={o.bild} src={staticFile(o.bild)} style={{position: 'absolute', left: o.x * k, top: o.y * k, width: o.breite * k, height: o.hoehe * k}} />
+      ))}
     </div>
   );
 };
 
-export const browserHoehe = (breite: number) => (900 / 1440) * breite + 50 * (breite / 1000);
+export const Browser: React.FC<{
+  /** Eine einzelne Aufnahme, ohne Scrollen … */
+  screen?: string;
+  /** … oder eine Folge von Zuständen wie beim Telefon. */
+  zustaende?: Zustand[];
+  breite: number;
+  titel: string;
+  style?: React.CSSProperties;
+}> = ({screen, zustaende, breite, titel, style}) => {
+  const frame = useCurrentFrame();
+  const folge = zustaende ?? [{screen: screen ?? '', ab: 0}];
+  const k = breite / FENSTER_B;
+  const m = breite / 1000;
+  const leiste = 50 * m;
+
+  let i = 0;
+  folge.forEach((z, n) => {
+    if (frame >= z.ab) i = n;
+  });
+  const jetzt = folge[i];
+  const vorher = i > 0 ? folge[i - 1] : null;
+  const neu = interpolate(frame - jetzt.ab, [0, 6], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+
+  return (
+    <div
+      style={{
+        position: 'absolute', width: breite, borderRadius: 18 * m, overflow: 'hidden', background: '#e6e5de',
+        boxShadow: `0 ${50 * m}px ${110 * m}px rgba(0,0,0,0.5), 0 0 0 ${1.5 * m}px rgba(255,255,255,0.12)`,
+        ...style,
+      }}
+    >
+      <div style={{height: leiste, position: 'relative', background: '#dedcd6'}}>
+        {['#ff5f57', '#febc2e', '#28c840'].map((c, n) => (
+          <div
+            key={c}
+            style={{position: 'absolute', left: (20 + n * 22) * m, top: (leiste - 13 * m) / 2, width: 13 * m, height: 13 * m, borderRadius: '50%', background: c}}
+          />
+        ))}
+        <div
+          style={{
+            position: 'absolute', left: 100 * m, bottom: 0, height: leiste - 10 * m, width: 380 * m,
+            background: '#f6f5f0', borderRadius: `${10 * m}px ${10 * m}px 0 0`, display: 'flex', alignItems: 'center',
+            gap: 10 * m, padding: `0 ${14 * m}px`, boxSizing: 'border-box',
+          }}
+        >
+          <Monogramm groesse={18 * m} />
+          <span style={{fontFamily: schrift.titel, fontSize: 15 * m, fontWeight: 500, color: '#40433c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+            {titel}
+          </span>
+        </div>
+      </div>
+      <div style={{position: 'relative', width: breite, height: FENSTER_H * k}}>
+        {vorher && neu < 1 ? <Seite z={vorher} k={k} frame={frame} /> : null}
+        <div style={{position: 'absolute', inset: 0, opacity: vorher ? neu : 1}}>
+          <Seite z={jetzt} k={k} frame={frame} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const browserHoehe = (breite: number) => (FENSTER_H / FENSTER_B) * breite + 50 * (breite / 1000);

@@ -1,2 +1,4 @@
 node_modules/
 out/
+# Wird von ton/musik.mjs erzeugt (npm run musik) – immer gleich, darum nicht im Repository.
+public/ton/

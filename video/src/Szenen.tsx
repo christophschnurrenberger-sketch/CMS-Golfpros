@@ -14,7 +14,7 @@ import {Notiz, Titel} from './teile/Titel';
 const klemmen = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
 
 /** Federnder Aufstieg ab `start` – 0 unten, 1 an seinem Platz. */
-const useAufstieg = (start = 0, steif = 110) => {
+export const useAufstieg = (start = 0, steif = 110) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   return spring({frame: frame - start, fps, config: {damping: 17, stiffness: steif, mass: 0.9}});
@@ -25,7 +25,7 @@ const TEL_B = 560;
 const TEL_LINKS = (1080 - TEL_B * 1.09) / 2;
 const TEL_OBEN = 615;
 
-const Funktionstelefon: React.FC<Omit<React.ComponentProps<typeof Telefon>, 'breite'> & {start?: number}> = ({start = 0, style, ...rest}) => {
+export const Funktionstelefon: React.FC<Omit<React.ComponentProps<typeof Telefon>, 'breite'> & {start?: number}> = ({start = 0, style, ...rest}) => {
   const p = useAufstieg(start);
   return <Telefon {...rest} breite={TEL_B} style={{left: TEL_LINKS, top: TEL_OBEN, transform: `translateY(${(1 - p) * 320}px)`, ...style}} />;
 };
@@ -52,12 +52,13 @@ export const Hook: React.FC = () => {
 
 /* ---------------------------------------------------------- 2 Marke --- */
 
-export const Marke: React.FC = () => {
+/** `verzoegerung`: In der langen Fassung erscheint der Ball genau auf dem Einschlag der Musik. */
+export const Marke: React.FC<{verzoegerung?: number}> = ({verzoegerung: v = 0}) => {
   const frame = useCurrentFrame();
-  const ball = useAufstieg(2, 180);
-  const bogen = interpolate(frame, [6, 24], [0, 1], {...klemmen, easing: Easing.inOut(Easing.cubic)});
-  const zug = useAufstieg(12, 140);
-  const unter = interpolate(frame, [22, 36], [0, 1], klemmen);
+  const ball = useAufstieg(2 + v, 180);
+  const bogen = interpolate(frame, [6 + v, 24 + v], [0, 1], {...klemmen, easing: Easing.inOut(Easing.cubic)});
+  const zug = useAufstieg(12 + v, 140);
+  const unter = interpolate(frame, [22 + v, 36 + v], [0, 1], klemmen);
   return (
     <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center'}}>
       <div style={{marginTop: -120}}>
@@ -220,7 +221,13 @@ export const Rechnungen: React.FC = () => {
 
 const BEREICHE = ['Online-Buchung', 'Kalender', 'Kundenakte', 'Training', 'Website', 'Golfreisen', 'Rechnungen'];
 
-export const Schluss: React.FC<{aufruf: string; adresse: string}> = ({aufruf, adresse}) => {
+/** `desktop`: In der langen Fassung steht hinter den Telefonen noch ein Browserfenster. */
+export const Schluss: React.FC<{aufruf: string; adresse: string; desktop?: string; bereiche?: string[]}> = ({
+  aufruf,
+  adresse,
+  desktop,
+  bereiche = BEREICHE,
+}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const logo = useAufstieg(0, 150);
@@ -233,6 +240,7 @@ export const Schluss: React.FC<{aufruf: string; adresse: string}> = ({aufruf, ad
   ];
   return (
     <AbsoluteFill>
+      {desktop ? <SchlussFenster screen={desktop} /> : null}
       {telefone.map((t) => (
         <SchlussTelefon key={t.screen} {...t} />
       ))}
@@ -262,13 +270,13 @@ export const Schluss: React.FC<{aufruf: string; adresse: string}> = ({aufruf, ad
           </div>
         ) : null}
         <div style={{position: 'absolute', top: adresse ? 990 : 940, left: 90, right: 90, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '14px 16px'}}>
-          {BEREICHE.map((b, i) => (
+          {bereiche.map((b, i) => (
             <span
               key={b}
               style={{
                 fontFamily: schrift.mono, fontWeight: 500, fontSize: 27, color: farbe.chalk, padding: '8px 18px',
                 border: '1.5px solid rgba(246,245,240,0.28)', borderRadius: 999,
-                opacity: interpolate(frame, [44 + i * 3, 54 + i * 3], [0, 0.9], klemmen),
+                opacity: interpolate(frame, [44 + i * 2, 54 + i * 2], [0, 0.9], klemmen),
               }}
             >
               {b}
@@ -277,6 +285,20 @@ export const Schluss: React.FC<{aufruf: string; adresse: string}> = ({aufruf, ad
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
+  );
+};
+
+const SchlussFenster: React.FC<{screen: string}> = ({screen}) => {
+  const p = useAufstieg(0, 80);
+  return (
+    <div style={{position: 'absolute', left: 60, top: 1110, width: 960, perspective: 2000}}>
+      <Browser
+        screen={screen}
+        breite={960}
+        titel="Dashboard · Golf Academy Bergmann"
+        style={{position: 'relative', opacity: 0.9, transform: `translateY(${(1 - p) * 500}px) rotateX(${14 + (1 - p) * 20}deg)`, transformOrigin: 'center bottom'}}
+      />
+    </div>
   );
 };
 

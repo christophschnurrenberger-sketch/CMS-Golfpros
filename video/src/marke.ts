@@ -45,6 +45,8 @@ export type Aufnahme = {
   bild: string;
   breite: number;
   hoehe: number;
+  /** Höhe des sichtbaren Fensters beim Aufnehmen (Telefon 844, Desktop 900). */
+  fenster?: number;
   statusfarbe: string | null;
   overlays: Leiste[];
   marken: Record<string, Rechteck>;
