@@ -7,19 +7,19 @@
  * gibt es keine Lizenzfrage, und Instagram, TikTok oder YouTube schalten das
  * Video nicht stumm. Ergebnis in public/ton/:
  *
- *   musik-45s.wav   45 Sekunden, 120 BPM, D-Dur (D – A – h – G)
+ *   musik-lang.wav  58 Sekunden, 120 BPM, D-Dur (D – A – h – G)
  *   tipp.wav        ein leiser Fingertipp
  *   wisch.wav       ein kurzes Rauschen für die Übergänge
  *
  * Ablauf (ein Takt = 2 s, die Schnitte im Video fallen auf Schläge):
- *    0–4 s   Fläche und Arpeggio, Filter öffnet sich, Steigerung
- *    4 s     Einschlag – das Logo erscheint
- *    4–19 s  Groove: Bassdrum, Clap, Hi-Hats, Bass, Fläche, Arpeggio
- *   19–20 s  ein Takt ohne Bassdrum, Steigerung
- *   20–38 s  dazu offene Hi-Hats und eine Glocke mit kleinem Motiv
- *   38–40 s  Wirbel und Steigerung
- *   40 s     Einschlag – der Schluss mit dem Knopf
- *   44 s     Schlussakkord, ausklingen bis 45 s
+ *    0–4 s        Fläche und Arpeggio, Filter öffnet sich, Steigerung
+ *    4 s          Einschlag – das Logo erscheint
+ *    4–BRUCH      Groove: Bassdrum, Clap, Hi-Hats, Bass, Fläche, Arpeggio
+ *    BRUCH        ein halber Takt ohne Bassdrum, Steigerung
+ *    danach       zweiter Teil: offene Hi-Hats und eine Glocke mit kleinem Motiv
+ *    SCHLUSS−2    Wirbel und Steigerung
+ *    SCHLUSS      Einschlag – der Schluss mit dem Knopf
+ *    ENDE         Schlussakkord, ausklingen bis DAUER
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -30,7 +30,11 @@ const BPM = 120;
 const SCHLAG = 60 / BPM;
 const TAKT = SCHLAG * 4;
 const SECHZEHNTEL = SCHLAG / 4;
-const DAUER = 45;
+const DAUER = 58;
+/* Wo die Musik etwas tut – passend zu src/Werbevideo2.tsx (Startframe / 30). */
+const BRUCH = 29; //   ein halber Takt ohne Bassdrum, danach der zweite Teil
+const SCHLUSS = 52; // Einschlag: der Schluss mit dem Knopf beginnt
+const ENDE = 56; //    Schlussakkord, klingt bis DAUER aus
 const N = Math.ceil(DAUER * SR);
 
 const ziel = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'ton');
@@ -279,7 +283,7 @@ const MOTIV = [
 ];
 
 // Fläche: ganze Zeit, im Intro öffnet sich das Filter.
-for (let takt = 0; takt * TAKT < 44; takt++) {
+for (let takt = 0; takt * TAKT < ENDE; takt++) {
   const t = takt * TAKT;
   const a = akkordBei(t);
   const filter = (zeit) => (zeit < 4 ? 350 + 1550 * Math.pow(zeit / 4, 2) : 1900);
@@ -287,7 +291,7 @@ for (let takt = 0; takt * TAKT < 44; takt++) {
 }
 
 // Arpeggio in Sechzehnteln; im Intro gedämpft.
-for (let s = 0; s * SECHZEHNTEL < 44; s++) {
+for (let s = 0; s * SECHZEHNTEL < ENDE; s++) {
   const t = s * SECHZEHNTEL;
   const a = akkordBei(t);
   const schritt = s % 16;
@@ -319,33 +323,34 @@ const groove = (von, bis, mitOffen) => {
   }
 };
 
-groove(4, 19, false);
-// 19–20 s: ein Takt Luft – ohne Bassdrum, nur Clap und Steigerung in den zweiten Teil.
-for (let s = 0; s < 4; s++) clap(19 + s * SECHZEHNTEL * 2, 0.4 + s * 0.12);
-steigerung(19, 20, 0.7);
-groove(20, 38, true);
-for (let takt = 10; takt * TAKT < 38; takt++) {
+groove(4, BRUCH, false);
+// Ein halber Takt Luft – ohne Bassdrum, nur Clap und Steigerung in den zweiten Teil.
+for (let s = 0; s < 4; s++) clap(BRUCH + s * SECHZEHNTEL * 2, 0.4 + s * 0.12);
+steigerung(BRUCH, BRUCH + 1, 0.7);
+groove(BRUCH + 1, SCHLUSS - 2, true);
+for (let takt = Math.ceil((BRUCH + 1) / TAKT); takt * TAKT < SCHLUSS - 2; takt++) {
   const t0 = takt * TAKT;
   for (const [schlagNr, midi] of MOTIV[takt % 4]) glockenNote(t0 + schlagNr * SCHLAG, midi);
 }
 
-// 38–40 s: Wirbel und Steigerung in den Schluss.
-groove(38, 39, true);
-for (let s = 0; s < 8; s++) clap(39 + s * SECHZEHNTEL, 0.35 + s * 0.09);
-for (let b = 78; b < 80; b++) kick(b * SCHLAG, 0.9);
-steigerung(38, 40, 1.2);
-einschlag(40);
-groove(40, 44, true);
-for (const [schlagNr, midi] of MOTIV[0]) glockenNote(40 + schlagNr * SCHLAG, midi);
-for (const [schlagNr, midi] of MOTIV[1]) glockenNote(42 + schlagNr * SCHLAG, midi);
+// Wirbel und Steigerung in den Schluss.
+groove(SCHLUSS - 2, SCHLUSS - 1, true);
+for (let s = 0; s < 8; s++) clap(SCHLUSS - 1 + s * SECHZEHNTEL, 0.35 + s * 0.09);
+for (let b = (SCHLUSS - 1) / SCHLAG; b < SCHLUSS / SCHLAG; b++) kick(b * SCHLAG, 0.9);
+steigerung(SCHLUSS - 2, SCHLUSS, 1.2);
+einschlag(SCHLUSS);
+groove(SCHLUSS, ENDE, true);
+for (let takt = SCHLUSS / TAKT; takt * TAKT < ENDE; takt++) {
+  for (const [schlagNr, midi] of MOTIV[takt % 4]) glockenNote(takt * TAKT + schlagNr * SCHLAG, midi);
+}
 
-// 44 s: Schlussakkord.
-kick(44);
-einschlag(44);
-flaechenAkkord(44, 0.6, [62, 66, 69, 74], () => 2400, 1.3);
-for (const m of [74, 78, 81, 86]) zupfNote(44, m, 1.1, 0);
-glockenNote(44, 81, 1.2);
-bassNote(44, 38, 0.8);
+// Schlussakkord.
+kick(ENDE);
+einschlag(ENDE);
+flaechenAkkord(ENDE, 0.9, [62, 66, 69, 74], () => 2400, 1.3);
+for (const m of [74, 78, 81, 86]) zupfNote(ENDE, m, 1.1, 0);
+glockenNote(ENDE, 81, 1.2);
+bassNote(ENDE, 38, 0.8);
 
 /* ----------------------------------------------------------- Mischung */
 
@@ -420,7 +425,7 @@ for (let i = 0; i < N; i++) {
 }
 
 /* Pegel je Spur und vor dem Mastern – Musik prüft man hier mit Zahlen. */
-const dbfs = (l, r, von = 4, bis = 38) => {
+const dbfs = (l, r, von = 4, bis = SCHLUSS - 2) => {
   let s = 0;
   let m = 0;
   for (let i = Math.round(von * SR); i < Math.round(bis * SR); i++) {
@@ -484,8 +489,8 @@ function wav(datei, l, r) {
 }
 
 const rms = meistern(L, R, {einblenden: 0.05, ausblenden: 0.7, antrieb: 1.0});
-wav(path.join(ziel, 'musik-45s.wav'), L, R);
-console.log(`musik-45s.wav  ${DAUER} s, RMS ${rms.toFixed(1)} dBFS`);
+wav(path.join(ziel, 'musik-lang.wav'), L, R);
+console.log(`musik-lang.wav  ${DAUER} s, RMS ${rms.toFixed(1)} dBFS`);
 
 /* ------------------------------------------------------------ Geräusche */
 

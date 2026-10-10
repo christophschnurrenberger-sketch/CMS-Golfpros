@@ -6,7 +6,7 @@ Shorts und den Status. Gebaut mit [Remotion](https://www.remotion.dev).
 | Komposition | Länge | Ton | Inhalt |
 |---|---|---|---|
 | `TeePilot` | 30 s | ohne | sieben Funktionen, überwiegend auf dem Telefon |
-| `TeePilotLang` | 45 s | eigene Musik + Geräusche | elf Funktionen, jede am Schreibtisch **und** auf dem Telefon |
+| `TeePilotLang` | 58 s | eigene Musik + Geräusche | elf Funktionen, jede am Schreibtisch **und** auf dem Telefon |
 
 Alle Bildschirme sind **echte Aufnahmen aus der App** – keine nachgebauten
 Oberflächen. Jeder Fingertipp ist ein Klick, den das Aufnahmeskript wirklich
@@ -28,26 +28,30 @@ Rechnung) ist das, was die App darauf geantwortet hat.
 | 23–26 | Rechnung? Ein Klick. | „Noch nicht abgerechnet“ → Rechnung |
 | 26–30 | Dein Auftritt. In deiner Hand. – Aufruf | Akte, Portal, Reise |
 
-## Ablauf der langen Fassung (45 s, mit Musik)
+## Ablauf der langen Fassung (58 s, mit Musik)
 
-Die Musik hat 120 BPM; jede Szene beginnt auf einem Schlag.
+Jeder Bildschirm steht gut vier Sekunden – zwei Takte der Musik (120 BPM),
+jede Szene beginnt auf einem Schlag. Innerhalb einer Szene gilt: erst steht
+die Überschrift (1 s), dann scrollt oder zoomt der Bildschirm, und vor dem
+Schnitt hält er eine Sekunde still. Das ist die übliche Faustregel für
+Text im Video: so lange zeigen, dass man ihn zweimal lesen kann.
 
 | Sekunde | Musik | Szene | Schreibtisch | Telefon |
 |---|---|---|---|---|
 | 0–3 | Fläche, Filter öffnet sich | Golfstunden statt Bürostunden | – | – |
 | 3–5,5 | **Einschlag bei 4 s** | Marke – der Ball erscheint auf dem Schlag | – | – |
-| 5,5–10 | Groove | Schüler buchen online | – | Buchung mit zwei Tipps |
-| 10–13 | | Alles landet in deinem Kalender | Wochenansicht | Tagesansicht |
-| 13–16 | | Dein Tag. Sortiert. | Dashboard, scrollt | Dashboard |
-| 16–19,5 | Pause, Steigerung | Jeder Schüler auf einen Blick | Kundenakte | Kundenakte bis Handicap |
-| 19,5–22,5 | zweiter Teil mit Glocke | Trainingspläne | Trainingsplan | Trainingsplan |
-| 22,5–25 | | Aus Anfragen werden Schüler | Leads-Pipeline | – |
-| 25–28,5 | | Deine Website. Ohne Agentur. | Baukasten → fertige Seite | Website |
-| 28,5–32 | | Golfreisen wie im Reisebüro | Reise-Verwaltung | Reiseseite |
-| 32–35,5 | | Rechnung? Ein Klick. | die neue Rechnung | Tipp → Rechnung |
-| 35,5–38 | | Zahlen, die du verstehst | Auswertung | – |
-| 38–40 | Wirbel, Steigerung | Deine Schüler haben ihr Portal | – | Kundenportal |
-| 40–45 | **Einschlag bei 40 s**, Schlussakkord bei 44 s | Dein Auftritt. In deiner Hand. – Aufruf | Dashboard | Akte, Portal, Reise |
+| 5,5–10,5 | Groove | Schüler buchen online | – | Buchung mit zwei Tipps |
+| 10,5–14,5 | | Alles landet in deinem Kalender | Wochenansicht | Tagesansicht |
+| 14,5–18,5 | | Dein Tag. Sortiert. | Dashboard, scrollt | Dashboard |
+| 18,5–23 | | Jeder Schüler auf einen Blick | Kundenakte | Kundenakte bis Handicap |
+| 23–27 | | Trainingspläne | Trainingsplan | Trainingsplan |
+| 27–31 | Pause bei 29 s, zweiter Teil mit Glocke | Aus Anfragen werden Schüler | Leads-Pipeline | – |
+| 31–35,5 | | Deine Website. Ohne Agentur. | Baukasten → fertige Seite | Website |
+| 35,5–40 | | Golfreisen wie im Reisebüro | Reise-Verwaltung | Reiseseite |
+| 40–44,5 | | Rechnung? Ein Klick. | die neue Rechnung | Tipp → Rechnung |
+| 44,5–48,5 | | Zahlen, die du verstehst | Auswertung | – |
+| 48,5–52 | Wirbel, Steigerung | Deine Schüler haben ihr Portal | – | Kundenportal |
+| 52–58 | **Einschlag bei 52 s**, Schlussakkord bei 56 s | Dein Auftritt. In deiner Hand. – Aufruf | Dashboard | Akte, Portal, Reise |
 
 ## Benutzen
 
@@ -59,7 +63,7 @@ npm run aufnehmen      # frische Demo-Anlage, App starten, Screens aufnehmen
 npm run musik          # Musik und Geräusche neu erzeugen (public/ton/)
 npm run studio         # Vorschau im Browser, mit Zeitleiste
 npm run rendern        # → out/teepilot-werbevideo.mp4            (30 s)
-npm run rendern:lang   # → out/teepilot-werbevideo-45s-musik.mp4  (45 s)
+npm run rendern:lang   # → out/teepilot-werbevideo-58s-musik.mp4  (58 s)
 ```
 
 `npm run aufnehmen` legt in einem Wegwerf-Ordner eine eigene SQLite-Datei mit
@@ -82,7 +86,7 @@ Rendern nimmt Remotion ein vorhandenes Chrome Headless Shell
 Text auf dem Knopf und eine Adresse darunter sind Eingaben der Kompositionen:
 
 ```bash
-npx remotion render TeePilotLang out/teepilot-werbevideo-45s-musik.mp4 \
+npx remotion render TeePilotLang out/teepilot-werbevideo-58s-musik.mp4 \
   --props='{"aufruf":"Jetzt Demo anfragen","adresse":"teepilot.de"}'
 ```
 
@@ -106,7 +110,7 @@ dieselbe Spur). Wer direkt `npx remotion …` aufruft, startet vorher
 
 `PEGEL=1 npm run musik` zeigt die Pegel jeder Spur – Musik prüft man ohne
 Lautsprecher mit Zahlen. Wer lieber ein Stück aus einer Bibliothek nimmt,
-legt es als `public/ton/musik-45s.wav` ab; die Schnitte bleiben auf den
+legt es als `public/ton/musik-lang.wav` ab (58 s); die Schnitte bleiben auf den
 Schlägen, wenn es 120 BPM hat.
 
 ## Was bewusst so ist

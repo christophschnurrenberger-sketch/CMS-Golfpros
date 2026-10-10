@@ -99,69 +99,81 @@ const GrossesFenster: React.FC<{zeilen: Zeile[]; notiz: string; zustaende: Zusta
 
 /* ------------------------------------------------------------- Szenen --- */
 
-export const Kalender2: React.FC = () => (
+/*
+ * Lesbar vor schnell: Erst steht die Überschrift (ANFANG), dann bewegt sich
+ * der Bildschirm, und vor dem Schnitt hält er still (RUHE vor dem Ende –
+ * eine Sekunde Stillstand plus der halbe Übergang). Alle Zeiten hängen an
+ * der Länge der Szene, damit eine längere Szene nicht nur länger steht.
+ */
+const ANFANG = 30;
+const RUHE = 45;
+type Laenge = {dauer: number};
+
+export const Kalender2: React.FC<Laenge> = ({dauer}) => (
   <Arbeitsplatz
     zeilen={[{text: 'Alles landet in'}, {text: 'deinem Kalender.', farbe: farbe.signal}]}
     notiz="am Schreibtisch und unterwegs"
     desktop={{zustaende: [{screen: 'kalender', ab: 0}], titel: 'Kalender · Golf Academy Bergmann'}}
-    telefon={{zustaende: [{screen: 'kalender-tag', ab: 0, scroll: [[24, 0], [96, 300]]}]}}
-    kamera={{bis: 1.18, ursprung: '30% 30%'}}
+    telefon={{zustaende: [{screen: 'kalender-tag', ab: 0, scroll: [[ANFANG, 0], [dauer - RUHE, 300]]}]}}
+    kamera={{bis: 1.18, ursprung: '30% 30%', start: ANFANG, ende: dauer - RUHE}}
   />
 );
 
-export const Dashboard2: React.FC = () => (
+export const Dashboard2: React.FC<Laenge> = ({dauer}) => (
   <Arbeitsplatz
     zeilen={[{text: 'Dein Tag.'}, {text: 'Sortiert.', farbe: farbe.signal}]}
     notiz="Umsatz, Termine, Aufgaben"
     seite="links"
-    desktop={{zustaende: [{screen: 'dashboard-desk', ab: 0, scroll: [[28, 0], [96, 470]]}], titel: 'Dashboard · Golf Academy Bergmann'}}
+    desktop={{zustaende: [{screen: 'dashboard-desk', ab: 0, scroll: [[ANFANG + 5, 0], [dauer - RUHE, 470]]}], titel: 'Dashboard · Golf Academy Bergmann'}}
     telefon={{zustaende: [{screen: 'dashboard', ab: 0}]}}
   />
 );
 
-export const Kunde2: React.FC = () => {
+export const Kunde2: React.FC<Laenge> = ({dauer}) => {
   const k = aufnahme('kunde');
   const handicap = Math.max(0, k.marken.handicap.y - 130);
   return (
     <Arbeitsplatz
       zeilen={[{text: 'Jeder Schüler'}, {text: 'auf einen Blick.', farbe: farbe.signal}]}
       notiz="Handicap · Pakete · Verlauf"
-      desktop={{zustaende: [{screen: 'kunde-desk', ab: 0, scroll: [[34, 0], [108, 330]]}], titel: 'Thomas Berger · Golf Academy Bergmann'}}
-      telefon={{zustaende: [{screen: 'kunde', ab: 0, scroll: [[22, 0], [46, 380], [60, 380], [108, handicap]]}]}}
+      desktop={{zustaende: [{screen: 'kunde-desk', ab: 0, scroll: [[ANFANG + 5, 0], [dauer - RUHE, 330]]}], titel: 'Thomas Berger · Golf Academy Bergmann'}}
+      telefon={{
+        zustaende: [{screen: 'kunde', ab: 0, scroll: [[ANFANG, 0], [ANFANG + 25, 380], [ANFANG + 45, 380], [dauer - RUHE, handicap]]}],
+      }}
     />
   );
 };
 
-export const Training2: React.FC = () => (
+export const Training2: React.FC<Laenge> = ({dauer}) => (
   <Arbeitsplatz
     zeilen={[{text: 'Trainingspläne'}, {text: 'für jeden Schüler.', farbe: farbe.signal}]}
     notiz="Woche für Woche, Übung für Übung"
     seite="links"
-    desktop={{zustaende: [{screen: 'plan-desk', ab: 0, scroll: [[28, 0], [96, 380]]}], titel: '4 Wochen Putting-Grundlagen · Golf Academy Bergmann'}}
-    telefon={{zustaende: [{screen: 'plan', ab: 0, scroll: [[20, 0], [96, 900]]}]}}
+    desktop={{zustaende: [{screen: 'plan-desk', ab: 0, scroll: [[ANFANG + 5, 0], [dauer - RUHE, 380]]}], titel: '4 Wochen Putting-Grundlagen · Golf Academy Bergmann'}}
+    telefon={{zustaende: [{screen: 'plan', ab: 0, scroll: [[ANFANG, 0], [dauer - RUHE, 900]]}]}}
   />
 );
 
-export const Leads2: React.FC = () => (
+export const Leads2: React.FC<Laenge> = ({dauer}) => (
   <GrossesFenster
     zeilen={[{text: 'Aus Anfragen'}, {text: 'werden Schüler.', farbe: farbe.signal}]}
     notiz="jede Anfrage landet in der Pipeline"
     zustaende={[{screen: 'leads-desk', ab: 0}]}
     titel="Leads · Golf Academy Bergmann"
-    kamera={{von: 1.08, bis: 1.5, ursprung: '40% 35%'}}
+    kamera={{von: 1.08, bis: 1.5, ursprung: '40% 35%', start: ANFANG - 10, ende: dauer - RUHE}}
   />
 );
 
-export const Website2: React.FC = () => (
+export const Website2: React.FC<Laenge> = ({dauer}) => (
   <Arbeitsplatz
     zeilen={[{text: 'Deine Website.'}, {text: 'Ohne Agentur.', farbe: farbe.signal}]}
     notiz="Text anklicken, ändern, fertig."
-    desktop={{zustaende: [{screen: 'baukasten', ab: 0}, {screen: 'website-desk', ab: 62}], titel: 'Startseite · Golf Academy Bergmann'}}
+    desktop={{zustaende: [{screen: 'baukasten', ab: 0}, {screen: 'website-desk', ab: Math.round(dauer / 2)}], titel: 'Startseite · Golf Academy Bergmann'}}
     telefon={{zustaende: [{screen: 'website', ab: 0}], start: 16}}
   />
 );
 
-export const Reisen2: React.FC = () => {
+export const Reisen2: React.FC<Laenge> = ({dauer}) => {
   const r = aufnahme('reise');
   return (
     <Arbeitsplatz
@@ -169,43 +181,43 @@ export const Reisen2: React.FC = () => {
       notiz="Buchung für bis zu sechs Reisende"
       seite="links"
       desktop={{zustaende: [{screen: 'reise-desk', ab: 0}], titel: 'Golfwoche Mallorca · Golf Academy Bergmann'}}
-      telefon={{zustaende: [{screen: 'reise', ab: 0, scroll: [[34, 0], [104, Math.max(0, r.marken.bilder.y - 200)]]}]}}
-      kamera={{bis: 1.22, ursprung: '75% 20%'}}
+      telefon={{zustaende: [{screen: 'reise', ab: 0, scroll: [[ANFANG + 10, 0], [dauer - RUHE, Math.max(0, r.marken.bilder.y - 200)]]}]}}
+      kamera={{bis: 1.22, ursprung: '75% 20%', start: ANFANG, ende: dauer - RUHE}}
     />
   );
 };
 
-export const Rechnungen2: React.FC = () => {
+export const Rechnungen2: React.FC<Laenge> = () => {
   const r = aufnahme('rechnungen');
   const ziel = r.scrollZiel ?? 0;
   return (
     <Arbeitsplatz
       zeilen={[{text: 'Rechnung?'}, {text: 'Ein Klick.', farbe: farbe.signal}]}
       notiz="aus allen offenen Terminen"
-      desktop={{zustaende: [{screen: 'rechnung-desk', ab: 0}], titel: 'Rechnung · Golf Academy Bergmann', start: 58}}
+      desktop={{zustaende: [{screen: 'rechnung-desk', ab: 0}], titel: 'Rechnung · Golf Academy Bergmann', start: 72}}
       telefon={{
         start: 0,
         zustaende: [
-          {screen: 'rechnungen', ab: 0, scroll: [[10, 0], [38, ziel]]},
-          {screen: 'rechnung-neu', ab: 54},
+          {screen: 'rechnungen', ab: 0, scroll: [[20, 0], [48, ziel]]},
+          {screen: 'rechnung-neu', ab: 65},
         ],
-        tipps: [{frame: 51, ...mitte(r.marken.knopf, ziel)}],
+        tipps: [{frame: 62, ...mitte(r.marken.knopf, ziel)}],
       }}
     />
   );
 };
 
-export const Auswertung2: React.FC = () => (
+export const Auswertung2: React.FC<Laenge> = ({dauer}) => (
   <GrossesFenster
     zeilen={[{text: 'Zahlen,'}, {text: 'die du verstehst.', farbe: farbe.signal}]}
     notiz="Umsatz, Auslastung, Kunden"
-    zustaende={[{screen: 'auswertung-desk', ab: 0, scroll: [[22, 0], [86, 430]]}]}
+    zustaende={[{screen: 'auswertung-desk', ab: 0, scroll: [[ANFANG, 0], [dauer - RUHE, 430]]}]}
     titel="Auswertung · Golf Academy Bergmann"
-    kamera={{von: 1.1, bis: 1.32, ursprung: '55% 40%'}}
+    kamera={{von: 1.1, bis: 1.32, ursprung: '55% 40%', start: 10, ende: dauer - RUHE}}
   />
 );
 
-export const Portal2: React.FC = () => (
+export const Portal2: React.FC<Laenge> = () => (
   <AbsoluteFill>
     <Titel zeilen={[{text: 'Deine Schüler'}, {text: 'haben ihr Portal.', farbe: farbe.signal}]} notiz="Termine, Training, Unterlagen" notizStart={16} />
     <Funktionstelefon start={2} zustaende={[{screen: 'portal', ab: 0}]} />
