@@ -1,0 +1,3 @@
+Eigene Aufnahmen der Sprechertexte (src/sprechertext.json) als WAV:
+01-hook.wav, 02-zielgruppe.wav … – Name wie in der Liste, Nummer = Reihenfolge.
+Liegt hier eine Datei, nimmt ton/sprecher.mjs sie statt der synthetischen Stimme.

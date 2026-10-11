@@ -37,6 +37,8 @@ export type WerbevideoProps = {
   aufruf: string;
   /** Adresse unter dem Knopf – leer lassen, wenn es (noch) keine gibt. */
   adresse: string;
+  /** Lange Fassung: Sprecherstimme dazu (sofern ton/sprecher.mjs eine erzeugt hat). Nur Musik: false. */
+  stimme?: boolean;
 };
 
 export const werbevideoStandard: WerbevideoProps = {

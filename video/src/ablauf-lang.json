@@ -1,0 +1,16 @@
+[
+  {"name": "hook", "dauer": 120, "zu": "blende"},
+  {"name": "zielgruppe", "dauer": 195, "zu": "schnitt"},
+  {"name": "buchung", "dauer": 165, "zu": "wisch"},
+  {"name": "kalender", "dauer": 135, "zu": "wisch"},
+  {"name": "dashboard", "dauer": 135, "zu": "wisch"},
+  {"name": "kunde", "dauer": 150, "zu": "wisch"},
+  {"name": "training", "dauer": 135, "zu": "wisch"},
+  {"name": "leads", "dauer": 135, "zu": "wisch"},
+  {"name": "website", "dauer": 150, "zu": "wisch"},
+  {"name": "reisen", "dauer": 150, "zu": "wisch"},
+  {"name": "rechnungen", "dauer": 150, "zu": "wisch"},
+  {"name": "auswertung", "dauer": 135, "zu": "wisch"},
+  {"name": "portal", "dauer": 105, "zu": "wisch"},
+  {"name": "schluss", "dauer": 120, "zu": "blende"}
+]

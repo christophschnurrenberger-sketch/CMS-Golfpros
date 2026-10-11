@@ -5,6 +5,7 @@
   "scripts": {
     "aufnehmen": "bash aufnahme/alles-aufnehmen.sh",
     "musik": "node ton/musik.mjs",
+    "sprecher": "node ton/sprecher.mjs",
     "prestudio": "node ton/musik.mjs",
     "studio": "remotion studio",
     "rendern": "remotion render TeePilot out/teepilot-werbevideo.mp4",

@@ -132,6 +132,48 @@ npx remotion render TeePilotLang out/teepilot-werbevideo-60s-musik.mp4 \
 
 Ohne `adresse` bleibt die Zeile weg – es steht keine erfundene Domain im Bild.
 
+## Sprecher
+
+Die lange Fassung (hoch und quer) kann eine deutsche Sprecherstimme tragen:
+ein Satz je Szene, der die Überschrift ergänzt, statt sie vorzulesen. Die
+Musik wird unter der Stimme auf ein Viertel gezogen. Text und Lautschrift
+stehen in `src/sprechertext.json`; Ablauf und Längen der Szenen in
+`src/ablauf-lang.json` – dieselbe Datei, aus der das Video seine Szenen
+nimmt, damit Stimme und Bild nicht auseinanderlaufen.
+
+```bash
+npm run sprecher       # Stimme je Satz erzeugen, Länge prüfen, Untertitel schreiben
+npm run rendern:quer   # danach wie gewohnt rendern – die Stimme ist dabei
+```
+
+`npm run sprecher` prüft, dass jeder Satz in seine Szene passt (wird Piper
+bis 15 % schneller, sonst Abbruch mit dem Satz, der zu lang ist), schreibt
+`src/sprecher.json` und die Untertitel `out/teepilot-untertitel.srt` (für
+YouTube) und `.vtt` (für `<track>` auf der Website). Ohne Stimme rendert das
+Video wie bisher nur mit Musik; mit `--props='{"stimme":false}'` auch dann.
+
+**Woher die Stimme kommt** – je Satz das Erste, was da ist:
+
+1. **Eigene Aufnahme:** `public/ton/sprecher/eigene/01-hook.wav`,
+   `02-zielgruppe.wav` … (Nummer und Szene wie in `src/sprechertext.json`).
+   Eine echte Stimme – etwa die des Pros selbst – wirkt in einer Anzeige
+   glaubwürdiger als jede Synthese. Handy-Aufnahme in ruhigem Raum genügt.
+2. **Piper** (offline, neuronale Sprachsynthese): Stimme
+   „Thorsten“ (`de_DE-thorsten-high`), deren Sprecher sie unter CC0
+   freigegeben hat – auch für Werbung nutzbar. `pip install piper-tts`,
+   dann Modell und Konfiguration nach `ton/stimmen/` laden:
+
+   ```bash
+   mkdir -p ton/stimmen && cd ton/stimmen
+   curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx
+   curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json
+   ```
+
+   Synthetische Stimmen sprechen englische Wörter deutsch – darum steht in
+   `src/sprechertext.json` neben dem Text eine Lautschrift („Tie-Pilot“,
+   „Däschbord“, „Paip-lain“). Nach dem Erzeugen anhören und dort
+   nachbessern.
+
 ## Die Musik
 
 `ton/musik.mjs` komponiert und synthetisiert die Spur im Code – kein Sample,
@@ -184,6 +226,9 @@ Schlägen, wenn es 120 BPM hat.
 aufnahme/alles-aufnehmen.sh   Demo-Anlage, App, Aufnahme, Aufräumen
 aufnahme/aufnehmen.js         Playwright: Seiten, Klicks, feste Leisten
 ton/musik.mjs                 Musik und Geräusche, im Code synthetisiert
+ton/sprecher.mjs              Sprecherstimme je Satz (Piper oder eigene Aufnahme), Untertitel
+src/ablauf-lang.json          Szenen und Längen der langen Fassung
+src/sprechertext.json         was gesprochen wird, mit Lautschrift
 src/Werbevideo.tsx            kurze Fassung: Reihenfolge, Längen, Übergänge
 src/Werbevideo2.tsx           lange Fassung: dasselbe, dazu Musik und Geräusche
 src/Szenen.tsx, Szenen2.tsx   die Szenen – hoch und quer
