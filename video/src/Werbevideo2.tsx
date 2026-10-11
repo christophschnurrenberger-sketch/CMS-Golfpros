@@ -102,17 +102,29 @@ type Satz = {szene: string; text: string; datei: string; von: number; bis: numbe
 const SAETZE = sprecherLage as Satz[];
 
 /* Piper liefert die Sätze auf 0 dBFS normalisiert – etwas Luft, damit Stimme und Musik zusammen nicht übersteuern. */
-const STIMME = 0.8;
+const STIMME = 0.9;
 
-/** Musik: 85 %, unter der Stimme auf ein Viertel (etwa −13 dB) – mit weichen Rampen. */
+/*
+ * Musik: 85 %. Solange gesprochen wird, liegt sie als leises Bett darunter
+ * (BETT) und geht unter jedem Satz noch tiefer (UNTER) – gut 20 dB unter der
+ * Stimme, wie bei einem Sprechertext üblich; bei 25 % hat die
+ * Spracherkennung in der zweiten Hälfte (FM-Glocke) schon Wörter verloren.
+ * Zwischen den Sätzen (rund 2 s) hebt sie sich nur ein Stück, damit sie
+ * nicht im Takt der Sätze pumpt; nach dem letzten Satz kommt sie ganz zurück.
+ */
+const BETT = 0.2;
+const UNTER = 0.08;
 const musikLautstaerke = (f: number, mitStimme: boolean) => {
   const grund = interpolate(f, [0, 6, GESAMT2 - 20, GESAMT2], [0, 0.85, 0.85, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   if (!mitStimme) return grund;
+  const erster = SAETZE[0].von;
+  const letzter = SAETZE[SAETZE.length - 1].bis;
+  const bett = interpolate(f, [erster - 10, erster, letzter, letzter + 20], [1, BETT, BETT, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   const unter = SAETZE.reduce((tief, s) => {
-    const t = interpolate(f, [s.von - 8, s.von, s.bis, s.bis + 10], [0, 1, 1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+    const t = interpolate(f, [s.von - 8, s.von, s.bis, s.bis + 20], [0, 1, 1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
     return Math.max(tief, t);
   }, 0);
-  return grund * (1 - 0.75 * unter);
+  return grund * bett * (1 - (1 - UNTER / BETT) * unter);
 };
 
 export const Werbevideo2: React.FC<WerbevideoProps> = (props) => {

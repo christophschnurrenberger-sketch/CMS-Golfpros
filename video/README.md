@@ -135,8 +135,11 @@ Ohne `adresse` bleibt die Zeile weg – es steht keine erfundene Domain im Bild.
 ## Sprecher
 
 Die lange Fassung (hoch und quer) kann eine deutsche Sprecherstimme tragen:
-ein Satz je Szene, der die Überschrift ergänzt, statt sie vorzulesen. Die
-Musik wird unter der Stimme auf ein Viertel gezogen. Text und Lautschrift
+ein Satz je Szene, der die Überschrift ergänzt, statt sie vorzulesen.
+Solange gesprochen wird, liegt die Musik als leises Bett darunter (20 %) und
+geht unter jedem Satz auf 8 % – gut 20 dB unter der Stimme; erst danach ist
+die Stimme über der dichteren zweiten Hälfte sicher zu verstehen (mit Whisper
+geprüft). Text und Lautschrift
 stehen in `src/sprechertext.json`; Ablauf und Längen der Szenen in
 `src/ablauf-lang.json` – dieselbe Datei, aus der das Video seine Szenen
 nimmt, damit Stimme und Bild nicht auseinanderlaufen.
