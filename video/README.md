@@ -206,6 +206,18 @@ Abhören ersetzt das Anhören nicht ganz – Whisper schreibt etwa „T-Pilot“
 „Ti-Pilot“ –, aber es findet zuverlässig den Take, in dem ein Wort verwaschen
 ist.
 
+### Lautheit
+
+Mit Sprecher liegt der Mix bei etwa −19 LUFS; YouTube, Instagram und TikTok
+spielen um −14 LUFS ab – das Video wäre dort leiser als alles davor und
+danach. `npm run rendern:lang` und `rendern:quer` rufen darum am Ende
+`ton/lautheit.mjs` auf: gleichmäßige Verstärkung auf −14 LUFS (gemessen nach
+EBU R128) und ein Begrenzer mit 2 ms Vorausschau, der die Spitzen der Stimme
+auf −1,5 dBFS hält. Er regelt nicht über Sekunden nach wie `loudnorm` im
+dynamischen Modus – die Musik bleibt unter der Stimme so tief, wie sie
+gelegt ist. Das Bild wird nur kopiert. Einzeln: `npm run lautheit -- out/x.mp4`
+(`--ziel -16` für eine andere Lautheit).
+
 ## Die Musik
 
 `ton/musik.mjs` komponiert und synthetisiert die Spur im Code – kein Sample,
@@ -264,6 +276,7 @@ aufnahme/aufnehmen.js         Playwright: Seiten, Klicks, feste Leisten
 ton/musik.mjs                 Musik und Geräusche, im Code synthetisiert
 ton/sprecher.mjs              Sprecherstimme je Satz (Piper oder eigene Aufnahme), Untertitel
 ton/abhoeren.py               Whisper-Abschrift der Takes (für --takes)
+ton/lautheit.mjs              fertige Videos auf −14 LUFS, Spitzen begrenzt
 src/ablauf-lang.json          Szenen und Längen der langen Fassung
 src/sprechertext.json         was gesprochen wird, mit Lautschrift
 src/Werbevideo.tsx            kurze Fassung: Reihenfolge, Längen, Übergänge
