@@ -101,6 +101,9 @@ export const GESAMT2 = STARTS2[STARTS2.length - 1] + SZENEN2[SZENEN2.length - 1]
 type Satz = {szene: string; text: string; datei: string; von: number; bis: number};
 const SAETZE = sprecherLage as Satz[];
 
+/* Piper liefert die Sätze auf 0 dBFS normalisiert – etwas Luft, damit Stimme und Musik zusammen nicht übersteuern. */
+const STIMME = 0.8;
+
 /** Musik: 85 %, unter der Stimme auf ein Viertel (etwa −13 dB) – mit weichen Rampen. */
 const musikLautstaerke = (f: number, mitStimme: boolean) => {
   const grund = interpolate(f, [0, 6, GESAMT2 - 20, GESAMT2], [0, 0.85, 0.85, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
@@ -140,7 +143,7 @@ export const Werbevideo2: React.FC<WerbevideoProps> = (props) => {
         {mitStimme
           ? SAETZE.map((s) => (
               <Sequence key={s.datei} from={s.von} durationInFrames={s.bis - s.von + 15} layout="none">
-                <Html5Audio src={staticFile(s.datei)} volume={1} />
+                <Html5Audio src={staticFile(s.datei)} volume={STIMME} />
               </Sequence>
             ))
           : null}

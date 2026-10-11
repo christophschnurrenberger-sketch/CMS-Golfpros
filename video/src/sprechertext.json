@@ -1,16 +1,17 @@
 {
-  "_hinweis": "Ein Satz je Szene – kürzer als die Szene, und er ergänzt die Überschrift, statt sie vorzulesen (Faustregel: gut 13 Zeichen je Sekunde Platz). `text` steht so in den Untertiteln; `sprechen` (falls da) bekommt die Sprachsynthese – Lautschrift für englische Wörter, die sie sonst deutsch liest. `versatz`: Frames nach Szenenbeginn. Eigene Aufnahme statt Synthese: public/ton/sprecher/eigene/NN-szene.wav ablegen.",
+  "_hinweis": "Ein Satz je Szene – kürzer als die Szene, und er ergänzt die Überschrift, statt sie vorzulesen (Faustregel: gut 13 Zeichen je Sekunde Platz). `text` steht so in den Untertiteln; `sprechen` (falls da) bekommt die Sprachsynthese – Lautschrift für englische Wörter, die sie sonst deutsch liest. In [[ … ]] stehen Laute direkt (IPA wie bei espeak), etwa für die Betonung von „Ti-Pilot“. `versatz`: Frames nach Szenenbeginn. Eigene Aufnahme statt Synthese: public/ton/sprecher/eigene/NN-szene.wav ablegen.",
   "saetze": [
     {
       "szene": "hook",
       "versatz": 6,
-      "text": "Du gibst Golfstunden. Keine Bürostunden."
+      "text": "Du gibst Golfstunden. Keine Bürostunden.",
+      "sprechen": "Du gibst Golf-Stunden. Keine Büro-Stunden."
     },
     {
       "szene": "zielgruppe",
       "versatz": 14,
       "text": "TeePilot – die App für Golfpros, Coaches und Academies.",
-      "sprechen": "Tie-Pilot. Die App für Golf-Pros, Koutsches und Äkkädemies."
+      "sprechen": "[[ tˈiːpiːlˈoːt. ]] Die App für Golf-Pros, Kootsches und Eckädemies."
     },
     {
       "szene": "buchung",
@@ -26,8 +27,7 @@
     {
       "szene": "dashboard",
       "versatz": 10,
-      "text": "Das Dashboard zeigt, was heute ansteht.",
-      "sprechen": "Das Däschbord zeigt, was heute ansteht."
+      "text": "Das Dashboard zeigt, was heute ansteht."
     },
     {
       "szene": "kunde",
@@ -44,7 +44,7 @@
       "szene": "leads",
       "versatz": 10,
       "text": "Jede Anfrage landet in deiner Pipeline.",
-      "sprechen": "Jede Anfrage landet in deiner Paip-lain."
+      "sprechen": "Jede Anfrage landet in deiner Paiplain."
     },
     {
       "szene": "website",
@@ -55,7 +55,8 @@
     {
       "szene": "reisen",
       "versatz": 10,
-      "text": "Golfreisen buchen wie im Reisebüro."
+      "text": "Golfreisen buchen wie im Reisebüro.",
+      "sprechen": "Golf-Reisen buchen wie im Reisebüro."
     },
     {
       "szene": "rechnungen",
@@ -76,7 +77,7 @@
       "szene": "schluss",
       "versatz": 12,
       "text": "TeePilot. Jetzt Demo anfragen.",
-      "sprechen": "Tie-Pilot. Jetzt Demo anfragen."
+      "sprechen": "[[ tˈiːpiːlˈoːt. ]] Jetzt Demo anfragen."
     }
   ]
 }

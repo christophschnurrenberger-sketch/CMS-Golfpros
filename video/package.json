@@ -10,7 +10,7 @@
     "studio": "remotion studio",
     "rendern": "remotion render TeePilot out/teepilot-werbevideo.mp4",
     "prerendern:lang": "node ton/musik.mjs",
-    "rendern:lang": "remotion render TeePilotLang out/teepilot-werbevideo-60s-musik.mp4",
+    "rendern:lang": "remotion render TeePilotLang out/teepilot-werbevideo-60s.mp4",
     "prerendern:quer": "node ton/musik.mjs",
     "rendern:quer": "remotion render TeePilotQuer out/teepilot-youtube-1080p.mp4 && remotion render TeePilotQuer out/teepilot-website-1080p.mp4 --crf=25 --audio-bitrate=128k",
     "vorschaubild": "remotion still Vorschaubild out/teepilot-vorschau-1920x1080.jpg --image-format=jpeg --jpeg-quality=90 && remotion still Vorschaubild out/teepilot-youtube-thumbnail-1280x720.jpg --image-format=jpeg --jpeg-quality=90 --scale=0.6667",

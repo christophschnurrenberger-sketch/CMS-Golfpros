@@ -1,1 +1,100 @@
-[]
+[
+  {
+    "szene": "hook",
+    "text": "Du gibst Golfstunden. Keine Bürostunden.",
+    "datei": "ton/sprecher/01-hook.wav",
+    "von": 6,
+    "bis": 88
+  },
+  {
+    "szene": "zielgruppe",
+    "text": "TeePilot – die App für Golfpros, Coaches und Academies.",
+    "datei": "ton/sprecher/02-zielgruppe.wav",
+    "von": 134,
+    "bis": 245
+  },
+  {
+    "szene": "buchung",
+    "text": "Deine Schüler buchen online – rund um die Uhr.",
+    "datei": "ton/sprecher/03-buchung.wav",
+    "von": 310,
+    "bis": 389
+  },
+  {
+    "szene": "kalender",
+    "text": "Jeder Termin landet sofort im Kalender.",
+    "datei": "ton/sprecher/04-kalender.wav",
+    "von": 460,
+    "bis": 519
+  },
+  {
+    "szene": "dashboard",
+    "text": "Das Dashboard zeigt, was heute ansteht.",
+    "datei": "ton/sprecher/05-dashboard.wav",
+    "von": 580,
+    "bis": 648
+  },
+  {
+    "szene": "kunde",
+    "text": "Die Kundenakte: jeder Schüler auf einen Blick.",
+    "datei": "ton/sprecher/06-kunde.wav",
+    "von": 700,
+    "bis": 771
+  },
+  {
+    "szene": "training",
+    "text": "Trainingspläne für jeden Schüler.",
+    "datei": "ton/sprecher/07-training.wav",
+    "von": 835,
+    "bis": 886
+  },
+  {
+    "szene": "leads",
+    "text": "Jede Anfrage landet in deiner Pipeline.",
+    "datei": "ton/sprecher/08-leads.wav",
+    "von": 955,
+    "bis": 1016
+  },
+  {
+    "szene": "website",
+    "text": "Deine Website pflegst du selbst – ohne Agentur.",
+    "datei": "ton/sprecher/09-website.wav",
+    "von": 1075,
+    "bis": 1157
+  },
+  {
+    "szene": "reisen",
+    "text": "Golfreisen buchen wie im Reisebüro.",
+    "datei": "ton/sprecher/10-reisen.wav",
+    "von": 1210,
+    "bis": 1277
+  },
+  {
+    "szene": "rechnungen",
+    "text": "Und die Rechnung? Ein Klick.",
+    "datei": "ton/sprecher/11-rechnungen.wav",
+    "von": 1345,
+    "bis": 1397
+  },
+  {
+    "szene": "auswertung",
+    "text": "Und du siehst, wie dein Geschäft läuft.",
+    "datei": "ton/sprecher/12-auswertung.wav",
+    "von": 1480,
+    "bis": 1540
+  },
+  {
+    "szene": "portal",
+    "text": "Plus ein Portal für deine Schüler.",
+    "datei": "ton/sprecher/13-portal.wav",
+    "von": 1600,
+    "bis": 1648
+  },
+  {
+    "szene": "schluss",
+    "text": "TeePilot. Jetzt Demo anfragen.",
+    "datei": "ton/sprecher/14-schluss.wav",
+    "von": 1692,
+    "bis": 1756
+  }
+]

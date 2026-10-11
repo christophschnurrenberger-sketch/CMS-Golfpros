@@ -103,7 +103,7 @@ npm run aufnehmen      # frische Demo-Anlage, App starten, Screens aufnehmen
 npm run musik          # Musik und Geräusche neu erzeugen (public/ton/)
 npm run studio         # Vorschau im Browser, mit Zeitleiste
 npm run rendern        # → out/teepilot-werbevideo.mp4            (30 s)
-npm run rendern:lang   # → out/teepilot-werbevideo-60s-musik.mp4  (60 s)
+npm run rendern:lang   # → out/teepilot-werbevideo-60s.mp4        (60 s, Musik und Sprecher)
 ```
 
 `npm run aufnehmen` legt in einem Wegwerf-Ordner eine eigene SQLite-Datei mit
@@ -126,7 +126,7 @@ Rendern nimmt Remotion ein vorhandenes Chrome Headless Shell
 Text auf dem Knopf und eine Adresse darunter sind Eingaben der Kompositionen:
 
 ```bash
-npx remotion render TeePilotLang out/teepilot-werbevideo-60s-musik.mp4 \
+npx remotion render TeePilotLang out/teepilot-werbevideo-60s.mp4 \
   --props='{"aufruf":"Jetzt Demo anfragen","adresse":"teepilot.de"}'
 ```
 
@@ -142,8 +142,8 @@ stehen in `src/sprechertext.json`; Ablauf und Längen der Szenen in
 nimmt, damit Stimme und Bild nicht auseinanderlaufen.
 
 ```bash
-npm run sprecher       # Stimme je Satz erzeugen, Länge prüfen, Untertitel schreiben
-npm run rendern:quer   # danach wie gewohnt rendern – die Stimme ist dabei
+npm run sprecher -- --takes 6   # Stimme je Satz erzeugen, besten Take wählen, Untertitel schreiben
+npm run rendern:quer            # danach wie gewohnt rendern – die Stimme ist dabei
 ```
 
 `npm run sprecher` prüft, dass jeder Satz in seine Szene passt (wird Piper
@@ -151,6 +151,12 @@ bis 15 % schneller, sonst Abbruch mit dem Satz, der zu lang ist), schreibt
 `src/sprecher.json` und die Untertitel `out/teepilot-untertitel.srt` (für
 YouTube) und `.vtt` (für `<track>` auf der Website). Ohne Stimme rendert das
 Video wie bisher nur mit Musik; mit `--props='{"stimme":false}'` auch dann.
+
+Die gesprochenen Sätze (`public/ton/sprecher/*.wav`, zusammen gut 1 MB)
+stehen im Repository – anders als die Musik: Piper klingt bei jedem
+Durchlauf etwas anders, die ausgewählten Takes ließen sich also nicht
+wiederherstellen. Rendern geht darum ohne Piper; neu sprechen nur, wenn sich
+der Text ändert.
 
 **Woher die Stimme kommt** – je Satz das Erste, was da ist:
 
@@ -161,18 +167,41 @@ Video wie bisher nur mit Musik; mit `--props='{"stimme":false}'` auch dann.
 2. **Piper** (offline, neuronale Sprachsynthese): Stimme
    „Thorsten“ (`de_DE-thorsten-high`), deren Sprecher sie unter CC0
    freigegeben hat – auch für Werbung nutzbar. `pip install piper-tts`,
-   dann Modell und Konfiguration nach `ton/stimmen/` laden:
+   dann Modell und Konfiguration nach `ton/stimmen/` laden – von Hugging Face
+   oder, falls das gesperrt ist, aus dem Paket von sherpa-onnx auf GitHub
+   (dieselbe Stimme, mit Modellkarte):
 
    ```bash
    mkdir -p ton/stimmen && cd ton/stimmen
    curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx
    curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json
+   # oder:
+   curl -L https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-thorsten-high.tar.bz2 \
+     | tar -xj --strip-components=1 vits-piper-de_DE-thorsten-high/de_DE-thorsten-high.onnx vits-piper-de_DE-thorsten-high/de_DE-thorsten-high.onnx.json
    ```
 
    Synthetische Stimmen sprechen englische Wörter deutsch – darum steht in
-   `src/sprechertext.json` neben dem Text eine Lautschrift („Tie-Pilot“,
-   „Däschbord“, „Paip-lain“). Nach dem Erzeugen anhören und dort
-   nachbessern.
+   `src/sprechertext.json` neben dem Text eine Lautschrift („Kootsches“,
+   „Eckädemies“, „Paiplain“). In `[[ … ]]` gehen Laute direkt an die Stimme
+   (IPA, wie espeak sie schreibt): So wird „TeePilot“ zu „Ti-Pilot“ mit
+   deutscher Betonung auf „-lot“ – `[[ tˈiːpiːlˈoːt. ]]`.
+
+**Takes:** Piper klingt bei jedem Durchlauf etwas anders, und mal gerät ein
+Wort undeutlich. `--takes 6` spricht jeden Satz sechsmal, `ton/abhoeren.py`
+schreibt mit Whisper auf, was zu verstehen ist, und genommen wird der Take,
+dessen Abschrift dem Text am nächsten kommt; das Protokoll zeigt je Satz die
+Abschrift. Dafür `pip install sherpa-onnx` und das Whisper-Modell (offline,
+MIT-Lizenz) nach `ton/stimmen/`:
+
+```bash
+cd ton/stimmen
+curl -L https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-small.tar.bz2 \
+  | tar -xj sherpa-onnx-whisper-small/small-encoder.int8.onnx sherpa-onnx-whisper-small/small-decoder.int8.onnx sherpa-onnx-whisper-small/small-tokens.txt
+```
+
+Abhören ersetzt das Anhören nicht ganz – Whisper schreibt etwa „T-Pilot“ für
+„Ti-Pilot“ –, aber es findet zuverlässig den Take, in dem ein Wort verwaschen
+ist.
 
 ## Die Musik
 
@@ -219,6 +248,10 @@ Schlägen, wenn es 120 BPM hat.
   siehe `public/fonts/LIZENZ.txt`.
 * Musik und Geräusche in `public/ton` entstehen in `ton/musik.mjs` und
   gehören zu diesem Projekt.
+* Die Sprecherstimme in `public/ton/sprecher` ist mit Piper und der Stimme
+  „Thorsten“ erzeugt; Thorsten Müller hat Stimme und Datensatz unter CC0
+  freigegeben (<https://github.com/thorstenMueller/Thorsten-Voice>) – frei,
+  auch für Werbung, ohne Namensnennung.
 
 ## Aufbau
 
@@ -227,6 +260,7 @@ aufnahme/alles-aufnehmen.sh   Demo-Anlage, App, Aufnahme, Aufräumen
 aufnahme/aufnehmen.js         Playwright: Seiten, Klicks, feste Leisten
 ton/musik.mjs                 Musik und Geräusche, im Code synthetisiert
 ton/sprecher.mjs              Sprecherstimme je Satz (Piper oder eigene Aufnahme), Untertitel
+ton/abhoeren.py               Whisper-Abschrift der Takes (für --takes)
 src/ablauf-lang.json          Szenen und Längen der langen Fassung
 src/sprechertext.json         was gesprochen wird, mit Lautschrift
 src/Werbevideo.tsx            kurze Fassung: Reihenfolge, Längen, Übergänge

@@ -1,7 +1,7 @@
 node_modules/
 out/
-# Von ton/musik.mjs und ton/sprecher.mjs erzeugt – reproduzierbar, darum nicht im Repository.
+# Von ton/musik.mjs erzeugt – jedes Mal dieselbe Spur, darum nicht im Repository.
+# (Die Sätze in public/ton/sprecher/ dagegen schon: Piper spricht jedes Mal anders.)
 public/ton/*.wav
-public/ton/sprecher/*.wav
-# Die Piper-Stimme (rund 100 MB) – Herkunft und Download siehe README.
+# Piper-Stimme und Whisper-Modell (je rund 100 MB) – Herkunft und Download siehe README.
 ton/stimmen/
